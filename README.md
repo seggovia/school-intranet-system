@@ -82,8 +82,9 @@ Principios:
 
 ------------------------------------------------------------------------
 
-# Estructura del proyecto
+## Estructura del proyecto
 
+```text
 school-intranet-system
 │
 ├── client        # Frontend React
@@ -95,6 +96,7 @@ school-intranet-system
 │
 ├── docker-compose.yml
 └── README.md
+```
 
 
 ------------------------------------------------------------------------
