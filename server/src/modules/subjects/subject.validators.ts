@@ -40,6 +40,11 @@ export const createMaterialSchema = z.object({
   fileUrl: z.string().trim().url().optional()
 });
 
+export const uploadMaterialSchema = z.object({
+  title: z.string().trim().min(2).max(160),
+  type: z.enum(['presentacion', 'guia', 'documento'])
+});
+
 export const createAssignmentSchema = z.object({
   title: z.string().trim().min(2).max(160),
   description: z.string().trim().min(2).max(3000),

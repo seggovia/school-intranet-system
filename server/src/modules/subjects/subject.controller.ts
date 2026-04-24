@@ -38,6 +38,11 @@ export class SubjectController {
     res.status(201).json(await service.createMaterial(req.user, String(req.params.unitId), req.body));
   }
 
+  async uploadMaterial(req: Request, res: Response) {
+    if (!req.user) throw new HttpError(401, 'Usuario autenticado requerido.');
+    res.status(201).json(await service.uploadMaterial(req.user, String(req.params.unitId), { ...req.body, file: req.file }));
+  }
+
   async deleteMaterial(req: Request, res: Response) {
     if (!req.user) throw new HttpError(401, 'Usuario autenticado requerido.');
     res.json(await service.deleteMaterial(req.user, String(req.params.materialId)));

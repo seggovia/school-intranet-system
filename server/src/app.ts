@@ -15,6 +15,7 @@ import { courseRoutes } from './modules/courses/course.routes.js';
 import { documentRoutes } from './modules/documents/document.routes.js';
 import { gradeRoutes } from './modules/grades/grade.routes.js';
 import { meRoutes } from './modules/me/me.routes.js';
+import { materialRoutes } from './modules/materials/material.routes.js';
 import { notificationRoutes } from './modules/notifications/notification.routes.js';
 import { requestRoutes } from './modules/requests/request.routes.js';
 import { schoolRoutes } from './modules/school/school.routes.js';
@@ -48,6 +49,7 @@ app.get('/api/health', async (_req, res) => {
 app.use('/api/auth/login', loginLimiter);
 app.use('/api/auth', authRoutes);
 app.use('/api/me', meRoutes);
+app.use('/api/materials', materialRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/subjects', subjectRoutes);

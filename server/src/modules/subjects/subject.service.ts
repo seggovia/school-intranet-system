@@ -1,6 +1,9 @@
 import { SubjectRepository } from './subject.repository.js';
 import type { JwtUser } from '../auth/auth.types.js';
 import { HttpError } from '../../shared/http-error.js';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { materialsUploadDir } from '../../shared/upload-paths.js';
 
 const repository = new SubjectRepository();
 
@@ -31,25 +34,25 @@ function stringList(value: unknown, fallback: string[]) {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : fallback;
 }
 
-function hasSubjectManagementAccess(user: JwtUser, subject: Awaited<ReturnType<SubjectRepository['findSubjectScope']>>) {
+function hasSubjectManagementAccess(user: JwtUser, subject: any) {
   if (!subject) return false;
   if (user.roles.some((role) => ['admin', 'director'].includes(role))) return true;
   if (!user.roles.includes('teacher')) return false;
-  return subject.teachers.some((item) => item.teacher.userId === user.id)
-    || subject.sections.some((item) => item.section.headTeacher?.userId === user.id);
+  return subject.teachers.some((item: any) => item.teacher.userId === user.id)
+    || subject.sections.some((item: any) => item.section.headTeacher?.userId === user.id);
 }
 
-function studentIdsForUser(user: JwtUser, subject: NonNullable<Awaited<ReturnType<SubjectRepository['findSubjectScope']>>>) {
-  return subject.sections.flatMap((item) => item.section.enrollments)
-    .filter((enrollment) => {
+function studentIdsForUser(user: JwtUser, subject: any) {
+  return subject.sections.flatMap((item: any) => item.section.enrollments)
+    .filter((enrollment: any) => {
       if (user.roles.includes('student')) return enrollment.student.userId === user.id;
-      if (user.roles.includes('guardian')) return enrollment.student.guardians.some((guardian) => guardian.guardian.userId === user.id);
+      if (user.roles.includes('guardian')) return enrollment.student.guardians.some((guardian: any) => guardian.guardian.userId === user.id);
       return false;
     })
-    .map((enrollment) => enrollment.student.id);
+    .map((enrollment: any) => enrollment.student.id);
 }
 
-function serializeUnit(unit: NonNullable<Awaited<ReturnType<SubjectRepository['findDetail']>>>['units'][number]) {
+function serializeUnit(unit: any) {
   return {
     id: unit.id,
     title: unit.title,
@@ -58,7 +61,7 @@ function serializeUnit(unit: NonNullable<Awaited<ReturnType<SubjectRepository['f
     outcomes: stringList(unit.outcomes, []),
     bibliography: stringList(unit.bibliography, []),
     contents: [
-      ...unit.materials.map((material) => ({
+      ...unit.materials.map((material: any) => ({
         id: material.id,
         type: material.type,
         title: material.title,
@@ -67,14 +70,14 @@ function serializeUnit(unit: NonNullable<Awaited<ReturnType<SubjectRepository['f
         owner: material.owner.name,
         updatedAt: material.updatedAt.toISOString().slice(0, 10)
       })),
-      ...unit.assignments.map((assignment) => ({
+      ...unit.assignments.map((assignment: any) => ({
         id: assignment.id,
         type: 'actividad',
         title: assignment.title,
         status: assignment.status,
         assignmentId: assignment.id,
         dueDate: assignment.dueDate?.toISOString().slice(0, 10) ?? null,
-        submissions: assignment.submissions.map((submission) => ({
+        submissions: assignment.submissions.map((submission: any) => ({
           id: submission.id,
           studentId: submission.studentId,
           student: submission.student.user.name,
@@ -85,7 +88,7 @@ function serializeUnit(unit: NonNullable<Awaited<ReturnType<SubjectRepository['f
         }))
       }))
     ],
-    assignments: unit.assignments.map((assignment) => ({
+    assignments: unit.assignments.map((assignment: any) => ({
       id: assignment.id,
       title: assignment.title,
       description: assignment.description,
@@ -236,12 +239,46 @@ export class SubjectService {
     };
   }
 
+  async uploadMaterial(user: JwtUser, unitId: string, input: { title: string; type: string; file?: Express.Multer.File }) {
+    const unit = await repository.findUnitScope(unitId);
+    if (!unit) throw new HttpError(404, 'Unidad no encontrada.');
+    if (!hasSubjectManagementAccess(user, unit.subject)) throw new HttpError(403, 'No tienes permisos para agregar materiales.');
+    if (!input.file) throw new HttpError(400, 'Debe adjuntar un archivo valido.');
+
+    const material = await repository.createMaterial({
+      unitId,
+      title: input.title,
+      type: input.type,
+      storagePath: input.file.filename,
+      ownerId: user.id
+    });
+    const updated = await repository.updateMaterialFileUrl(material.id, `/api/materials/${material.id}/download`);
+
+    return {
+      id: updated.id,
+      type: updated.type,
+      title: updated.title,
+      status: updated.status,
+      fileUrl: updated.fileUrl,
+      owner: updated.owner.name,
+      updatedAt: updated.updatedAt.toISOString().slice(0, 10)
+    };
+  }
+
   async deleteMaterial(user: JwtUser, materialId: string) {
     const material = await repository.findMaterialScope(materialId);
     if (!material) throw new HttpError(404, 'Material no encontrado.');
     const unit = await repository.findUnitScope(material.unitId);
     if (!unit || !hasSubjectManagementAccess(user, unit.subject)) throw new HttpError(403, 'No tienes permisos para eliminar este material.');
-    await repository.deleteMaterial(materialId);
+    const deleted = await repository.deleteMaterial(materialId);
+    if (deleted.storagePath) {
+      const uploadDir = materialsUploadDir();
+      const absolutePath = path.resolve(uploadDir, deleted.storagePath);
+      const relative = path.relative(uploadDir, absolutePath);
+      if (!relative.startsWith('..') && !path.isAbsolute(relative)) {
+        await fs.unlink(absolutePath).catch(() => undefined);
+      }
+    }
     return { ok: true };
   }
 

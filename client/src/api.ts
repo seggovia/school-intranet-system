@@ -163,6 +163,20 @@ export async function createUnitMaterial(unitId: string, input: { title: string;
   return data;
 }
 
+export async function uploadUnitMaterial(unitId: string, input: { title: string; type: string; file: File }) {
+  const form = new FormData();
+  form.append('title', input.title);
+  form.append('type', input.type);
+  form.append('file', input.file);
+  const { data } = await api.post(`/subjects/units/${unitId}/materials/upload`, form);
+  return data;
+}
+
+export async function downloadUnitMaterial(materialId: string) {
+  const { data } = await api.get<Blob>(`/materials/${materialId}/download`, { responseType: 'blob' });
+  return data;
+}
+
 export async function deleteUnitMaterial(materialId: string) {
   const { data } = await api.delete<{ ok: true }>(`/subjects/materials/${materialId}`);
   return data;

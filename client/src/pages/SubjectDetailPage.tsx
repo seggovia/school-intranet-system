@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { BookOpen, CalendarDays, ClipboardCheck, Download, Edit3, ExternalLink, FileArchive, FileSpreadsheet, FileText, Link as LinkIcon, MapPin, Megaphone, MessageSquare, PencilRuler, Plus, Presentation, Trash2, Upload, UserRound, Users } from 'lucide-react';
-import { createSubjectUnit, createUnitAssignment, createUnitMaterial, deleteSubjectUnit, deleteUnitMaterial, loadSubjectDetail, submitAssignment, updateSubjectUnit } from '../api';
+import { createSubjectUnit, createUnitAssignment, deleteSubjectUnit, deleteUnitMaterial, downloadUnitMaterial, loadSubjectDetail, submitAssignment, updateSubjectUnit, uploadUnitMaterial } from '../api';
 import { EmptyState, ErrorState, LoadingState } from '../components/States';
 import { useAsyncData } from '../hooks';
 import type { DocumentItem, SubjectDetailData, SubjectUnit, UnitContentItem, User } from '../types';
@@ -97,19 +97,19 @@ function materialKind(material: DocumentItem | UnitContentItem) {
   return 'PDF';
 }
 
-function UnitMaterialRow({ item }: { item: DocumentItem | UnitContentItem }) {
+function UnitMaterialRow({ item, onOpen }: { item: DocumentItem | UnitContentItem; onOpen: (item: DocumentItem | UnitContentItem) => void }) {
   const Icon = materialIcon(item);
   const isLink = 'fileUrl' in item && item.fileUrl && item.fileUrl !== '#';
 
   return (
-    <a className="classroom-material-row" href={isLink ? item.fileUrl ?? '#' : '#'} target={isLink ? '_blank' : undefined} rel="noreferrer">
+    <button type="button" className="classroom-material-row" onClick={() => onOpen(item)} disabled={!isLink && !('assignmentId' in item && item.assignmentId)}>
       <span className="material-icon"><Icon size={20} /></span>
       <span>
         <strong>{item.title}</strong>
         <small>{materialKind(item)} · {'fileUrl' in item ? item.updatedAt : item.status}</small>
       </span>
       <em>{isLink ? 'Abrir' : 'Descargar'}</em>
-    </a>
+    </button>
   );
 }
 
@@ -163,9 +163,15 @@ function ClassroomModal({
         {modal.type === 'material' && (
           <div className="editor-form-grid">
             <label>Unidad<input value={modal.unit.title} disabled /></label>
-            <label>Tipo<input value={materialKind({ id: 'tmp', type: modal.materialType, title: '', status: '' })} disabled /></label>
+            <label>Tipo
+              <select name="type" defaultValue={modal.materialType === 'presentacion' ? 'presentacion' : 'guia'}>
+                <option value="presentacion">PPT</option>
+                <option value="guia">Documento</option>
+                <option value="documento">Archivo complementario</option>
+              </select>
+            </label>
             <label className="wide-field">Titulo del material<input name="title" defaultValue={`${materialKind({ id: 'tmp', type: modal.materialType, title: '', status: '' })} - ${modal.unit.title}`} required /></label>
-            <label className="wide-field">URL del archivo o recurso<input name="fileUrl" placeholder="https://..." /></label>
+            <label className="wide-field">Archivo<input name="file" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx" required /></label>
           </div>
         )}
 
@@ -213,7 +219,8 @@ function UnitContent({
   onSubmitAssignment,
   onEditUnit,
   onDeleteUnit,
-  onDeleteMaterial
+  onDeleteMaterial,
+  onOpenMaterial
 }: {
   unit: SubjectUnit;
   index: number;
@@ -226,6 +233,7 @@ function UnitContent({
   onEditUnit: (unit: SubjectUnit) => void;
   onDeleteUnit: (unit: SubjectUnit) => void;
   onDeleteMaterial: (material: UnitContentItem) => void;
+  onOpenMaterial: (item: DocumentItem | UnitContentItem) => void;
 }) {
   const fallback = unitFallbacks[index] ?? unitFallbacks[0];
   const baseMaterials = unit.contents.length ? unit.contents : [
@@ -287,11 +295,10 @@ function UnitContent({
         <div className="classroom-material-list">
           {unitMaterials.map((item) => (
             <div className="material-row-wrap" key={item.id}>
-              <UnitMaterialRow item={item} />
+              <UnitMaterialRow item={item} onOpen={onOpenMaterial} />
               {canEdit && !item.assignmentId && <button className="danger-button compact-danger" onClick={() => onDeleteMaterial(item)}><Trash2 size={15} /> Eliminar</button>}
             </div>
           ))}
-          {subject.materials.slice(0, 2).map((item) => <UnitMaterialRow key={`${unit.id}-${item.id}`} item={item} />)}
         </div>
       </section>
 
@@ -391,6 +398,29 @@ export function SubjectDetailPage({ user }: { user: User }) {
     setModal({ type: 'submission', assignmentId });
   }
 
+  async function openMaterial(item: DocumentItem | UnitContentItem) {
+    if ('assignmentId' in item && item.assignmentId && !item.fileUrl) {
+      sendSubmission(item.assignmentId);
+      return;
+    }
+    if (!('fileUrl' in item) || !item.fileUrl || item.fileUrl === '#') {
+      showNotice('Este material aun no tiene archivo disponible.');
+      return;
+    }
+    try {
+      const blob = item.fileUrl.includes('/api/materials/') ? await downloadUnitMaterial(item.id) : null;
+      if (blob) {
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank', 'noopener,noreferrer');
+        window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+        return;
+      }
+      window.open(item.fileUrl, '_blank', 'noopener,noreferrer');
+    } catch {
+      showNotice('No se pudo abrir el material.');
+    }
+  }
+
   async function handleModalSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!modal) return;
@@ -414,12 +444,16 @@ export function SubjectDetailPage({ user }: { user: User }) {
         showNotice(modal.mode === 'create' ? 'Unidad creada.' : 'Unidad actualizada.');
       }
       if (modal.type === 'material') {
-        await createUnitMaterial(modal.unit.id, {
+        const file = form.get('file');
+        if (!(file instanceof File) || file.size === 0) {
+          throw new Error('Archivo requerido');
+        }
+        await uploadUnitMaterial(modal.unit.id, {
           title: String(form.get('title') ?? ''),
-          type: modal.materialType,
-          fileUrl: String(form.get('fileUrl') ?? '') || undefined
+          type: String(form.get('type') ?? modal.materialType),
+          file
         });
-        showNotice('Material agregado.');
+        showNotice('Material subido.');
       }
       if (modal.type === 'assignment') {
         await createUnitAssignment(modal.unit.id, {
@@ -553,7 +587,7 @@ export function SubjectDetailPage({ user }: { user: User }) {
                       {canEditCourse && <button className="text-button" onClick={addCourseMaterial}><Plus size={16} /> Agregar material</button>}
                     </div>
                     <div className="classroom-material-list">
-                      {(subject.materials.length ? subject.materials : subject.units.flatMap((unit) => unit.contents).slice(0, 5)).map((item) => <UnitMaterialRow key={item.id} item={item} />)}
+                      {subject.units.flatMap((unit) => unit.contents).slice(0, 5).map((item) => <UnitMaterialRow key={item.id} item={item} onOpen={openMaterial} />)}
                     </div>
                   </section>
                 </article>
@@ -570,6 +604,7 @@ export function SubjectDetailPage({ user }: { user: User }) {
                   onEditUnit={editUnit}
                   onDeleteUnit={deleteUnit}
                   onDeleteMaterial={deleteMaterial}
+                  onOpenMaterial={openMaterial}
                 />
               ) : null}
             </>

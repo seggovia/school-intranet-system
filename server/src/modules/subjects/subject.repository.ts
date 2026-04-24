@@ -68,8 +68,12 @@ export class SubjectRepository {
     return prisma.subjectUnit.delete({ where: { id } });
   }
 
-  createMaterial(input: { unitId: string; title: string; type: string; fileUrl?: string; ownerId: string }) {
+  createMaterial(input: { unitId: string; title: string; type: string; fileUrl?: string; storagePath?: string; ownerId: string }) {
     return prisma.unitMaterial.create({ data: input, include: { owner: true } });
+  }
+
+  updateMaterialFileUrl(id: string, fileUrl: string) {
+    return prisma.unitMaterial.update({ where: { id }, data: { fileUrl }, include: { owner: true } });
   }
 
   deleteMaterial(id: string) {

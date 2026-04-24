@@ -3,6 +3,7 @@ import { authenticate, authorizePermissions, authorizeRoles } from '../auth/auth
 import { asyncHandler } from '../../shared/async-handler.js';
 import { validateBody, validateParams } from '../../shared/validate.js';
 import { SubjectController } from './subject.controller.js';
+import { handleMaterialUpload } from './material-upload.middleware.js';
 import {
   assignmentIdParamSchema,
   createAssignmentSchema,
@@ -13,6 +14,7 @@ import {
   subjectIdParamSchema,
   submitAssignmentSchema,
   unitIdParamSchema,
+  uploadMaterialSchema,
   updateUnitSchema
 } from './subject.validators.js';
 
@@ -26,6 +28,7 @@ subjectRoutes.post('/:id/units', authorizeRoles('admin', 'director', 'teacher'),
 subjectRoutes.patch('/units/:unitId', authorizeRoles('admin', 'director', 'teacher'), validateParams(unitIdParamSchema), validateBody(updateUnitSchema), asyncHandler(controller.updateUnit.bind(controller)));
 subjectRoutes.delete('/units/:unitId', authorizeRoles('admin', 'director', 'teacher'), validateParams(unitIdParamSchema), asyncHandler(controller.deleteUnit.bind(controller)));
 subjectRoutes.post('/units/:unitId/materials', authorizeRoles('admin', 'director', 'teacher'), validateParams(unitIdParamSchema), validateBody(createMaterialSchema), asyncHandler(controller.createMaterial.bind(controller)));
+subjectRoutes.post('/units/:unitId/materials/upload', authorizeRoles('admin', 'director', 'teacher'), validateParams(unitIdParamSchema), handleMaterialUpload, validateBody(uploadMaterialSchema), asyncHandler(controller.uploadMaterial.bind(controller)));
 subjectRoutes.delete('/materials/:materialId', authorizeRoles('admin', 'director', 'teacher'), validateParams(materialIdParamSchema), asyncHandler(controller.deleteMaterial.bind(controller)));
 subjectRoutes.post('/units/:unitId/assignments', authorizeRoles('admin', 'director', 'teacher'), validateParams(unitIdParamSchema), validateBody(createAssignmentSchema), asyncHandler(controller.createAssignment.bind(controller)));
 subjectRoutes.post('/assignments/:assignmentId/submissions', authorizeRoles('student', 'guardian'), validateParams(assignmentIdParamSchema), validateBody(submitAssignmentSchema), asyncHandler(controller.submitAssignment.bind(controller)));

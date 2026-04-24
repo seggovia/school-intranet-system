@@ -153,6 +153,7 @@ model UnitMaterial {
   title     String
   type      String
   fileUrl   String?
+  storagePath String?
   status    String      @default("vigente")
   ownerId   String
   createdAt DateTime    @default(now())

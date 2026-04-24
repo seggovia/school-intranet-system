@@ -1378,13 +1378,21 @@ th {
   gap: 12px;
   min-height: 65px;
   padding: 10px 0;
+  border: 0;
   color: #17202a;
   background: #ffffff;
   text-decoration: none;
+  text-align: left;
+  cursor: pointer;
 }
 
 .classroom-material-row + .classroom-material-row {
   border-top: 0;
+}
+
+.classroom-material-row:disabled {
+  cursor: default;
+  opacity: 0.7;
 }
 
 .classroom-material-row:hover {
