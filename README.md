@@ -84,9 +84,18 @@ Principios:
 
 # Estructura del proyecto
 
-school-intranet-system │ ├── client \# Frontend React │ ├── server \#
-Backend Node + Express │ ├── modules │ ├── prisma │ └── middlewares │
-├── docker-compose.yml └── README.md
+school-intranet-system
+│
+├── client        # Frontend React
+│
+├── server        # Backend Node + Express
+│   ├── modules
+│   ├── prisma
+│   └── middlewares
+│
+├── docker-compose.yml
+└── README.md
+
 
 ------------------------------------------------------------------------
 
