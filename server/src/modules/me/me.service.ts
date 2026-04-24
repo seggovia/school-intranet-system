@@ -40,6 +40,43 @@ function serializeSchedule(schedule: {
   };
 }
 
+function dateForWeekday(weekday: number) {
+  const today = new Date();
+  const currentWeekday = today.getDay();
+  const mondayOffset = currentWeekday === 0 ? -6 : 1 - currentWeekday;
+  const date = new Date(today);
+  date.setHours(0, 0, 0, 0);
+  date.setDate(today.getDate() + mondayOffset + (weekday - 1));
+  return date.toISOString().slice(0, 10);
+}
+
+function serializeCalendarSchedule(schedule: {
+  id: string;
+  weekday: number;
+  startsAt: string;
+  endsAt: string;
+  subject: { id: string; name: string };
+  teacher: { user: { name: string } };
+  classroom: { name: string };
+  section: { course: { name: string }; name: string };
+}) {
+  const date = dateForWeekday(schedule.weekday);
+  const section = `${schedule.section.course.name} ${schedule.section.name}`;
+
+  return {
+    id: schedule.id,
+    title: schedule.subject.name,
+    start: `${date}T${schedule.startsAt}`,
+    end: `${date}T${schedule.endsAt}`,
+    subjectId: schedule.subject.id,
+    subject: schedule.subject.name,
+    teacher: schedule.teacher.user.name,
+    room: schedule.classroom.name,
+    section,
+    course: section
+  };
+}
+
 function serializeDocument(document: { id: string; title: string; status: string; fileUrl: string | null; updatedAt: Date; category: { name: string }; owner: { name: string } }) {
   return {
     id: document.id,
@@ -127,7 +164,7 @@ export class MeService {
 
   async schedule(user: JwtUser) {
     const sections = await this.sectionsForUser(user);
-    return sections.flatMap((section) => section.schedules.map((schedule) => serializeSchedule({ ...schedule, section })));
+    return sections.flatMap((section) => section.schedules.map((schedule) => serializeCalendarSchedule({ ...schedule, section })));
   }
 
   async grades(user: JwtUser) {

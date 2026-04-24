@@ -2,12 +2,12 @@ import { Activity, AlertTriangle, Bell, BookOpen, CheckCircle2, FileText, Trendi
 import { loadMyDashboard, loadMySchedule } from '../api';
 import { PageHeader } from '../components/PageHeader';
 import { RoleBadge } from '../components/RoleBadge';
+import { ScheduleCalendar } from '../components/ScheduleCalendar';
 import { SectionCard } from '../components/SectionCard';
 import { EmptyState, ErrorState, LoadingState } from '../components/States';
 import { StatCard } from '../components/StatCard';
-import { Timetable } from '../components/Timetable';
 import { useAsyncData } from '../hooks';
-import type { RoleDashboard, ScheduleItem } from '../types';
+import type { RoleDashboard, ScheduleCalendarEvent } from '../types';
 
 const emptyDashboard: RoleDashboard = { role: 'student', profile: { id: '', name: '', email: '', roles: [] }, stats: [], sections: [], linkedStudents: [], announcements: [], documents: [] };
 const icons = [TrendingUp, Users, CheckCircle2, AlertTriangle];
@@ -22,7 +22,7 @@ function dashboardCopy(role: string) {
 
 export function DashboardPage() {
   const dashboard = useAsyncData(loadMyDashboard, emptyDashboard);
-  const schedule = useAsyncData(loadMySchedule, [] as ScheduleItem[]);
+  const schedule = useAsyncData(loadMySchedule, [] as ScheduleCalendarEvent[]);
   const [title, description] = dashboardCopy(dashboard.data.role);
 
   return (
@@ -58,9 +58,9 @@ export function DashboardPage() {
           {!dashboard.data.sections.length && !dashboard.data.linkedStudents.length && <EmptyState title="Sin asignaciones" description="Las asignaciones apareceran cuando se configure la informacion escolar." />}
         </article>
 
-        <article className="panel">
+        <article className="panel schedule-panel">
           <h2>Horario semanal</h2>
-          {schedule.data.length ? <Timetable items={schedule.data} /> : <EmptyState title="Sin clases programadas" />}
+          {schedule.data.length ? <ScheduleCalendar events={schedule.data} /> : <EmptyState title="Sin clases programadas" />}
         </article>
       </section>
 

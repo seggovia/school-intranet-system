@@ -95,6 +95,19 @@ export interface ScheduleItem {
   section: string;
 }
 
+export interface ScheduleCalendarEvent {
+  id: string;
+  title: string;
+  start: string;
+  end: string;
+  subjectId: string;
+  subject: string;
+  teacher: string;
+  room: string;
+  section: string;
+  course: string;
+}
+
 export interface SectionSummary {
   id: string;
   name: string;

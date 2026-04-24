@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { Announcement, Assessment, AttendanceRecord, AuthSession, CalendarEvent, Course, DashboardData, DocumentItem, Grade, MySubject, RequestTicket, RoleDashboard, ScheduleItem, SectionStudent, Student, Subject } from './types';
+import type { Announcement, Assessment, AttendanceRecord, AuthSession, CalendarEvent, Course, DashboardData, DocumentItem, Grade, MySubject, RequestTicket, RoleDashboard, ScheduleCalendarEvent, SectionStudent, Student, Subject } from './types';
 
 export const sessionStorageKey = 'school-intranet-session';
 
@@ -61,7 +61,7 @@ export async function loadMySubjects() {
 }
 
 export async function loadMySchedule() {
-  const { data } = await api.get<ScheduleItem[]>('/me/schedule');
+  const { data } = await api.get<ScheduleCalendarEvent[]>('/me/schedule');
   return data;
 }
 

@@ -1,14 +1,14 @@
 import { CalendarClock, MapPin } from 'lucide-react';
 import { loadEvents, loadMySchedule } from '../api';
 import { PageHeader } from '../components/PageHeader';
+import { ScheduleCalendar } from '../components/ScheduleCalendar';
 import { StatusBadge } from '../components/StatusBadge';
-import { Timetable } from '../components/Timetable';
 import { useAsyncData } from '../hooks';
-import type { CalendarEvent, ScheduleItem } from '../types';
+import type { CalendarEvent, ScheduleCalendarEvent } from '../types';
 
 export function CalendarPage() {
   const { data } = useAsyncData(loadEvents, [] as CalendarEvent[]);
-  const schedule = useAsyncData(loadMySchedule, [] as ScheduleItem[]);
+  const schedule = useAsyncData(loadMySchedule, [] as ScheduleCalendarEvent[]);
 
   return (
     <div className="page-stack">
@@ -16,7 +16,7 @@ export function CalendarPage() {
 
       <section className="panel">
         <h2>Horario semanal de clases</h2>
-        <Timetable items={schedule.data} />
+        <ScheduleCalendar events={schedule.data} />
       </section>
 
       <section className="timeline">

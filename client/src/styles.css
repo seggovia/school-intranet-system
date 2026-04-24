@@ -578,6 +578,10 @@ th {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 }
 
+.schedule-panel {
+  grid-column: 1 / -1;
+}
+
 .subject-grid {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
@@ -721,6 +725,119 @@ th {
 .time-block small {
   color: #617282;
   font-size: 0.82rem;
+}
+
+.schedule-calendar {
+  overflow-x: auto;
+}
+
+.schedule-calendar .fc {
+  min-width: 820px;
+  color: #17202a;
+  font-family: inherit;
+}
+
+.schedule-calendar .fc-theme-standard td,
+.schedule-calendar .fc-theme-standard th {
+  border-color: #dce5ec;
+}
+
+.schedule-calendar .fc-col-header-cell {
+  padding: 10px 8px;
+  color: #435363;
+  background: #f8fafc;
+  text-transform: capitalize;
+}
+
+.schedule-calendar .fc-timegrid-slot {
+  height: 42px;
+}
+
+.schedule-calendar .fc-timegrid-axis,
+.schedule-calendar .fc-timegrid-slot-label {
+  color: #617282;
+  font-size: 0.8rem;
+}
+
+.schedule-calendar .fc-event {
+  border-radius: 8px;
+  cursor: pointer;
+  overflow: hidden;
+  box-shadow: 0 8px 16px rgba(16, 42, 67, 0.14);
+}
+
+.schedule-event {
+  display: grid;
+  gap: 2px;
+  min-height: 100%;
+  padding: 7px 8px;
+  color: #ffffff;
+}
+
+.schedule-event strong,
+.schedule-event span,
+.schedule-event small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.schedule-event strong {
+  font-size: 0.84rem;
+}
+
+.schedule-event span,
+.schedule-event small {
+  font-size: 0.72rem;
+  opacity: 0.92;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(15, 23, 42, 0.46);
+}
+
+.class-modal {
+  width: min(100%, 460px);
+  display: grid;
+  gap: 18px;
+  padding: 22px;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.24);
+}
+
+.class-modal header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.class-modal h2 {
+  margin: 4px 0 0;
+  font-size: 1.35rem;
+}
+
+.class-detail-list {
+  display: grid;
+  gap: 10px;
+}
+
+.class-detail-list span {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 38px;
+  padding: 0 10px;
+  border-radius: 8px;
+  color: #314254;
+  background: #f3f6f8;
 }
 
 .subject-icon {
