@@ -1,0 +1,377 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model User {
+  id             String         @id @default(cuid())
+  name           String
+  email          String         @unique
+  passwordHash   String
+  avatar         String
+  department     String
+  isActive       Boolean        @default(true)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  roles          UserRole[]
+  refreshTokens  RefreshToken[]
+  teacher        Teacher?
+  student        Student?
+  guardian       Guardian?
+  staff          Staff?
+  announcements  Announcement[] @relation("AnnouncementAuthor")
+  notifications  Notification[]
+  requests       SchoolRequest[] @relation("RequestRequester")
+  documents      Document[]      @relation("DocumentOwner")
+}
+
+model Role {
+  id          String           @id @default(cuid())
+  name        String           @unique
+  label       String
+  description String?
+  users       UserRole[]
+  permissions RolePermission[]
+}
+
+model Permission {
+  id          String           @id @default(cuid())
+  key         String           @unique
+  description String?
+  roles       RolePermission[]
+}
+
+model UserRole {
+  userId String
+  roleId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@map("user_roles")
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  userId    String
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+model SchoolLevel {
+  id       String   @id @default(cuid())
+  name     String   @unique
+  order    Int
+  courses  Course[]
+
+  @@map("school_levels")
+}
+
+model Course {
+  id        String      @id @default(cuid())
+  name      String
+  levelId   String
+  level     SchoolLevel @relation(fields: [levelId], references: [id])
+  sections  Section[]
+  subjects  CourseSubject[]
+
+  @@map("courses")
+}
+
+model Section {
+  id          String          @id @default(cuid())
+  name        String
+  courseId    String
+  teacherId   String?
+  classroomId String?
+  course      Course          @relation(fields: [courseId], references: [id])
+  headTeacher Teacher?        @relation("HeadTeacherSections", fields: [teacherId], references: [id])
+  classroom   Classroom?      @relation(fields: [classroomId], references: [id])
+  enrollments Enrollment[]
+  schedules   ClassSchedule[]
+  subjects    SubjectSection[]
+
+  @@unique([courseId, name])
+  @@map("sections")
+}
+
+model Subject {
+  id        String           @id @default(cuid())
+  name      String           @unique
+  code      String           @unique
+  teachers  TeacherSubject[]
+  courses   CourseSubject[]
+  sections  SubjectSection[]
+  schedules ClassSchedule[]
+  assessments Assessment[]
+
+  @@map("subjects")
+}
+
+model CourseSubject {
+  courseId  String
+  subjectId String
+  course    Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@id([courseId, subjectId])
+  @@map("course_subjects")
+}
+
+model SubjectSection {
+  sectionId String
+  subjectId String
+  section   Section @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@id([sectionId, subjectId])
+  @@map("subject_sections")
+}
+
+model Classroom {
+  id        String          @id @default(cuid())
+  name      String          @unique
+  capacity  Int
+  sections  Section[]
+  schedules ClassSchedule[]
+
+  @@map("classrooms")
+}
+
+model Teacher {
+  id        String           @id @default(cuid())
+  userId    String           @unique
+  employeeCode String        @unique
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subjects  TeacherSubject[]
+  sections  Section[]        @relation("HeadTeacherSections")
+  schedules ClassSchedule[]
+
+  @@map("teachers")
+}
+
+model TeacherSubject {
+  teacherId String
+  subjectId String
+  teacher   Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@id([teacherId, subjectId])
+  @@map("teacher_subjects")
+}
+
+model Student {
+  id          String            @id @default(cuid())
+  userId      String            @unique
+  rut         String            @unique
+  birthDate   DateTime
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  enrollments Enrollment[]
+  guardians   GuardianStudent[]
+  attendance  Attendance[]
+  grades      Grade[]
+
+  @@map("students")
+}
+
+model Guardian {
+  id        String            @id @default(cuid())
+  userId    String            @unique
+  phone     String
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  students  GuardianStudent[]
+
+  @@map("guardians")
+}
+
+model GuardianStudent {
+  guardianId   String
+  studentId    String
+  relationship String
+  guardian     Guardian @relation(fields: [guardianId], references: [id], onDelete: Cascade)
+  student      Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@id([guardianId, studentId])
+  @@map("guardian_students")
+}
+
+model Staff {
+  id        String @id @default(cuid())
+  userId    String @unique
+  position  String
+  area      String
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("staff")
+}
+
+model Enrollment {
+  id        String    @id @default(cuid())
+  studentId String
+  sectionId String
+  year      Int
+  status    String    @default("activo")
+  student   Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  section   Section   @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  attendance Attendance[]
+  grades    Grade[]
+
+  @@unique([studentId, sectionId, year])
+  @@map("enrollments")
+}
+
+model ClassSchedule {
+  id          String    @id @default(cuid())
+  sectionId   String
+  subjectId   String
+  teacherId   String
+  classroomId String
+  weekday     Int
+  startsAt    String
+  endsAt      String
+  section     Section   @relation(fields: [sectionId], references: [id])
+  subject     Subject   @relation(fields: [subjectId], references: [id])
+  teacher     Teacher   @relation(fields: [teacherId], references: [id])
+  classroom   Classroom @relation(fields: [classroomId], references: [id])
+
+  @@map("class_schedules")
+}
+
+model Attendance {
+  id           String     @id @default(cuid())
+  enrollmentId String
+  studentId    String
+  date         DateTime
+  status       String
+  note         String?
+  enrollment   Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  student      Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, date])
+  @@map("attendance")
+}
+
+model Assessment {
+  id        String   @id @default(cuid())
+  subjectId String
+  title     String
+  date      DateTime
+  weight    Float    @default(1)
+  subject   Subject  @relation(fields: [subjectId], references: [id])
+  grades    Grade[]
+
+  @@map("assessments")
+}
+
+model Grade {
+  id           String     @id @default(cuid())
+  assessmentId String
+  studentId    String
+  enrollmentId String
+  score        Float
+  assessment   Assessment @relation(fields: [assessmentId], references: [id])
+  student      Student    @relation(fields: [studentId], references: [id])
+  enrollment   Enrollment @relation(fields: [enrollmentId], references: [id])
+
+  @@unique([assessmentId, studentId])
+  @@map("grades")
+}
+
+model Announcement {
+  id        String   @id @default(cuid())
+  title     String
+  audience  String
+  priority  String   @default("normal")
+  body      String   @db.Text
+  authorId  String
+  createdAt DateTime @default(now())
+  author    User     @relation("AnnouncementAuthor", fields: [authorId], references: [id])
+
+  @@map("announcements")
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  title     String
+  body      String
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+model RequestType {
+  id       String          @id @default(cuid())
+  name     String          @unique
+  area     String
+  requests SchoolRequest[]
+
+  @@map("request_types")
+}
+
+model SchoolRequest {
+  id          String      @id @default(cuid())
+  subject     String
+  requesterId String
+  typeId      String
+  status      String      @default("nuevo")
+  createdAt   DateTime    @default(now())
+  requester   User        @relation("RequestRequester", fields: [requesterId], references: [id])
+  type        RequestType @relation(fields: [typeId], references: [id])
+
+  @@map("school_requests")
+}
+
+model DocumentCategory {
+  id        String     @id @default(cuid())
+  name      String     @unique
+  documents Document[]
+
+  @@map("document_categories")
+}
+
+model Document {
+  id         String           @id @default(cuid())
+  title      String
+  status     String           @default("vigente")
+  fileUrl    String?
+  ownerId    String
+  categoryId String
+  updatedAt  DateTime         @updatedAt
+  createdAt  DateTime         @default(now())
+  owner      User             @relation("DocumentOwner", fields: [ownerId], references: [id])
+  category   DocumentCategory @relation(fields: [categoryId], references: [id])
+
+  @@map("documents")
+}
+
+model CalendarEvent {
+  id        String   @id @default(cuid())
+  title     String
+  date      DateTime
+  type      String
+  location  String
+  createdAt DateTime @default(now())
+
+  @@map("calendar_events")
+}

@@ -1,0 +1,63 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: school-intranet-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: school_intranet
+      MYSQL_USER: school
+      MYSQL_PASSWORD: school_password
+      MYSQL_ROOT_PASSWORD: root_password
+    ports:
+      - "3307:3306"
+    volumes:
+      - school_intranet_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    container_name: school-intranet-backend
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      PORT: 4000
+      CLIENT_URL: http://localhost:5173
+      DATABASE_URL: mysql://school:school_password@mysql:3306/school_intranet
+      JWT_ACCESS_SECRET: docker_access_secret_change_before_production
+      JWT_REFRESH_SECRET: docker_refresh_secret_change_before_production
+      ACCESS_TOKEN_TTL: 15m
+      REFRESH_TOKEN_TTL_DAYS: 7
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./server/src:/app/server/src
+      - ./server/prisma:/app/server/prisma
+    command: sh -c "npm run prisma:generate --workspace server && npm run prisma:deploy --workspace server && npm run db:seed --workspace server && npm run dev --workspace server"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: client/Dockerfile
+    container_name: school-intranet-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      VITE_PROXY_TARGET: http://backend:4000
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./client/src:/app/client/src
+    command: npm run dev --workspace client
+
+volumes:
+  school_intranet_mysql_data:

@@ -1,0 +1,24 @@
+{
+  "name": "school-intranet-system",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Generic school intranet and management system portfolio project.",
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm:dev --workspace server\" \"npm:dev --workspace client\"",
+    "build": "npm run build --workspace server && npm run build --workspace client",
+    "typecheck": "npm run typecheck --workspace server && npm run typecheck --workspace client",
+    "start": "npm run start --workspace server",
+    "db:generate": "npm run prisma:generate --workspace server",
+    "db:migrate": "npm run prisma:migrate --workspace server",
+    "db:deploy": "npm run prisma:deploy --workspace server",
+    "db:seed": "npm run db:seed --workspace server",
+    "docker:dev": "docker compose up --build"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
