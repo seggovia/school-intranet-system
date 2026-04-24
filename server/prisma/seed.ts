@@ -358,6 +358,63 @@ async function main() {
     skipDuplicates: true
   });
 
+  await prisma.subjectUnit.deleteMany({ where: { subjectId: math.id } });
+  const mathUnit1 = await prisma.subjectUnit.create({
+    data: {
+      id: 'unit-mat-1',
+      subjectId: math.id,
+      title: 'Unidad 1 - Fundamentos de Matematica',
+      description: 'Numeros, proporcionalidad, lenguaje algebraico y resolucion guiada de problemas.',
+      duration: '3 semanas',
+      outcomes: ['Reconocer relaciones proporcionales.', 'Resolver problemas de operatoria y ecuaciones simples.', 'Comunicar procedimientos matematicos con precision.'],
+      bibliography: ['Texto del estudiante de Matematica 8 Basico', 'Apuntes docentes de proporcionalidad y algebra'],
+      order: 1
+    }
+  });
+  const mathUnit2 = await prisma.subjectUnit.create({
+    data: {
+      id: 'unit-mat-2',
+      subjectId: math.id,
+      title: 'Unidad 2 - Aplicacion',
+      description: 'Modelamiento, ejercicios aplicados, analisis de datos y actividades colaborativas.',
+      duration: '4 semanas',
+      outcomes: ['Aplicar estrategias de resolucion en contextos reales.', 'Interpretar datos desde tablas y graficos.', 'Construir respuestas justificadas.'],
+      bibliography: ['Guia de ejercicios aplicados', 'Biblioteca digital escolar: estadistica inicial'],
+      order: 2
+    }
+  });
+  const mathUnit3 = await prisma.subjectUnit.create({
+    data: {
+      id: 'unit-mat-3',
+      subjectId: math.id,
+      title: 'Unidad 3 - Cierre y sintesis',
+      description: 'Integracion de contenidos, preparacion de evaluacion final y proyecto breve.',
+      duration: '3 semanas',
+      outcomes: ['Integrar contenidos clave del semestre.', 'Preparar evidencias de aprendizaje.', 'Evaluar resultados con pauta.'],
+      bibliography: ['Material de cierre de asignatura', 'Ejercicios de repaso docente'],
+      order: 3
+    }
+  });
+
+  await prisma.unitMaterial.createMany({
+    data: [
+      { unitId: mathUnit1.id, title: 'PPT proporcionalidad', type: 'presentacion', fileUrl: 'https://example.com/ppt/proporcionalidad.pptx', ownerId: teacherUser.id },
+      { unitId: mathUnit1.id, title: 'Guia 1 - Proporciones', type: 'guia', fileUrl: 'https://example.com/guias/proporciones.pdf', ownerId: teacherUser.id },
+      { unitId: mathUnit2.id, title: 'PPT analisis de datos', type: 'presentacion', fileUrl: 'https://example.com/ppt/datos.pptx', ownerId: teacherUser.id },
+      { unitId: mathUnit2.id, title: 'Ejercicios Excel', type: 'documento', fileUrl: 'https://example.com/planillas/ejercicios.xlsx', ownerId: teacherUser.id },
+      { unitId: mathUnit3.id, title: 'Material de cierre', type: 'guia', fileUrl: 'https://example.com/guias/cierre.pdf', ownerId: teacherUser.id }
+    ],
+    skipDuplicates: true
+  });
+
+  await prisma.assignment.createMany({
+    data: [
+      { id: 'assignment-mat-u1', unitId: mathUnit1.id, title: 'Entregable 1 - Resolucion de problemas', description: 'Sube el desarrollo de los ejercicios indicados en la guia 1.', dueDate: new Date('2026-05-05') },
+      { id: 'assignment-mat-u2', unitId: mathUnit2.id, title: 'Entregable 2 - Ejercicios aplicados', description: 'Sube la planilla o documento con los ejercicios aplicados.', dueDate: new Date('2026-05-20') }
+    ],
+    skipDuplicates: true
+  });
+
   const seededEvents = [
       { title: 'Consejo de profesores', date: new Date('2026-04-24'), type: 'academico', location: 'Biblioteca' },
       { title: 'Reunion centro de padres', date: new Date('2026-04-29'), type: 'familias', location: 'Auditorio' },

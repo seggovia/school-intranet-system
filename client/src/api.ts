@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { Announcement, Assessment, AttendanceRecord, AuthSession, CalendarEvent, Course, DashboardData, DocumentItem, Grade, MySubject, RequestTicket, RoleDashboard, ScheduleCalendarEvent, SectionStudent, Student, Subject } from './types';
+import type { Announcement, Assessment, AttendanceRecord, AuthSession, CalendarEvent, Course, DashboardData, DocumentItem, Grade, MySubject, RequestTicket, RoleDashboard, ScheduleCalendarEvent, SectionStudent, Student, Subject, SubjectDetailData } from './types';
 
 export const sessionStorageKey = 'school-intranet-session';
 
@@ -35,6 +35,84 @@ api.interceptors.response.use(
   }
 );
 
+const weekdayNames = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'];
+
+type LegacySubjectDetail = Partial<SubjectDetailData> & {
+  id?: string;
+  name?: string;
+  code?: string;
+  sections?: Array<{
+    id: string;
+    name: string;
+    teacher?: string;
+    classroom?: string;
+    students?: SectionStudent[];
+    schedules?: Array<{
+      id: string;
+      weekday: number;
+      startsAt: string;
+      endsAt: string;
+      subject?: string;
+      teacher?: string;
+      classroom?: string;
+    }>;
+  }>;
+  units?: Array<{ id: string; title: string; description?: string; topics?: string[]; contents?: SubjectDetailData['units'][number]['contents'] }>;
+};
+
+function normalizeSubjectDetail(input: SubjectDetailData | LegacySubjectDetail): SubjectDetailData {
+  const legacy = input as LegacySubjectDetail;
+  const firstSection = input.sections?.[0];
+  const firstSchedule = firstSection?.schedules?.[0];
+  const subject = input.subject ?? {
+    id: legacy.id ?? '',
+    name: legacy.name ?? '',
+    code: legacy.code ?? ''
+  };
+
+  return {
+    subject,
+    teacher: input.teacher ?? firstSchedule?.teacher ?? firstSection?.teacher ?? 'Sin asignar',
+    section: input.section ?? firstSection?.name ?? 'Sin seccion',
+    room: input.room ?? firstSchedule?.classroom ?? firstSection?.classroom ?? 'Sin sala',
+    schedule: input.schedule ?? input.sections?.flatMap((section) => section.schedules?.map((schedule) => ({
+      id: schedule.id,
+      weekday: schedule.weekday,
+      weekdayName: weekdayNames[schedule.weekday] ?? `Dia ${schedule.weekday}`,
+      startsAt: schedule.startsAt,
+      endsAt: schedule.endsAt,
+      subjectId: subject.id,
+      subject: schedule.subject ?? subject.name,
+      teacher: schedule.teacher ?? firstSection?.teacher ?? 'Sin asignar',
+      classroom: schedule.classroom ?? section.classroom ?? 'Sin sala',
+      section: section.name
+    })) ?? []) ?? [],
+    units: input.units?.map((unit, index) => {
+      const topics = (unit as { topics?: string[] }).topics;
+      return {
+        id: unit.id,
+        title: unit.title || `Unidad ${index + 1}`,
+        description: unit.description ?? (Array.isArray(topics) ? topics.join(', ') : undefined) ?? `Contenidos de ${subject.name}`,
+        contents: unit.contents ?? [
+          { id: `${unit.id}-presentacion`, type: 'presentacion', title: `Presentacion ${unit.title}`, status: 'disponible' },
+          { id: `${unit.id}-guia`, type: 'guia', title: `Guia ${index + 1}`, status: 'disponible' },
+          { id: `${unit.id}-actividad`, type: 'actividad', title: `Actividad ${index + 1}`, status: 'programada' }
+        ]
+      };
+    }) ?? [],
+    materials: input.materials ?? [],
+    assessments: input.assessments ?? [],
+    sections: input.sections?.map((section) => ({
+      id: section.id,
+      name: section.name,
+      teacher: section.teacher ?? 'Sin asignar',
+      classroom: section.classroom ?? 'Sin sala',
+      students: section.students ?? [],
+      schedules: section.schedules ?? []
+    })) ?? []
+  };
+}
+
 export async function login(email: string, password: string) {
   const { data } = await api.post<AuthSession>('/auth/login', { email, password });
   return data;
@@ -57,6 +135,46 @@ export async function loadMyDashboard() {
 
 export async function loadMySubjects() {
   const { data } = await api.get<MySubject[]>('/me/subjects');
+  return data;
+}
+
+export async function loadSubjectDetail(id: string) {
+  const { data } = await api.get<SubjectDetailData>(`/subjects/${id}/detail`);
+  return normalizeSubjectDetail(data);
+}
+
+export async function createSubjectUnit(subjectId: string, input: { title: string; description: string; duration?: string; outcomes?: string[]; bibliography?: string[]; order?: number }) {
+  const { data } = await api.post(`/subjects/${subjectId}/units`, input);
+  return data;
+}
+
+export async function updateSubjectUnit(unitId: string, input: { title?: string; description?: string; duration?: string; outcomes?: string[]; bibliography?: string[]; order?: number }) {
+  const { data } = await api.patch(`/subjects/units/${unitId}`, input);
+  return data;
+}
+
+export async function deleteSubjectUnit(unitId: string) {
+  const { data } = await api.delete<{ ok: true }>(`/subjects/units/${unitId}`);
+  return data;
+}
+
+export async function createUnitMaterial(unitId: string, input: { title: string; type: string; fileUrl?: string }) {
+  const { data } = await api.post(`/subjects/units/${unitId}/materials`, input);
+  return data;
+}
+
+export async function deleteUnitMaterial(materialId: string) {
+  const { data } = await api.delete<{ ok: true }>(`/subjects/materials/${materialId}`);
+  return data;
+}
+
+export async function createUnitAssignment(unitId: string, input: { title: string; description: string; dueDate?: string }) {
+  const { data } = await api.post(`/subjects/units/${unitId}/assignments`, input);
+  return data;
+}
+
+export async function submitAssignment(assignmentId: string, input: { fileUrl?: string; comment?: string; studentId?: string }) {
+  const { data } = await api.post(`/subjects/assignments/${assignmentId}/submissions`, input);
   return data;
 }
 

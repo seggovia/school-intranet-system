@@ -26,6 +26,8 @@ model User {
   notifications  Notification[]
   requests       SchoolRequest[] @relation("RequestRequester")
   documents      Document[]      @relation("DocumentOwner")
+  unitMaterials  UnitMaterial[]  @relation("UnitMaterialOwner")
+  submissions    AssignmentSubmission[] @relation("SubmissionAuthor")
 }
 
 model Role {
@@ -122,8 +124,75 @@ model Subject {
   sections  SubjectSection[]
   schedules ClassSchedule[]
   assessments Assessment[]
+  units     SubjectUnit[]
 
   @@map("subjects")
+}
+
+model SubjectUnit {
+  id          String         @id @default(cuid())
+  subjectId   String
+  title       String
+  description String         @db.Text
+  duration    String?
+  outcomes    Json
+  bibliography Json
+  order       Int            @default(0)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  subject     Subject        @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  materials   UnitMaterial[]
+  assignments Assignment[]
+
+  @@map("subject_units")
+}
+
+model UnitMaterial {
+  id        String      @id @default(cuid())
+  unitId    String
+  title     String
+  type      String
+  fileUrl   String?
+  status    String      @default("vigente")
+  ownerId   String
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  unit      SubjectUnit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  owner     User        @relation("UnitMaterialOwner", fields: [ownerId], references: [id])
+
+  @@map("unit_materials")
+}
+
+model Assignment {
+  id          String      @id @default(cuid())
+  unitId      String
+  title       String
+  description String      @db.Text
+  dueDate     DateTime?
+  status      String      @default("activo")
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  unit        SubjectUnit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  submissions AssignmentSubmission[]
+
+  @@map("assignments")
+}
+
+model AssignmentSubmission {
+  id           String     @id @default(cuid())
+  assignmentId String
+  studentId    String
+  authorId     String
+  fileUrl      String?
+  comment      String?    @db.Text
+  status       String     @default("enviado")
+  submittedAt  DateTime   @default(now())
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  student      Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  author       User       @relation("SubmissionAuthor", fields: [authorId], references: [id])
+
+  @@unique([assignmentId, studentId])
+  @@map("assignment_submissions")
 }
 
 model CourseSubject {
@@ -188,6 +257,7 @@ model Student {
   guardians   GuardianStudent[]
   attendance  Attendance[]
   grades      Grade[]
+  submissions AssignmentSubmission[]
 
   @@map("students")
 }

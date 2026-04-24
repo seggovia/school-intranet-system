@@ -108,6 +108,53 @@ export interface ScheduleCalendarEvent {
   course: string;
 }
 
+export interface UnitContentItem {
+  id: string;
+  type: 'presentacion' | 'guia' | 'actividad' | 'evaluacion' | 'documento' | 'link';
+  title: string;
+  status: string;
+  fileUrl?: string | null;
+  owner?: string;
+  updatedAt?: string;
+  assignmentId?: string;
+  dueDate?: string | null;
+  submissions?: unknown[];
+}
+
+export interface SubjectUnit {
+  id: string;
+  title: string;
+  description: string;
+  duration?: string;
+  outcomes?: string[];
+  bibliography?: string[];
+  contents: UnitContentItem[];
+  assignments?: { id: string; title: string; description: string; dueDate: string | null; status: string; submissions: number }[];
+}
+
+export interface SubjectDetailData {
+  subject: {
+    id: string;
+    name: string;
+    code: string;
+  };
+  teacher: string;
+  section: string;
+  room: string;
+  schedule: ScheduleItem[];
+  units: SubjectUnit[];
+  materials: DocumentItem[];
+  assessments: { id: string; title: string; date: string; grades: number }[];
+  sections: {
+    id: string;
+    name: string;
+    teacher: string;
+    classroom: string;
+    students: SectionStudent[];
+    schedules: Omit<ScheduleItem, 'weekdayName' | 'subjectId' | 'section'>[];
+  }[];
+}
+
 export interface SectionSummary {
   id: string;
   name: string;
