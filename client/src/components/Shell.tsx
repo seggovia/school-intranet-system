@@ -1,4 +1,4 @@
-import { BarChart3, Bell, BookOpen, CalendarDays, ClipboardCheck, FileText, GraduationCap, HelpCircle, LogOut, Menu, School, Search, Shield, Star } from 'lucide-react';
+import { BarChart3, Bell, CalendarDays, ChevronDown, ClipboardCheck, FileText, GraduationCap, HelpCircle, LogOut, Menu, School, Search, Shield, Star, UserCircle, X } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useState, type ReactNode } from 'react';
 import clsx from 'clsx';
@@ -19,21 +19,26 @@ const navItems = [
 
 export function Shell({ user, onLogout, children }: { user: User; onLogout: () => void; children: ReactNode }) {
   const [open, setOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   return (
-    <div className="app-shell">
-      <aside className={clsx('sidebar', open && 'sidebar-open')}>
+    <div className={clsx('app-shell', open && 'mobile-nav-open')}>
+      <header className="institution-header">
         <div className="brand">
           <div className="brand-mark">
             <School size={24} />
           </div>
           <div>
-            <strong>Sistema de Intranet Escolar</strong>
+            <strong>Sistema de Intranet Colegio</strong>
             <span>Gestion interna</span>
           </div>
         </div>
 
-        <nav className="nav-list" aria-label="Navegacion principal">
+        <button className="icon-button mobile-only" onClick={() => setOpen((value) => !value)} aria-label={open ? 'Cerrar menu' : 'Abrir menu'}>
+          {open ? <X size={20} /> : <Menu size={20} />}
+        </button>
+
+        <nav className={clsx('nav-list', open && 'nav-list-open')} aria-label="Navegacion principal">
           {navItems.filter((item) => item.roles.includes(user.primaryRole)).map((item) => {
             const Icon = item.icon;
             return (
@@ -45,37 +50,54 @@ export function Shell({ user, onLogout, children }: { user: User; onLogout: () =
           })}
         </nav>
 
-        <div className="sidebar-card">
-          <BookOpen size={20} />
-          <strong>Plan lector</strong>
-          <span>72% de avance institucional</span>
-          <div className="progress">
-            <span style={{ width: '72%' }} />
-          </div>
+        <div className="institution-search">
+          <Search size={18} />
+          <input placeholder="Buscar estudiantes, documentos o comunicados" />
         </div>
-      </aside>
+
+        <div className="institution-user">
+          <button
+            className="profile-menu-button"
+            onClick={() => setProfileOpen((value) => !value)}
+            aria-expanded={profileOpen}
+            aria-haspopup="menu"
+            aria-label="Abrir menu de perfil"
+          >
+            <span>{user.avatar}</span>
+            <ChevronDown size={16} />
+          </button>
+          {profileOpen && (
+            <div className="profile-menu" role="menu">
+              <div className="profile-menu-header">
+                <span>{user.avatar}</span>
+                <div>
+                  <strong>{user.name}</strong>
+                  <small>{user.department}</small>
+                </div>
+              </div>
+              <RoleBadge role={user.primaryRole} />
+              <div className="profile-menu-divider" />
+              <button type="button" role="menuitem" onClick={() => setProfileOpen(false)}>
+                <UserCircle size={18} />
+                Ver perfil
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setProfileOpen(false);
+                  onLogout();
+                }}
+              >
+                <LogOut size={18} />
+                Cerrar sesion
+              </button>
+            </div>
+          )}
+        </div>
+      </header>
 
       <div className="main-area">
-        <header className="topbar">
-          <button className="icon-button mobile-only" onClick={() => setOpen((value) => !value)} aria-label="Abrir menu">
-            <Menu size={20} />
-          </button>
-          <div className="search-box">
-            <Search size={18} />
-            <input placeholder="Buscar estudiantes, documentos o comunicados" />
-          </div>
-          <div className="profile-chip">
-            <span>{user.avatar}</span>
-            <div>
-              <strong>{user.name}</strong>
-              <small>{user.department}</small>
-            </div>
-          </div>
-          <RoleBadge role={user.primaryRole} />
-          <button className="icon-button" onClick={onLogout} aria-label="Cerrar sesion">
-            <LogOut size={19} />
-          </button>
-        </header>
         <main className="content">{children}</main>
       </div>
     </div>

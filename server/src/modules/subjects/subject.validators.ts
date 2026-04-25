@@ -51,8 +51,25 @@ export const createAssignmentSchema = z.object({
   dueDate: z.string().trim().optional()
 });
 
+export const updateAssignmentSchema = createAssignmentSchema.partial().refine((value) => Object.keys(value).length > 0, {
+  message: 'Debe enviar al menos un campo para actualizar.'
+});
+
+export const updateAssignmentStatusSchema = z.object({
+  status: z.enum(['activo', 'cerrado'])
+});
+
 export const submitAssignmentSchema = z.object({
   fileUrl: z.string().trim().url().optional(),
   comment: z.string().trim().max(2000).optional(),
+  studentId: z.string().trim().min(1).optional()
+});
+
+export const uploadAssignmentSubmissionSchema = z.object({
+  comment: z.string().trim().max(2000).optional(),
+  studentId: z.string().trim().min(1).optional()
+});
+
+export const deleteAssignmentSubmissionSchema = z.object({
   studentId: z.string().trim().min(1).optional()
 });

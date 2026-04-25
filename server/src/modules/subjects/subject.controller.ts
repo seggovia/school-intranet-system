@@ -53,8 +53,33 @@ export class SubjectController {
     res.status(201).json(await service.createAssignment(req.user, String(req.params.unitId), req.body));
   }
 
+  async updateAssignment(req: Request, res: Response) {
+    if (!req.user) throw new HttpError(401, 'Usuario autenticado requerido.');
+    res.json(await service.updateAssignment(req.user, String(req.params.assignmentId), req.body));
+  }
+
+  async updateAssignmentStatus(req: Request, res: Response) {
+    if (!req.user) throw new HttpError(401, 'Usuario autenticado requerido.');
+    res.json(await service.updateAssignmentStatus(req.user, String(req.params.assignmentId), req.body));
+  }
+
+  async deleteAssignment(req: Request, res: Response) {
+    if (!req.user) throw new HttpError(401, 'Usuario autenticado requerido.');
+    res.json(await service.deleteAssignment(req.user, String(req.params.assignmentId)));
+  }
+
   async submitAssignment(req: Request, res: Response) {
     if (!req.user) throw new HttpError(401, 'Usuario autenticado requerido.');
     res.status(201).json(await service.submitAssignment(req.user, String(req.params.assignmentId), req.body));
+  }
+
+  async uploadAssignment(req: Request, res: Response) {
+    if (!req.user) throw new HttpError(401, 'Usuario autenticado requerido.');
+    res.status(201).json(await service.uploadAssignment(req.user, String(req.params.assignmentId), { ...req.body, file: req.file }));
+  }
+
+  async deleteSubmission(req: Request, res: Response) {
+    if (!req.user) throw new HttpError(401, 'Usuario autenticado requerido.');
+    res.json(await service.deleteSubmission(req.user, String(req.params.assignmentId), req.body));
   }
 }

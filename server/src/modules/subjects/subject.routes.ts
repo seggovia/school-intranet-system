@@ -4,17 +4,22 @@ import { asyncHandler } from '../../shared/async-handler.js';
 import { validateBody, validateParams } from '../../shared/validate.js';
 import { SubjectController } from './subject.controller.js';
 import { handleMaterialUpload } from './material-upload.middleware.js';
+import { handleSubmissionUpload } from './submission-upload.middleware.js';
 import {
   assignmentIdParamSchema,
   createAssignmentSchema,
   createMaterialSchema,
   createSubjectSchema,
   createUnitSchema,
+  deleteAssignmentSubmissionSchema,
   materialIdParamSchema,
   subjectIdParamSchema,
   submitAssignmentSchema,
   unitIdParamSchema,
+  uploadAssignmentSubmissionSchema,
   uploadMaterialSchema,
+  updateAssignmentSchema,
+  updateAssignmentStatusSchema,
   updateUnitSchema
 } from './subject.validators.js';
 
@@ -31,5 +36,10 @@ subjectRoutes.post('/units/:unitId/materials', authorizeRoles('admin', 'director
 subjectRoutes.post('/units/:unitId/materials/upload', authorizeRoles('admin', 'director', 'teacher'), validateParams(unitIdParamSchema), handleMaterialUpload, validateBody(uploadMaterialSchema), asyncHandler(controller.uploadMaterial.bind(controller)));
 subjectRoutes.delete('/materials/:materialId', authorizeRoles('admin', 'director', 'teacher'), validateParams(materialIdParamSchema), asyncHandler(controller.deleteMaterial.bind(controller)));
 subjectRoutes.post('/units/:unitId/assignments', authorizeRoles('admin', 'director', 'teacher'), validateParams(unitIdParamSchema), validateBody(createAssignmentSchema), asyncHandler(controller.createAssignment.bind(controller)));
+subjectRoutes.patch('/assignments/:assignmentId', authorizeRoles('admin', 'director', 'teacher'), validateParams(assignmentIdParamSchema), validateBody(updateAssignmentSchema), asyncHandler(controller.updateAssignment.bind(controller)));
+subjectRoutes.patch('/assignments/:assignmentId/status', authorizeRoles('admin', 'director', 'teacher'), validateParams(assignmentIdParamSchema), validateBody(updateAssignmentStatusSchema), asyncHandler(controller.updateAssignmentStatus.bind(controller)));
+subjectRoutes.delete('/assignments/:assignmentId', authorizeRoles('admin', 'director', 'teacher'), validateParams(assignmentIdParamSchema), asyncHandler(controller.deleteAssignment.bind(controller)));
+subjectRoutes.post('/assignments/:assignmentId/submissions/upload', authorizeRoles('student', 'guardian'), validateParams(assignmentIdParamSchema), handleSubmissionUpload, validateBody(uploadAssignmentSubmissionSchema), asyncHandler(controller.uploadAssignment.bind(controller)));
 subjectRoutes.post('/assignments/:assignmentId/submissions', authorizeRoles('student', 'guardian'), validateParams(assignmentIdParamSchema), validateBody(submitAssignmentSchema), asyncHandler(controller.submitAssignment.bind(controller)));
+subjectRoutes.delete('/assignments/:assignmentId/submissions', authorizeRoles('student', 'guardian'), validateParams(assignmentIdParamSchema), validateBody(deleteAssignmentSubmissionSchema), asyncHandler(controller.deleteSubmission.bind(controller)));
 subjectRoutes.post('/', authorizeRoles('admin', 'director'), authorizePermissions('academics:manage'), validateBody(createSubjectSchema), asyncHandler(controller.create.bind(controller)));

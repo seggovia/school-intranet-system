@@ -110,15 +110,34 @@ export interface ScheduleCalendarEvent {
 
 export interface UnitContentItem {
   id: string;
-  type: 'presentacion' | 'guia' | 'actividad' | 'evaluacion' | 'documento' | 'link';
+  type: 'presentacion' | 'guia' | 'documento' | 'link';
   title: string;
   status: string;
   fileUrl?: string | null;
   owner?: string;
   updatedAt?: string;
-  assignmentId?: string;
-  dueDate?: string | null;
-  submissions?: unknown[];
+}
+
+export interface AssignmentSubmissionItem {
+  id: string;
+  studentId: string;
+  student: string;
+  fileUrl?: string | null;
+  originalName?: string | null;
+  comment?: string | null;
+  status: string;
+  submittedAt: string;
+}
+
+export interface UnitAssignment {
+  id: string;
+  title: string;
+  description: string;
+  dueDate: string | null;
+  openedAt?: string | null;
+  status: string;
+  submissions: number;
+  submissionItems?: AssignmentSubmissionItem[];
 }
 
 export interface SubjectUnit {
@@ -129,7 +148,7 @@ export interface SubjectUnit {
   outcomes?: string[];
   bibliography?: string[];
   contents: UnitContentItem[];
-  assignments?: { id: string; title: string; description: string; dueDate: string | null; status: string; submissions: number }[];
+  assignments?: UnitAssignment[];
 }
 
 export interface SubjectDetailData {

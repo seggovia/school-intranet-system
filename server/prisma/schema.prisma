@@ -185,6 +185,8 @@ model AssignmentSubmission {
   studentId    String
   authorId     String
   fileUrl      String?
+  storagePath  String?
+  originalName String?
   comment      String?    @db.Text
   status       String     @default("enviado")
   submittedAt  DateTime   @default(now())

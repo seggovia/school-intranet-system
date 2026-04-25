@@ -57,7 +57,7 @@ type LegacySubjectDetail = Partial<SubjectDetailData> & {
       classroom?: string;
     }>;
   }>;
-  units?: Array<{ id: string; title: string; description?: string; topics?: string[]; contents?: SubjectDetailData['units'][number]['contents'] }>;
+  units?: Array<{ id: string; title: string; description?: string; topics?: string[]; contents?: SubjectDetailData['units'][number]['contents']; assignments?: SubjectDetailData['units'][number]['assignments'] }>;
 };
 
 function normalizeSubjectDetail(input: SubjectDetailData | LegacySubjectDetail): SubjectDetailData {
@@ -95,9 +95,9 @@ function normalizeSubjectDetail(input: SubjectDetailData | LegacySubjectDetail):
         description: unit.description ?? (Array.isArray(topics) ? topics.join(', ') : undefined) ?? `Contenidos de ${subject.name}`,
         contents: unit.contents ?? [
           { id: `${unit.id}-presentacion`, type: 'presentacion', title: `Presentacion ${unit.title}`, status: 'disponible' },
-          { id: `${unit.id}-guia`, type: 'guia', title: `Guia ${index + 1}`, status: 'disponible' },
-          { id: `${unit.id}-actividad`, type: 'actividad', title: `Actividad ${index + 1}`, status: 'programada' }
-        ]
+          { id: `${unit.id}-guia`, type: 'guia', title: `Guia ${index + 1}`, status: 'disponible' }
+        ],
+        assignments: unit.assignments ?? []
       };
     }) ?? [],
     materials: input.materials ?? [],
@@ -173,8 +173,10 @@ export async function uploadUnitMaterial(unitId: string, input: { title: string;
 }
 
 export async function downloadUnitMaterial(materialId: string) {
-  const { data } = await api.get<Blob>(`/materials/${materialId}/download`, { responseType: 'blob' });
-  return data;
+  const response = await api.get<Blob>(`/materials/${materialId}/download`, { responseType: 'blob' });
+  const disposition = response.headers['content-disposition'] ?? '';
+  const match = /filename="?([^"]+)"?/i.exec(disposition);
+  return { blob: response.data, filename: match?.[1] };
 }
 
 export async function deleteUnitMaterial(materialId: string) {
@@ -187,8 +189,37 @@ export async function createUnitAssignment(unitId: string, input: { title: strin
   return data;
 }
 
+export async function updateUnitAssignment(assignmentId: string, input: { title?: string; description?: string; dueDate?: string }) {
+  const { data } = await api.patch(`/subjects/assignments/${assignmentId}`, input);
+  return data;
+}
+
+export async function updateUnitAssignmentStatus(assignmentId: string, status: 'activo' | 'cerrado') {
+  const { data } = await api.patch(`/subjects/assignments/${assignmentId}/status`, { status });
+  return data;
+}
+
+export async function deleteUnitAssignment(assignmentId: string) {
+  const { data } = await api.delete<{ ok: true }>(`/subjects/assignments/${assignmentId}`);
+  return data;
+}
+
 export async function submitAssignment(assignmentId: string, input: { fileUrl?: string; comment?: string; studentId?: string }) {
   const { data } = await api.post(`/subjects/assignments/${assignmentId}/submissions`, input);
+  return data;
+}
+
+export async function uploadAssignmentSubmission(assignmentId: string, input: { file: File; comment?: string; studentId?: string }) {
+  const form = new FormData();
+  form.append('file', input.file);
+  if (input.comment) form.append('comment', input.comment);
+  if (input.studentId) form.append('studentId', input.studentId);
+  const { data } = await api.post(`/subjects/assignments/${assignmentId}/submissions/upload`, form);
+  return data;
+}
+
+export async function deleteAssignmentSubmission(assignmentId: string, studentId?: string) {
+  const { data } = await api.delete<{ ok: true }>(`/subjects/assignments/${assignmentId}/submissions`, { data: { studentId } });
   return data;
 }
 

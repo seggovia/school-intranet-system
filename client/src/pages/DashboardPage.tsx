@@ -28,7 +28,7 @@ export function DashboardPage() {
   return (
     <div className="page-stack">
       <PageHeader
-        eyebrow="Sistema de Intranet Escolar"
+        eyebrow="Sistema de Intranet Colegio"
         title={title}
         description={description}
         actions={<RoleBadge role={dashboard.data.role} />}

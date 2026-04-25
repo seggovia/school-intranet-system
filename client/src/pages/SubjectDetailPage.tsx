@@ -1,21 +1,26 @@
 import { useCallback, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { BookOpen, CalendarDays, ClipboardCheck, Download, Edit3, ExternalLink, FileArchive, FileSpreadsheet, FileText, Link as LinkIcon, MapPin, Megaphone, MessageSquare, PencilRuler, Plus, Presentation, Trash2, Upload, UserRound, Users } from 'lucide-react';
-import { createSubjectUnit, createUnitAssignment, deleteSubjectUnit, deleteUnitMaterial, downloadUnitMaterial, loadSubjectDetail, submitAssignment, updateSubjectUnit, uploadUnitMaterial } from '../api';
+import { BookOpen, CalendarDays, ChevronLeft, ChevronRight, ClipboardCheck, Clock, Download, Edit3, ExternalLink, FileArchive, FileSpreadsheet, FileText, Inbox, Link as LinkIcon, MapPin, Megaphone, MessageSquare, PencilRuler, Plus, Presentation, Trash2, Upload, UserRound, Users } from 'lucide-react';
+import { createSubjectUnit, createUnitAssignment, deleteAssignmentSubmission, deleteSubjectUnit, deleteUnitAssignment, deleteUnitMaterial, downloadUnitMaterial, loadSubjectDetail, updateSubjectUnit, updateUnitAssignment, updateUnitAssignmentStatus, uploadAssignmentSubmission, uploadUnitMaterial } from '../api';
 import { EmptyState, ErrorState, LoadingState } from '../components/States';
 import { useAsyncData } from '../hooks';
-import type { DocumentItem, SubjectDetailData, SubjectUnit, UnitContentItem, User } from '../types';
+import type { DocumentItem, SubjectDetailData, SubjectUnit, UnitAssignment, UnitContentItem, User } from '../types';
 
 type CourseTab = 'curso' | 'participantes' | 'calificaciones' | 'mas';
 type ModalState =
   | { type: 'unit'; mode: 'create'; unit?: undefined }
   | { type: 'unit'; mode: 'edit'; unit: SubjectUnit }
   | { type: 'material'; unit: SubjectUnit; materialType: UnitContentItem['type'] }
-  | { type: 'assignment'; unit: SubjectUnit }
-  | { type: 'submission'; assignmentId: string }
+  | { type: 'assignment'; mode: 'create'; unit: SubjectUnit; assignment?: undefined }
+  | { type: 'assignment'; mode: 'edit'; unit?: undefined; assignment: UnitAssignment }
+  | { type: 'submission'; assignment: UnitAssignment }
   | { type: 'delete-unit'; unit: SubjectUnit }
   | { type: 'delete-material'; material: UnitContentItem }
+  | { type: 'delete-assignment'; assignment: UnitAssignment }
+  | null;
+type ConfirmState =
+  | { title: string; message: string; confirmLabel: string; tone?: 'danger' | 'primary'; onConfirm: () => Promise<void> }
   | null;
 
 const emptySubjectDetail: SubjectDetailData = {
@@ -60,13 +65,58 @@ function scheduleSummary(subject: SubjectDetailData) {
   return subject.schedule.map((item) => `${item.weekdayName} ${item.startsAt}-${item.endsAt}`).join(' · ');
 }
 
+function formatDateTime(value?: string | null) {
+  if (!value) return 'Sin fecha definida';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Sin fecha definida';
+  return new Intl.DateTimeFormat('es-CL', {
+    weekday: 'long',
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(date);
+}
+
+function dueTone(value?: string | null) {
+  if (!value) return 'pending';
+  return new Date(value).getTime() < Date.now() ? 'closed' : 'open';
+}
+
+function isAssignmentClosed(assignment: UnitAssignment) {
+  return assignment.status === 'cerrado' || dueTone(assignment.dueDate) === 'closed';
+}
+
+function safeFilename(title: string, fallback = 'material') {
+  return (title || fallback)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9._-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 90) || fallback;
+}
+
+function dateInputValue(value?: string | null) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toISOString().slice(0, 10);
+}
+
+function timeInputValue(value?: string | null) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toTimeString().slice(0, 5);
+}
+
 function contentIcon(type: UnitContentItem['type']) {
   if (type === 'presentacion') return Presentation;
   if (type === 'guia') return FileText;
   if (type === 'documento') return FileArchive;
   if (type === 'link') return LinkIcon;
-  if (type === 'actividad') return BookOpen;
-  return ClipboardCheck;
+  return BookOpen;
 }
 
 function materialIcon(material: DocumentItem | UnitContentItem) {
@@ -76,7 +126,6 @@ function materialIcon(material: DocumentItem | UnitContentItem) {
   if (text.includes('xls')) return FileSpreadsheet;
   if (text.includes('doc')) return FileArchive;
   if (text.includes('link') || text.includes('enlace')) return LinkIcon;
-  if (type === 'actividad' || type === 'evaluacion' || text.includes('entregable')) return Upload;
   return FileText;
 }
 
@@ -86,8 +135,7 @@ function materialKind(material: DocumentItem | UnitContentItem) {
     if (material.type === 'guia') return 'PDF';
     if (material.type === 'documento') return 'DOC';
     if (material.type === 'link') return 'Link';
-    if (material.type === 'actividad') return 'Entregable';
-    return 'Evaluacion';
+    return 'Archivo';
   }
   const title = material.title.toLowerCase();
   if (title.includes('ppt')) return 'PPT';
@@ -102,13 +150,13 @@ function UnitMaterialRow({ item, onOpen }: { item: DocumentItem | UnitContentIte
   const isLink = 'fileUrl' in item && item.fileUrl && item.fileUrl !== '#';
 
   return (
-    <button type="button" className="classroom-material-row" onClick={() => onOpen(item)} disabled={!isLink && !('assignmentId' in item && item.assignmentId)}>
+    <button type="button" className="classroom-material-row" onClick={() => onOpen(item)} disabled={!isLink}>
       <span className="material-icon"><Icon size={20} /></span>
       <span>
         <strong>{item.title}</strong>
         <small>{materialKind(item)} · {'fileUrl' in item ? item.updatedAt : item.status}</small>
       </span>
-      <em>{isLink ? 'Abrir' : 'Descargar'}</em>
+      <em>{isLink ? 'Abrir' : 'Sin archivo'}</em>
     </button>
   );
 }
@@ -127,11 +175,205 @@ function UnitMaterialListItem({
   return (
     <div className="material-row-wrap">
       <UnitMaterialRow item={item} onOpen={onOpen} />
-      {canEdit && !item.assignmentId && (
+      {canEdit && Boolean(item.owner) && (
         <button className="danger-button compact-danger" onClick={() => onDelete(item)}>
           <Trash2 size={15} /> Eliminar
         </button>
       )}
+    </div>
+  );
+}
+
+function AssignmentBoxRow({
+  assignment,
+  canEdit,
+  canSubmit,
+  onOpenAssignment,
+  onEditAssignment,
+  onToggleAssignmentStatus,
+  onDeleteAssignment,
+  onSubmitAssignment
+}: {
+  assignment: UnitAssignment;
+  canEdit: boolean;
+  canSubmit: boolean;
+  onOpenAssignment: (assignment: UnitAssignment) => void;
+  onEditAssignment: (assignment: UnitAssignment) => void;
+  onToggleAssignmentStatus: (assignment: UnitAssignment) => void;
+  onDeleteAssignment: (assignment: UnitAssignment) => void;
+  onSubmitAssignment: (assignment: UnitAssignment) => void;
+}) {
+  const tone = isAssignmentClosed(assignment) ? 'closed' : dueTone(assignment.dueDate);
+  const isClosed = isAssignmentClosed(assignment);
+  const hasSubmission = Boolean(assignment.submissionItems?.length);
+  const statusLabel = hasSubmission && canSubmit ? 'Entregado' : isClosed ? 'Cerrado' : assignment.status;
+
+  if (isClosed && canSubmit) {
+    return (
+      <article className="assignment-box-row closed-student-box">
+        <div className="assignment-box-icon"><Inbox size={24} /></div>
+        <div className="assignment-box-main">
+          <div className="assignment-title-row">
+            <strong>{assignment.title}</strong>
+            <span className="assignment-status closed">Cerrado</span>
+          </div>
+          <p>{assignment.description}</p>
+        </div>
+      </article>
+    );
+  }
+
+  return (
+    <article className="assignment-box-row">
+      <div className="assignment-box-icon"><Inbox size={24} /></div>
+      <div className="assignment-box-main">
+        <div className="assignment-title-row">
+          <strong>{assignment.title}</strong>
+          <span className={`assignment-status ${hasSubmission && canSubmit ? 'submitted' : tone}`}>{statusLabel}</span>
+        </div>
+        <p>{assignment.description}</p>
+        <dl className="assignment-dates">
+          <div><dt>Apertura</dt><dd>{formatDateTime(assignment.openedAt)}</dd></div>
+          <div><dt>Cierre</dt><dd>{formatDateTime(assignment.dueDate)}</dd></div>
+          <div><dt>Enviados</dt><dd>{assignment.submissions}</dd></div>
+        </dl>
+      </div>
+      <div className="assignment-actions">
+        {canEdit && <button className="secondary-button" onClick={() => onEditAssignment(assignment)}><Edit3 size={17} /> Editar</button>}
+        {canEdit && <button className="secondary-button" onClick={() => onToggleAssignmentStatus(assignment)}><Clock size={17} /> {assignment.status === 'cerrado' ? 'Reabrir' : 'Cerrar'}</button>}
+        {canEdit && <button className="danger-button" onClick={() => onDeleteAssignment(assignment)}><Trash2 size={17} /> Eliminar</button>}
+        <button className="secondary-button" onClick={() => onOpenAssignment(assignment)}><ExternalLink size={17} /> Abrir</button>
+        {canSubmit && <button className="primary-button" disabled={isClosed} onClick={() => onSubmitAssignment(assignment)}><Upload size={17} /> {hasSubmission ? 'Reemplazar' : 'Agregar entrega'}</button>}
+      </div>
+    </article>
+  );
+}
+
+function AssignmentDetail({
+  assignment,
+  canEdit,
+  canSubmit,
+  onBack,
+  onSubmitAssignment,
+  onEditAssignment,
+  onToggleAssignmentStatus,
+  onDeleteAssignment,
+  onDeleteSubmission
+}: {
+  assignment: UnitAssignment;
+  canEdit: boolean;
+  canSubmit: boolean;
+  onBack: () => void;
+  onSubmitAssignment: (assignment: UnitAssignment) => void;
+  onEditAssignment: (assignment: UnitAssignment) => void;
+  onToggleAssignmentStatus: (assignment: UnitAssignment) => void;
+  onDeleteAssignment: (assignment: UnitAssignment) => void;
+  onDeleteSubmission: (assignment: UnitAssignment) => void;
+}) {
+  const tone = isAssignmentClosed(assignment) ? 'closed' : dueTone(assignment.dueDate);
+  const isClosed = isAssignmentClosed(assignment);
+  const ownSubmission = assignment.submissionItems?.[0];
+
+  if (isClosed && !canEdit) {
+    return (
+      <section className="assignment-detail-panel closed-student-detail">
+        <div className="assignment-detail-top">
+          <button className="secondary-button" onClick={onBack}>Volver</button>
+          <span className="assignment-status closed">Cerrado</span>
+        </div>
+        <div>
+          <span className="eyebrow">Buzon de entrega</span>
+          <h3>{assignment.title}</h3>
+          <p>{assignment.description}</p>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="assignment-detail-panel">
+      <div className="assignment-detail-top">
+        <button className="secondary-button" onClick={onBack}>Volver</button>
+        <span className={`assignment-status ${tone}`}>{isClosed ? 'Cerrado' : assignment.status}</span>
+      </div>
+      <div>
+        <span className="eyebrow">Buzon de entrega</span>
+        <h3>{assignment.title}</h3>
+        <p>{assignment.description}</p>
+      </div>
+      <div className="deadline-strip">
+        <span><Clock size={17} /> Fecha limite</span>
+        <strong>{formatDateTime(assignment.dueDate)}</strong>
+      </div>
+      <h4>Estado de la entrega</h4>
+      <div className="submission-status-table">
+        <span>Estado de la entrega</span><strong>{ownSubmission ? 'Enviado para calificar' : 'No enviado'}</strong>
+        <span>Estado de la calificacion</span><strong>Sin calificar</strong>
+        <span>Tiempo restante</span><strong>{isClosed ? 'El buzon ya cerro' : `Disponible hasta ${formatDateTime(assignment.dueDate)}`}</strong>
+        <span>Archivos enviados</span><strong>{ownSubmission?.originalName ?? 'Sin archivo enviado'}</strong>
+        <span>Comentarios</span><strong>{ownSubmission?.comment || 'Sin comentarios'}</strong>
+      </div>
+      {!canEdit && (
+        <div className="assignment-detail-actions">
+          {ownSubmission && !isClosed && <button className="danger-button" onClick={() => onDeleteSubmission(assignment)}><Trash2 size={17} /> Quitar entrega</button>}
+          <button className="primary-button" disabled={isClosed} onClick={() => onSubmitAssignment(assignment)}>
+            <Upload size={17} /> {ownSubmission ? 'Reemplazar archivo' : 'Agregar entrega'}
+          </button>
+        </div>
+      )}
+      {canEdit && (
+        <div className="assignment-detail-actions">
+          <button className="secondary-button" onClick={() => onEditAssignment(assignment)}><Edit3 size={17} /> Editar buzon</button>
+          <button className="secondary-button" onClick={() => onToggleAssignmentStatus(assignment)}><Clock size={17} /> {assignment.status === 'cerrado' ? 'Reabrir buzon' : 'Cerrar buzon'}</button>
+          <button className="danger-button" onClick={() => onDeleteAssignment(assignment)}><Trash2 size={17} /> Eliminar buzon</button>
+        </div>
+      )}
+      {canEdit && (
+        <div className="teacher-submission-list">
+          <strong>Entregas recibidas</strong>
+          {assignment.submissionItems?.length ? assignment.submissionItems.map((item) => (
+            <span key={item.id}>{item.student} - {item.originalName ?? 'Archivo enviado'} - {formatDateTime(item.submittedAt)}</span>
+          )) : <span>Sin entregas registradas.</span>}
+        </div>
+      )}
+      {!canSubmit && !canEdit && <p className="assignment-muted">Este buzon ya no acepta nuevos archivos.</p>}
+    </section>
+  );
+}
+
+function ConfirmDialog({
+  confirm,
+  busy,
+  onClose
+}: {
+  confirm: ConfirmState;
+  busy: boolean;
+  onClose: () => void;
+}) {
+  if (!confirm) return null;
+
+  return (
+    <div className="classroom-modal-backdrop" role="presentation" onClick={onClose}>
+      <div className="confirm-modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+        <header>
+          <div>
+            <span className="eyebrow">Confirmacion</span>
+            <h2>{confirm.title}</h2>
+          </div>
+        </header>
+        <p>{confirm.message}</p>
+        <footer>
+          <button type="button" className="secondary-button" onClick={onClose} disabled={busy}>Cancelar</button>
+          <button
+            type="button"
+            className={confirm.tone === 'danger' ? 'danger-button' : 'primary-button'}
+            disabled={busy}
+            onClick={confirm.onConfirm}
+          >
+            {busy ? 'Procesando...' : confirm.confirmLabel}
+          </button>
+        </footer>
+      </div>
     </div>
   );
 }
@@ -152,14 +394,15 @@ function ClassroomModal({
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
   if (!modal) return null;
-  const isConfirm = modal.type === 'delete-unit' || modal.type === 'delete-material';
+  const isConfirm = modal.type === 'delete-unit' || modal.type === 'delete-material' || modal.type === 'delete-assignment';
   const title =
     modal.type === 'unit' ? (modal.mode === 'create' ? 'Nueva unidad' : 'Editar unidad')
       : modal.type === 'material' ? 'Agregar material'
-        : modal.type === 'assignment' ? 'Crear entregable'
-          : modal.type === 'submission' ? 'Subir actividad'
+        : modal.type === 'assignment' ? (modal.mode === 'create' ? 'Crear buzon de entrega' : 'Editar buzon de entrega')
+          : modal.type === 'submission' ? 'Subir entrega al buzon'
             : modal.type === 'delete-unit' ? 'Eliminar unidad'
-              : 'Eliminar material';
+              : modal.type === 'delete-material' ? 'Eliminar material'
+                : 'Eliminar buzon';
   const unit = modal.type === 'unit' ? modal.unit : undefined;
 
   return (
@@ -200,23 +443,28 @@ function ClassroomModal({
 
         {modal.type === 'assignment' && (
           <div className="editor-form-grid">
-            <label className="wide-field">Titulo del entregable<input name="title" defaultValue={`Entregable - ${modal.unit.title}`} required /></label>
-            <label>Fecha de entrega<input name="dueDate" type="date" /></label>
-            <label className="wide-field">Instrucciones<textarea name="description" defaultValue="Sube tu archivo o enlace con el desarrollo de la actividad." required rows={5} /></label>
+            <label className="wide-field">Nombre del buzon<input name="title" defaultValue={modal.mode === 'edit' ? modal.assignment.title : `Buzon de entrega - ${modal.unit.title}`} required /></label>
+            <label>Dia limite<input name="dueDate" type="date" defaultValue={dateInputValue(modal.assignment?.dueDate)} required /></label>
+            <label>Hora limite<input name="dueTime" type="time" defaultValue={timeInputValue(modal.assignment?.dueDate)} required /></label>
+            <label className="wide-field">Instrucciones<textarea name="description" defaultValue={modal.assignment?.description ?? 'Sube aqui el archivo final solicitado en la guia del docente.'} required rows={5} /></label>
           </div>
         )}
 
         {modal.type === 'submission' && (
           <div className="editor-form-grid">
-            <label className="wide-field">URL del archivo o evidencia<input name="fileUrl" placeholder="https://..." required /></label>
+            <div className="submission-deadline wide-field">
+              <span><Clock size={16} /> Fecha y hora limite</span>
+              <strong>{formatDateTime(modal.assignment.dueDate)}</strong>
+            </div>
+            <label className="wide-field">Documento de entrega<input name="file" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.rar" required /></label>
             <label className="wide-field">Comentario para el docente<textarea name="comment" rows={4} /></label>
           </div>
         )}
 
         {isConfirm && (
           <div className="confirm-copy">
-            <strong>{modal.type === 'delete-unit' ? modal.unit.title : modal.material.title}</strong>
-            <p>{modal.type === 'delete-unit' ? 'Se eliminaran tambien sus materiales y entregables asociados.' : 'Este material dejara de estar disponible para la unidad.'}</p>
+            <strong>{modal.type === 'delete-unit' ? modal.unit.title : modal.type === 'delete-material' ? modal.material.title : modal.assignment.title}</strong>
+            <p>{modal.type === 'delete-unit' ? 'Se eliminaran tambien sus materiales y buzones asociados.' : modal.type === 'delete-material' ? 'Este material dejara de estar disponible para la unidad.' : 'Se eliminara el buzon y las entregas recibidas.'}</p>
           </div>
         )}
 
@@ -239,6 +487,10 @@ function UnitContent({
   extraMaterials,
   onAddMaterial,
   onCreateSubmission,
+  onEditAssignment,
+  onToggleAssignmentStatus,
+  onDeleteAssignment,
+  onDeleteSubmission,
   onSubmitAssignment,
   onEditUnit,
   onDeleteUnit,
@@ -252,7 +504,11 @@ function UnitContent({
   extraMaterials: UnitContentItem[];
   onAddMaterial: (unit: SubjectUnit, type: UnitContentItem['type']) => void;
   onCreateSubmission: (unit: SubjectUnit) => void;
-  onSubmitAssignment: (assignmentId: string) => void;
+  onEditAssignment: (assignment: UnitAssignment) => void;
+  onToggleAssignmentStatus: (assignment: UnitAssignment) => void;
+  onDeleteAssignment: (assignment: UnitAssignment) => void;
+  onDeleteSubmission: (assignment: UnitAssignment) => void;
+  onSubmitAssignment: (assignment: UnitAssignment) => void;
   onEditUnit: (unit: SubjectUnit) => void;
   onDeleteUnit: (unit: SubjectUnit) => void;
   onDeleteMaterial: (material: UnitContentItem) => void;
@@ -261,10 +517,13 @@ function UnitContent({
   const fallback = unitFallbacks[index] ?? unitFallbacks[0];
   const baseMaterials = unit.contents.length ? unit.contents : [
     { id: `${unit.id}-ppt`, type: 'presentacion', title: `PPT ${unit.title}`, status: 'disponible' },
-    { id: `${unit.id}-guia`, type: 'guia', title: `Guia ${unit.title}`, status: 'disponible' },
-    { id: `${unit.id}-actividad`, type: 'actividad', title: `Actividad ${unit.title}`, status: 'programada' }
+    { id: `${unit.id}-guia`, type: 'guia', title: `Guia ${unit.title}`, status: 'disponible' }
   ] satisfies UnitContentItem[];
   const unitMaterials = [...baseMaterials, ...extraMaterials];
+  const assignments = unit.assignments ?? [];
+  const canSubmit = !canEdit;
+  const [selectedAssignmentId, setSelectedAssignmentId] = useState('');
+  const selectedAssignment = assignments.find((assignment) => assignment.id === selectedAssignmentId);
 
   return (
     <article className="classroom-unit-card">
@@ -306,12 +565,11 @@ function UnitContent({
 
       <section className="unit-info-block">
         <div className="section-heading-row">
-          <h3>Materiales</h3>
+          <h3>Materiales del docente</h3>
           {canEdit && (
             <div className="teacher-action-row">
               <button className="text-button" onClick={() => onAddMaterial(unit, 'presentacion')}><Presentation size={16} /> Agregar PPT</button>
               <button className="text-button" onClick={() => onAddMaterial(unit, 'guia')}><FileText size={16} /> Agregar documento</button>
-              <button className="text-button" onClick={() => onCreateSubmission(unit)}><Upload size={16} /> Crear entregable</button>
             </div>
           )}
         </div>
@@ -322,15 +580,47 @@ function UnitContent({
         </div>
       </section>
 
-      <section className="student-upload-space">
-        <div>
-          <strong>Espacio de entrega de estudiantes</strong>
-          <span>Los estudiantes pueden subir su actividad cuando el docente habilite un entregable.</span>
+      <section className="unit-info-block">
+        <div className="section-heading-row">
+          <h3>Buzones de entrega</h3>
+          {canEdit && <button className="text-button" onClick={() => onCreateSubmission(unit)}><Inbox size={16} /> Crear buzon</button>}
         </div>
-        <button className="secondary-button" disabled={!unitMaterials.some((item) => item.assignmentId)} onClick={() => {
-          const assignment = unitMaterials.find((item) => item.assignmentId);
-          if (assignment?.assignmentId) onSubmitAssignment(assignment.assignmentId);
-        }}><Upload size={17} /> Subir actividad</button>
+        {selectedAssignment ? (
+          <AssignmentDetail
+            assignment={selectedAssignment}
+            canEdit={canEdit}
+            canSubmit={canSubmit}
+            onBack={() => setSelectedAssignmentId('')}
+            onSubmitAssignment={onSubmitAssignment}
+            onEditAssignment={onEditAssignment}
+            onToggleAssignmentStatus={onToggleAssignmentStatus}
+            onDeleteAssignment={onDeleteAssignment}
+            onDeleteSubmission={onDeleteSubmission}
+          />
+        ) : assignments.length ? (
+          <div className="assignment-box-list">
+            {assignments.map((assignment) => (
+              <AssignmentBoxRow
+                key={assignment.id}
+                assignment={assignment}
+                canEdit={canEdit}
+                canSubmit={canSubmit}
+                onOpenAssignment={(item) => setSelectedAssignmentId(item.id)}
+                onEditAssignment={onEditAssignment}
+                onToggleAssignmentStatus={onToggleAssignmentStatus}
+                onDeleteAssignment={onDeleteAssignment}
+                onSubmitAssignment={onSubmitAssignment}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="student-upload-space">
+            <div>
+              <strong>Sin buzones activos</strong>
+              <span>El docente puede crear un buzon con fecha y hora limite cuando corresponda recibir archivos.</span>
+            </div>
+          </div>
+        )}
       </section>
     </article>
   );
@@ -346,8 +636,10 @@ export function SubjectDetailPage({ user }: { user: User }) {
   const [notice, setNotice] = useState('');
   const [editMode, setEditMode] = useState(false);
   const [modal, setModal] = useState<ModalState>(null);
+  const [confirm, setConfirm] = useState<ConfirmState>(null);
   const [modalError, setModalError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [indexCollapsed, setIndexCollapsed] = useState(false);
   const canManageCourse = ['admin', 'director', 'teacher'].includes(user.primaryRole);
   const canEditCourse = canManageCourse && editMode;
   const canCommunicate = ['student', 'guardian', 'teacher', 'admin', 'director'].includes(user.primaryRole);
@@ -394,7 +686,44 @@ export function SubjectDetailPage({ user }: { user: User }) {
   }
 
   function createSubmission(unit: SubjectUnit) {
-    setModal({ type: 'assignment', unit });
+    setModal({ type: 'assignment', mode: 'create', unit });
+  }
+
+  function editAssignment(assignment: UnitAssignment) {
+    setModal({ type: 'assignment', mode: 'edit', assignment });
+  }
+
+  function deleteAssignment(assignment: UnitAssignment) {
+    setModal({ type: 'delete-assignment', assignment });
+  }
+
+  async function toggleAssignmentStatus(assignment: UnitAssignment) {
+    const nextStatus = assignment.status === 'cerrado' ? 'activo' : 'cerrado';
+    setConfirm({
+      title: nextStatus === 'cerrado' ? 'Cerrar buzon' : 'Reabrir buzon',
+      message: nextStatus === 'cerrado'
+        ? 'Al cerrar este buzon los estudiantes no podran subir, reemplazar ni quitar entregas.'
+        : 'Al reabrir este buzon los estudiantes podran volver a modificar sus entregas hasta la fecha limite.',
+      confirmLabel: nextStatus === 'cerrado' ? 'Cerrar buzon' : 'Reabrir buzon',
+      tone: nextStatus === 'cerrado' ? 'danger' : 'primary',
+      onConfirm: async () => {
+        await applyAssignmentStatus(assignment, nextStatus);
+      }
+    });
+  }
+
+  async function applyAssignmentStatus(assignment: UnitAssignment, nextStatus: 'activo' | 'cerrado') {
+    setSaving(true);
+    try {
+      await updateUnitAssignmentStatus(assignment.id, nextStatus);
+      showNotice(nextStatus === 'cerrado' ? 'Buzon cerrado.' : 'Buzon reabierto.');
+      setConfirm(null);
+      reloadDetail();
+    } catch {
+      showNotice('No se pudo actualizar el estado del buzon.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   function editUnit(unit: SubjectUnit) {
@@ -414,24 +743,51 @@ export function SubjectDetailPage({ user }: { user: User }) {
     setModal({ type: 'unit', mode: 'create' });
   }
 
-  function sendSubmission(assignmentId: string) {
-    setModal({ type: 'submission', assignmentId });
+  function sendSubmission(assignment: UnitAssignment) {
+    setModal({ type: 'submission', assignment });
+  }
+
+  async function removeSubmission(assignment: UnitAssignment) {
+    setConfirm({
+      title: 'Quitar entrega',
+      message: 'Se quitara el archivo enviado para este buzon. Podras subir otro mientras el buzon siga abierto.',
+      confirmLabel: 'Quitar entrega',
+      tone: 'danger',
+      onConfirm: async () => {
+        await applyRemoveSubmission(assignment);
+      }
+    });
+  }
+
+  async function applyRemoveSubmission(assignment: UnitAssignment) {
+    setSaving(true);
+    try {
+      await deleteAssignmentSubmission(assignment.id);
+      showNotice('Entrega quitada.');
+      setConfirm(null);
+      reloadDetail();
+    } catch {
+      showNotice('No se pudo quitar la entrega.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function openMaterial(item: DocumentItem | UnitContentItem) {
-    if ('assignmentId' in item && item.assignmentId && !item.fileUrl) {
-      sendSubmission(item.assignmentId);
-      return;
-    }
     if (!('fileUrl' in item) || !item.fileUrl || item.fileUrl === '#') {
       showNotice('Este material aun no tiene archivo disponible.');
       return;
     }
     try {
-      const blob = item.fileUrl.includes('/api/materials/') ? await downloadUnitMaterial(item.id) : null;
-      if (blob) {
-        const url = URL.createObjectURL(blob);
-        window.open(url, '_blank', 'noopener,noreferrer');
+      const downloaded = item.fileUrl.includes('/api/materials/') ? await downloadUnitMaterial(item.id) : null;
+      if (downloaded) {
+        const url = URL.createObjectURL(downloaded.blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = downloaded.filename ?? safeFilename(item.title, 'material');
+        document.body.append(anchor);
+        anchor.click();
+        anchor.remove();
         window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
         return;
       }
@@ -476,19 +832,31 @@ export function SubjectDetailPage({ user }: { user: User }) {
         showNotice('Material subido.');
       }
       if (modal.type === 'assignment') {
-        await createUnitAssignment(modal.unit.id, {
+        const dueDate = String(form.get('dueDate') ?? '');
+        const dueTime = String(form.get('dueTime') ?? '');
+        const payload = {
           title: String(form.get('title') ?? ''),
           description: String(form.get('description') ?? ''),
-          dueDate: String(form.get('dueDate') ?? '') || undefined
-        });
-        showNotice('Entregable creado.');
+          dueDate: dueDate && dueTime ? `${dueDate}T${dueTime}:00` : undefined
+        };
+        if (modal.mode === 'create') {
+          await createUnitAssignment(modal.unit.id, payload);
+          showNotice('Buzon creado.');
+        } else {
+          await updateUnitAssignment(modal.assignment.id, payload);
+          showNotice('Buzon actualizado.');
+        }
       }
       if (modal.type === 'submission') {
-        await submitAssignment(modal.assignmentId, {
-          fileUrl: String(form.get('fileUrl') ?? ''),
+        const file = form.get('file');
+        if (!(file instanceof File) || file.size === 0) {
+          throw new Error('Archivo requerido');
+        }
+        await uploadAssignmentSubmission(modal.assignment.id, {
+          file,
           comment: String(form.get('comment') ?? '') || undefined
         });
-        showNotice('Actividad enviada.');
+        showNotice('Entrega enviada.');
       }
       if (modal.type === 'delete-unit') {
         await deleteSubjectUnit(modal.unit.id);
@@ -498,6 +866,10 @@ export function SubjectDetailPage({ user }: { user: User }) {
       if (modal.type === 'delete-material') {
         await deleteUnitMaterial(modal.material.id);
         showNotice('Material eliminado.');
+      }
+      if (modal.type === 'delete-assignment') {
+        await deleteUnitAssignment(modal.assignment.id);
+        showNotice('Buzon eliminado.');
       }
       setModal(null);
       reloadDetail();
@@ -532,7 +904,7 @@ export function SubjectDetailPage({ user }: { user: User }) {
       {canManageCourse && editMode && (
         <div className="edit-mode-strip">
           <PencilRuler size={18} />
-          <span>Estas editando el aula. Puedes agregar materiales, crear entregables, editar unidades o marcar eliminaciones.</span>
+          <span>Estas editando el aula. Puedes agregar materiales, crear buzones de entrega, editar unidades o marcar eliminaciones.</span>
         </div>
       )}
 
@@ -547,26 +919,37 @@ export function SubjectDetailPage({ user }: { user: User }) {
         ))}
       </nav>
 
-      <div className="classroom-layout">
+      <div className={`classroom-layout ${indexCollapsed ? 'index-collapsed' : ''}`}>
         <aside className="classroom-index">
           <div className="index-header">
-            <button aria-label="Cerrar indice">x</button>
+            <button aria-label={indexCollapsed ? 'Mostrar contenidos' : 'Ocultar contenidos'} onClick={() => setIndexCollapsed((value) => !value)}>
+              {indexCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+            </button>
             <strong>Contenidos</strong>
           </div>
-          <button className={activeUnit === 'inicio' ? 'active' : ''} onClick={() => { setActiveTab('curso'); setActiveUnit('inicio'); }}>Inicio</button>
-          {subject.units.map((unit, index) => (
-            <div className="index-unit" key={unit.id}>
-              <button className={activeUnit === unit.id ? 'active' : ''} onClick={() => { setActiveTab('curso'); setActiveUnit(unit.id); }}>{unit.title}</button>
-              {unit.contents.map((item) => {
-                const Icon = contentIcon(item.type);
-                return (
-                  <button className="index-child" key={item.id} onClick={() => { setActiveTab('curso'); setActiveUnit(unit.id); }}>
-                    <Icon size={14} /> {item.title}
-                  </button>
-                );
-              })}
-            </div>
-          ))}
+          {!indexCollapsed && (
+            <>
+              <button className={activeUnit === 'inicio' ? 'active' : ''} onClick={() => { setActiveTab('curso'); setActiveUnit('inicio'); }}>Inicio</button>
+              {subject.units.map((unit) => (
+                <div className="index-unit" key={unit.id}>
+                  <button className={activeUnit === unit.id ? 'active' : ''} onClick={() => { setActiveTab('curso'); setActiveUnit(unit.id); }}>{unit.title}</button>
+                  {unit.contents.map((item) => {
+                    const Icon = contentIcon(item.type);
+                    return (
+                      <button className="index-child" key={item.id} onClick={() => { setActiveTab('curso'); setActiveUnit(unit.id); }}>
+                        <Icon size={14} /> {item.title}
+                      </button>
+                    );
+                  })}
+                  {(unit.assignments ?? []).map((assignment) => (
+                    <button className="index-child" key={assignment.id} onClick={() => { setActiveTab('curso'); setActiveUnit(unit.id); }}>
+                      <Inbox size={14} /> {assignment.title}
+                    </button>
+                  ))}
+                </div>
+              ))}
+            </>
+          )}
         </aside>
 
         <main className="classroom-main">
@@ -600,6 +983,7 @@ export function SubjectDetailPage({ user }: { user: User }) {
                     <span><Users size={18} /> Participantes <strong>{students.length || 'Por confirmar'}</strong></span>
                     <span><ClipboardCheck size={18} /> Evaluaciones <strong>{subject.assessments.length}</strong></span>
                     <span><FileText size={18} /> Materiales <strong>{subject.materials.length + subject.units.flatMap((unit) => unit.contents).length}</strong></span>
+                    <span><Inbox size={18} /> Buzones <strong>{subject.units.flatMap((unit) => unit.assignments ?? []).length}</strong></span>
                   </div>
                   <section className="unit-info-block">
                     <div className="section-heading-row">
@@ -622,6 +1006,10 @@ export function SubjectDetailPage({ user }: { user: User }) {
                   extraMaterials={[]}
                   onAddMaterial={addUnitMaterial}
                   onCreateSubmission={createSubmission}
+                  onEditAssignment={editAssignment}
+                  onToggleAssignmentStatus={toggleAssignmentStatus}
+                  onDeleteAssignment={deleteAssignment}
+                  onDeleteSubmission={removeSubmission}
                   onSubmitAssignment={sendSubmission}
                   onEditUnit={editUnit}
                   onDeleteUnit={deleteUnit}
@@ -692,6 +1080,13 @@ export function SubjectDetailPage({ user }: { user: User }) {
           }
         }}
         onSubmit={handleModalSubmit}
+      />
+      <ConfirmDialog
+        confirm={confirm}
+        busy={saving}
+        onClose={() => {
+          if (!saving) setConfirm(null);
+        }}
       />
     </div>
   );

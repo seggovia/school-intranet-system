@@ -3,7 +3,7 @@ import type { JwtUser } from '../auth/auth.types.js';
 import { HttpError } from '../../shared/http-error.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { materialsUploadDir } from '../../shared/upload-paths.js';
+import { materialsUploadDir, submissionsUploadDir } from '../../shared/upload-paths.js';
 
 const repository = new SubjectRepository();
 
@@ -23,10 +23,9 @@ function fallbackUnits(subjectId: string, subjectName: string) {
     bibliography: ['Apuntes docentes de la asignatura', 'Bibliografia digital disponible'],
     contents: [
       { id: `${subjectId}-u${unitNumber}-presentacion`, type: 'presentacion', title: `Presentacion Unidad ${unitNumber}`, status: 'disponible' },
-      { id: `${subjectId}-u${unitNumber}-guia`, type: 'guia', title: `Guia de aprendizaje Unidad ${unitNumber}`, status: 'disponible' },
-      { id: `${subjectId}-u${unitNumber}-actividad`, type: 'actividad', title: `Actividad practica Unidad ${unitNumber}`, status: 'programada' },
-      { id: `${subjectId}-u${unitNumber}-evaluacion`, type: 'evaluacion', title: `Evaluacion Unidad ${unitNumber}`, status: 'programada' }
-    ]
+      { id: `${subjectId}-u${unitNumber}-guia`, type: 'guia', title: `Guia de aprendizaje Unidad ${unitNumber}`, status: 'disponible' }
+    ],
+    assignments: []
   }));
 }
 
@@ -52,7 +51,38 @@ function studentIdsForUser(user: JwtUser, subject: any) {
     .map((enrollment: any) => enrollment.student.id);
 }
 
-function serializeUnit(unit: any) {
+function visibleSubmissionsForUser(user: JwtUser | undefined, submissions: any[]) {
+  if (!user || user.roles.some((role) => ['admin', 'director', 'teacher', 'inspector'].includes(role))) return submissions;
+  if (user.roles.includes('student')) return submissions.filter((submission) => submission.student.userId === user.id);
+  return submissions;
+}
+
+function serializeAssignment(assignment: any, user?: JwtUser) {
+  const submissions = visibleSubmissionsForUser(user, assignment.submissions ?? []);
+  return {
+    id: assignment.id,
+    title: assignment.title,
+    description: assignment.description,
+    dueDate: assignment.dueDate?.toISOString() ?? null,
+    openedAt: assignment.createdAt?.toISOString() ?? null,
+    status: assignment.status,
+    submissions: submissions.length,
+    submissionItems: submissions.map((submission: any) => ({
+      id: submission.id,
+      studentId: submission.studentId,
+      student: submission.student.user.name,
+      fileUrl: submission.fileUrl,
+      comment: submission.comment,
+      status: submission.status,
+      originalName: submission.originalName,
+      submittedAt: submission.submittedAt.toISOString()
+    }))
+  };
+}
+
+function serializeUnit(unit: any, user?: JwtUser) {
+  const assignments = unit.assignments.map((assignment: any) => serializeAssignment(assignment, user));
+
   return {
     id: unit.id,
     title: unit.title,
@@ -60,8 +90,7 @@ function serializeUnit(unit: any) {
     duration: unit.duration ?? '3 semanas',
     outcomes: stringList(unit.outcomes, []),
     bibliography: stringList(unit.bibliography, []),
-    contents: [
-      ...unit.materials.map((material: any) => ({
+    contents: unit.materials.map((material: any) => ({
         id: material.id,
         type: material.type,
         title: material.title,
@@ -70,32 +99,7 @@ function serializeUnit(unit: any) {
         owner: material.owner.name,
         updatedAt: material.updatedAt.toISOString().slice(0, 10)
       })),
-      ...unit.assignments.map((assignment: any) => ({
-        id: assignment.id,
-        type: 'actividad',
-        title: assignment.title,
-        status: assignment.status,
-        assignmentId: assignment.id,
-        dueDate: assignment.dueDate?.toISOString().slice(0, 10) ?? null,
-        submissions: assignment.submissions.map((submission: any) => ({
-          id: submission.id,
-          studentId: submission.studentId,
-          student: submission.student.user.name,
-          fileUrl: submission.fileUrl,
-          comment: submission.comment,
-          status: submission.status,
-          submittedAt: submission.submittedAt.toISOString()
-        }))
-      }))
-    ],
-    assignments: unit.assignments.map((assignment: any) => ({
-      id: assignment.id,
-      title: assignment.title,
-      description: assignment.description,
-      dueDate: assignment.dueDate?.toISOString().slice(0, 10) ?? null,
-      status: assignment.status,
-      submissions: assignment.submissions.length
-    }))
+    assignments
   };
 }
 
@@ -159,7 +163,7 @@ export class SubjectService {
       section: primarySection ? `${primarySection.course.name} ${primarySection.name}` : 'Sin seccion',
       room: primarySchedule?.classroom.name ?? primarySection?.classroom?.name ?? 'Sin sala',
       schedule,
-      units: subject.units.length ? subject.units.map(serializeUnit) : fallbackUnits(subject.id, subject.name),
+      units: subject.units.length ? subject.units.map((unit) => serializeUnit(unit, user)) : fallbackUnits(subject.id, subject.name),
       sections: visibleSections.map(({ section }) => ({
         id: section.id,
         name: `${section.course.name} ${section.name}`,
@@ -205,14 +209,14 @@ export class SubjectService {
       bibliography: input.bibliography ?? [],
       order: input.order ?? 0
     });
-    return serializeUnit({ ...unit, materials: [], assignments: [] });
+    return serializeUnit({ ...unit, materials: [], assignments: [] }, user);
   }
 
   async updateUnit(user: JwtUser, unitId: string, input: { title?: string; description?: string; duration?: string; outcomes?: string[]; bibliography?: string[]; order?: number }) {
     const unit = await repository.findUnitScope(unitId);
     if (!unit) throw new HttpError(404, 'Unidad no encontrada.');
     if (!hasSubjectManagementAccess(user, unit.subject)) throw new HttpError(403, 'No tienes permisos para editar esta unidad.');
-    return serializeUnit(await repository.updateUnit(unitId, input));
+    return serializeUnit(await repository.updateUnit(unitId, input), user);
   }
 
   async deleteUnit(user: JwtUser, unitId: string) {
@@ -294,30 +298,107 @@ export class SubjectService {
     });
     return {
       id: assignment.id,
-      type: 'actividad',
       title: assignment.title,
+      description: assignment.description,
       status: assignment.status,
-      assignmentId: assignment.id,
-      dueDate: assignment.dueDate?.toISOString().slice(0, 10) ?? null,
-      submissions: 0
+      dueDate: assignment.dueDate?.toISOString() ?? null,
+      openedAt: assignment.createdAt?.toISOString() ?? null,
+      submissions: 0,
+      submissionItems: []
     };
   }
 
-  async submitAssignment(user: JwtUser, assignmentId: string, input: { fileUrl?: string; comment?: string; studentId?: string }) {
+  async updateAssignment(user: JwtUser, assignmentId: string, input: { title?: string; description?: string; dueDate?: string }) {
+    const assignment = await repository.findAssignmentScope(assignmentId);
+    if (!assignment) throw new HttpError(404, 'Buzon no encontrado.');
+    if (!hasSubjectManagementAccess(user, assignment.unit.subject)) throw new HttpError(403, 'No tienes permisos para editar este buzon.');
+    const updated = await repository.updateAssignment(assignmentId, {
+      title: input.title,
+      description: input.description,
+      dueDate: input.dueDate ? new Date(input.dueDate) : undefined
+    });
+    return serializeAssignment(updated, user);
+  }
+
+  async updateAssignmentStatus(user: JwtUser, assignmentId: string, input: { status: string }) {
+    const assignment = await repository.findAssignmentScope(assignmentId);
+    if (!assignment) throw new HttpError(404, 'Buzon no encontrado.');
+    if (!hasSubjectManagementAccess(user, assignment.unit.subject)) throw new HttpError(403, 'No tienes permisos para cerrar este buzon.');
+    const updated = await repository.updateAssignmentStatus(assignmentId, input.status);
+    return serializeAssignment(updated, user);
+  }
+
+  async deleteAssignment(user: JwtUser, assignmentId: string) {
+    const assignment = await repository.findAssignmentForDelete(assignmentId);
+    if (!assignment) throw new HttpError(404, 'Buzon no encontrado.');
+    if (!hasSubjectManagementAccess(user, assignment.unit.subject)) throw new HttpError(403, 'No tienes permisos para eliminar este buzon.');
+    await repository.deleteAssignment(assignmentId);
+    const uploadDir = submissionsUploadDir();
+    await Promise.all(assignment.submissions.map(async (submission: any) => {
+      if (!submission.storagePath) return;
+      const absolutePath = path.resolve(uploadDir, submission.storagePath);
+      const relative = path.relative(uploadDir, absolutePath);
+      if (!relative.startsWith('..') && !path.isAbsolute(relative)) {
+        await fs.unlink(absolutePath).catch(() => undefined);
+      }
+    }));
+    return { ok: true };
+  }
+
+  async submitAssignment(user: JwtUser, assignmentId: string, input: { fileUrl?: string; storagePath?: string; originalName?: string; comment?: string; studentId?: string }) {
     const assignment = await repository.findAssignmentScope(assignmentId);
     if (!assignment) throw new HttpError(404, 'Entregable no encontrado.');
     const allowedStudentIds = studentIdsForUser(user, assignment.unit.subject);
     const studentId = input.studentId ?? allowedStudentIds[0];
     if (!studentId || !allowedStudentIds.includes(studentId)) throw new HttpError(403, 'No tienes permisos para enviar esta actividad.');
-    const submission = await repository.submitAssignment({ assignmentId, studentId, authorId: user.id, fileUrl: input.fileUrl, comment: input.comment });
+    const submission = await repository.submitAssignment({
+      assignmentId,
+      studentId,
+      authorId: user.id,
+      fileUrl: input.fileUrl,
+      storagePath: input.storagePath,
+      originalName: input.originalName,
+      comment: input.comment
+    });
     return {
       id: submission.id,
       studentId: submission.studentId,
       student: submission.student.user.name,
       fileUrl: submission.fileUrl,
+      originalName: submission.originalName,
       comment: submission.comment,
       status: submission.status,
       submittedAt: submission.submittedAt.toISOString()
     };
+  }
+
+  async uploadAssignment(user: JwtUser, assignmentId: string, input: { file?: Express.Multer.File; comment?: string; studentId?: string }) {
+    if (!input.file) throw new HttpError(400, 'Debe adjuntar un archivo valido.');
+    return this.submitAssignment(user, assignmentId, {
+      studentId: input.studentId,
+      comment: input.comment,
+      storagePath: input.file.filename,
+      originalName: input.file.originalname
+    });
+  }
+
+  async deleteSubmission(user: JwtUser, assignmentId: string, input: { studentId?: string }) {
+    const assignment = await repository.findAssignmentScope(assignmentId);
+    if (!assignment) throw new HttpError(404, 'Buzon no encontrado.');
+    const allowedStudentIds = studentIdsForUser(user, assignment.unit.subject);
+    const studentId = input.studentId ?? allowedStudentIds[0];
+    if (!studentId || !allowedStudentIds.includes(studentId)) throw new HttpError(403, 'No tienes permisos para eliminar esta entrega.');
+    const submission = await repository.findSubmission(assignmentId, studentId);
+    if (!submission) return { ok: true };
+    await repository.deleteSubmission(assignmentId, studentId);
+    if (submission.storagePath) {
+      const uploadDir = submissionsUploadDir();
+      const absolutePath = path.resolve(uploadDir, submission.storagePath);
+      const relative = path.relative(uploadDir, absolutePath);
+      if (!relative.startsWith('..') && !path.isAbsolute(relative)) {
+        await fs.unlink(absolutePath).catch(() => undefined);
+      }
+    }
+    return { ok: true };
   }
 }
