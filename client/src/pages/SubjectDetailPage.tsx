@@ -113,6 +113,29 @@ function UnitMaterialRow({ item, onOpen }: { item: DocumentItem | UnitContentIte
   );
 }
 
+function UnitMaterialListItem({
+  item,
+  canEdit,
+  onOpen,
+  onDelete
+}: {
+  item: UnitContentItem;
+  canEdit: boolean;
+  onOpen: (item: DocumentItem | UnitContentItem) => void;
+  onDelete: (material: UnitContentItem) => void;
+}) {
+  return (
+    <div className="material-row-wrap">
+      <UnitMaterialRow item={item} onOpen={onOpen} />
+      {canEdit && !item.assignmentId && (
+        <button className="danger-button compact-danger" onClick={() => onDelete(item)}>
+          <Trash2 size={15} /> Eliminar
+        </button>
+      )}
+    </div>
+  );
+}
+
 function ClassroomModal({
   modal,
   subject,
@@ -294,10 +317,7 @@ function UnitContent({
         </div>
         <div className="classroom-material-list">
           {unitMaterials.map((item) => (
-            <div className="material-row-wrap" key={item.id}>
-              <UnitMaterialRow item={item} onOpen={onOpenMaterial} />
-              {canEdit && !item.assignmentId && <button className="danger-button compact-danger" onClick={() => onDeleteMaterial(item)}><Trash2 size={15} /> Eliminar</button>}
-            </div>
+            <UnitMaterialListItem key={item.id} item={item} canEdit={canEdit} onOpen={onOpenMaterial} onDelete={onDeleteMaterial} />
           ))}
         </div>
       </section>
@@ -587,7 +607,9 @@ export function SubjectDetailPage({ user }: { user: User }) {
                       {canEditCourse && <button className="text-button" onClick={addCourseMaterial}><Plus size={16} /> Agregar material</button>}
                     </div>
                     <div className="classroom-material-list">
-                      {subject.units.flatMap((unit) => unit.contents).slice(0, 5).map((item) => <UnitMaterialRow key={item.id} item={item} onOpen={openMaterial} />)}
+                      {subject.units.flatMap((unit) => unit.contents).slice(0, 5).map((item) => (
+                        <UnitMaterialListItem key={item.id} item={item} canEdit={canEditCourse} onOpen={openMaterial} onDelete={deleteMaterial} />
+                      ))}
                     </div>
                   </section>
                 </article>
