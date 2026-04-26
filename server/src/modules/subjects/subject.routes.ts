@@ -54,6 +54,7 @@ subjectRoutes.post('/', authorizeRoles('admin', 'director'), authorizePermission
 
 assignmentReviewRoutes.use(authenticate);
 assignmentReviewRoutes.get('/assignments/:assignmentId/submissions', validateParams(assignmentIdParamSchema), asyncHandler(controller.listAssignmentSubmissions.bind(controller)));
+assignmentReviewRoutes.post('/assignments/:assignmentId/comments', validateParams(assignmentIdParamSchema), validateBody(createSubmissionCommentSchema), asyncHandler(controller.addAssignmentComment.bind(controller)));
 assignmentReviewRoutes.patch('/submissions/:submissionId/review', authorizeRoles('admin', 'director', 'teacher'), validateParams(submissionIdParamSchema), validateBody(reviewSubmissionSchema), asyncHandler(controller.reviewSubmission.bind(controller)));
 assignmentReviewRoutes.patch('/submissions/:submissionId/reply', authorizeRoles('student', 'guardian'), validateParams(submissionIdParamSchema), validateBody(replySubmissionSchema), asyncHandler(controller.replyToSubmission.bind(controller)));
 assignmentReviewRoutes.post('/submissions/:submissionId/comments', validateParams(submissionIdParamSchema), validateBody(createSubmissionCommentSchema), asyncHandler(controller.addSubmissionComment.bind(controller)));

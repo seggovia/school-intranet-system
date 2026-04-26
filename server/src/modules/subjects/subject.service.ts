@@ -552,6 +552,24 @@ export class SubjectService {
     return serializeSubmission(refreshed);
   }
 
+  async addAssignmentComment(user: JwtUser, assignmentId: string, input: { body: string }) {
+    const assignment = await repository.findAssignmentScope(assignmentId);
+    if (!assignment) throw new HttpError(404, 'Buzon no encontrado.');
+    const allowedStudentIds = studentIdsForUser(user, assignment.unit.subject);
+    const studentId = allowedStudentIds[0];
+    if (!studentId || !allowedStudentIds.includes(studentId)) throw new HttpError(403, 'No tienes permisos para comentar esta entrega.');
+    const body = input.body.trim();
+    if (!body) throw new HttpError(400, 'El comentario no puede estar vacio.');
+    const submission = await repository.ensureSubmissionForComment({
+      assignmentId,
+      studentId,
+      authorId: user.id
+    });
+    await repository.createSubmissionComment({ submissionId: submission.id, authorId: user.id, body });
+    const refreshed = await repository.findSubmissionWithScope(submission.id);
+    return serializeSubmission(refreshed);
+  }
+
   async deleteSubmissionComment(user: JwtUser, commentId: string) {
     const comment = await repository.findSubmissionCommentWithScope(commentId);
     if (!comment) throw new HttpError(404, 'Comentario no encontrado.');

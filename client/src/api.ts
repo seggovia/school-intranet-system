@@ -252,6 +252,11 @@ export async function addSubmissionComment(submissionId: string, body: string) {
   return data;
 }
 
+export async function addAssignmentComment(assignmentId: string, body: string) {
+  const { data } = await api.post(`/assignments/${assignmentId}/comments`, { body });
+  return data;
+}
+
 export async function deleteSubmissionComment(commentId: string) {
   const { data } = await api.delete<{ ok: true }>(`/submission-comments/${commentId}`);
   return data;

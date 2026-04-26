@@ -223,7 +223,7 @@ select {
   color: #ffffff;
   background: linear-gradient(180deg, #0f2f4a 0%, #102a43 48%, #0b2238 100%);
   border-bottom: 0;
-  box-shadow: 0 12px 28px rgba(16, 42, 67, 0.18);
+  box-shadow: none;
 }
 
 .brand {
@@ -1146,8 +1146,9 @@ th {
 
 .classroom-sticky-nav {
   position: sticky;
-  top: 101px;
+  top: 100px;
   z-index: 19;
+  margin-top: -3px;
   box-shadow: 0 8px 18px rgba(16, 42, 67, 0.18);
 }
 
@@ -1159,6 +1160,8 @@ th {
   padding: 0 28px;
   color: #ffffff;
   background: #102a43;
+  border: 0;
+  box-shadow: inset 0 1px 0 #102a43;
 }
 
 .campus-coursebrand {
@@ -1274,22 +1277,23 @@ th {
 }
 
 .classroom-layout {
-  display: grid;
-  grid-template-columns: 286px minmax(0, 1fr);
-  gap: 0;
-  align-items: start;
+  display: block;
+  min-width: 0;
 }
 
-.classroom-layout.index-collapsed {
-  grid-template-columns: 58px minmax(0, 1fr);
+.classroom-layout.index-collapsed .classroom-main {
+  margin-left: 58px;
 }
 
 .classroom-index {
-  position: sticky;
+  position: fixed;
   top: 224px;
+  left: 0;
+  z-index: 18;
+  width: 286px;
   height: calc(100vh - 224px);
   overflow-y: auto;
-  overflow-x: visible;
+  overflow-x: hidden;
   display: grid;
   gap: 6px;
   align-content: start;
@@ -1304,7 +1308,7 @@ th {
 .index-header {
   position: sticky;
   top: 0;
-  z-index: 1;
+  z-index: 2;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 34px;
   align-items: center;
@@ -1328,13 +1332,12 @@ th {
   color: #314254;
 }
 
-.index-header button::after {
+.index-tooltip {
   position: absolute;
   top: 50%;
-  left: calc(100% + 10px);
+  right: 54px;
   z-index: 1000;
   transform: translateY(-50%);
-  content: attr(data-tooltip);
   pointer-events: none;
   white-space: nowrap;
   padding: 7px 9px;
@@ -1345,12 +1348,12 @@ th {
   font-weight: 800;
   opacity: 0;
   visibility: hidden;
-  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.2);
+  box-shadow: none;
   transition: none;
 }
 
-.index-header button:hover::after,
-.index-header button:focus-visible::after {
+.index-header button:hover + .index-tooltip,
+.index-header button:focus-visible + .index-tooltip {
   opacity: 1;
   visibility: visible;
 }
@@ -1416,6 +1419,7 @@ th {
 
 .index-collapsed .classroom-index {
   padding: 0 8px 18px;
+  width: 58px;
   overflow: visible;
 }
 
@@ -1433,6 +1437,11 @@ th {
   grid-column: 1;
 }
 
+.index-collapsed .index-tooltip {
+  right: auto;
+  left: calc(100% + 10px);
+}
+
 .classroom-index .index-child:hover {
   color: #1d4ed8;
   background: #dbeafe;
@@ -1440,12 +1449,16 @@ th {
 
 .classroom-index .index-child.active {
   border-left-color: #2563eb;
+  color: #1d4ed8;
+  background: #dbeafe;
+  font-weight: 900;
 }
 
 .classroom-main {
   display: grid;
   gap: 16px;
   min-width: 0;
+  margin-left: 286px;
   padding: 34px clamp(28px, 6vw, 120px);
 }
 
@@ -1499,7 +1512,7 @@ th {
 .classroom-unit-card,
 .unit-info-block,
 .classroom-welcome {
-  scroll-margin-top: 96px;
+  scroll-margin-top: 238px;
 }
 
 .classroom-welcome h2,
@@ -2052,7 +2065,7 @@ th {
 
 .review-submission-row {
   display: grid;
-  grid-template-columns: minmax(180px, 1.1fr) minmax(130px, 0.65fr) minmax(110px, 0.45fr) minmax(240px, 1.2fr) auto;
+  grid-template-columns: minmax(180px, 1.1fr) minmax(130px, 0.65fr) minmax(110px, 0.45fr) auto;
   gap: 12px;
   align-items: end;
   padding: 14px;
@@ -2104,6 +2117,44 @@ th {
   display: flex;
   gap: 8px;
   align-items: center;
+}
+
+.review-thread-preview {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 7px;
+  padding: 10px 12px;
+  border: 1px solid #dbe3ea;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.review-thread-preview strong {
+  color: #102a43;
+}
+
+.review-thread-preview div {
+  display: grid;
+  gap: 5px;
+}
+
+.review-thread-preview p,
+.review-thread-preview span {
+  margin: 0;
+  color: #435363;
+  font-size: 0.9rem;
+}
+
+.review-comment-composer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+  margin-top: 6px;
+}
+
+.review-comment-composer textarea {
+  min-height: 46px;
 }
 
 .student-upload-space strong,
@@ -2537,7 +2588,6 @@ th {
   }
 
   .workspace-grid,
-  .classroom-layout,
   .subject-detail-grid,
   .subject-grid,
   .section-grid {
@@ -2545,7 +2595,15 @@ th {
   }
 
   .classroom-layout {
-    grid-template-columns: 240px minmax(0, 1fr);
+    display: block;
+  }
+
+  .classroom-index {
+    width: 240px;
+  }
+
+  .classroom-layout.index-collapsed .classroom-index {
+    width: 58px;
   }
 
   .classroom-top-tabs {
@@ -2553,7 +2611,12 @@ th {
   }
 
   .classroom-main {
+    margin-left: 240px;
     padding: 24px;
+  }
+
+  .classroom-layout.index-collapsed .classroom-main {
+    margin-left: 58px;
   }
 
   .campus-footer {
@@ -2681,12 +2744,18 @@ th {
 
   .classroom-index {
     position: static;
+    width: auto;
     height: auto;
     max-height: 360px;
   }
 
   .classroom-main {
+    margin-left: 0;
     padding: 18px;
+  }
+
+  .classroom-layout.index-collapsed .classroom-main {
+    margin-left: 0;
   }
 
   .course-document-header {

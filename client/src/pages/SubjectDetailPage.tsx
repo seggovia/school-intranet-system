@@ -1,8 +1,8 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { BookOpen, CalendarDays, ChevronLeft, ChevronRight, ClipboardCheck, Clock, Download, Edit3, ExternalLink, FileArchive, FileSpreadsheet, FileText, Inbox, Link as LinkIcon, MapPin, Megaphone, MessageSquare, PencilRuler, Plus, Presentation, Trash2, Upload, UserRound, Users } from 'lucide-react';
-import { addSubmissionComment, createSubjectUnit, createUnitAssignment, deleteAssignmentSubmission, deleteSubmissionComment, deleteSubmissionFiles, deleteSubjectUnit, deleteUnitAssignment, deleteUnitMaterial, downloadAssignmentSubmission, downloadSubmissionFile as downloadSubmissionFileApi, downloadUnitMaterial, loadAssignmentSubmissions, loadSubjectDetail, reviewAssignmentSubmission, updateSubjectUnit, updateUnitAssignment, updateUnitAssignmentStatus, uploadAssignmentSubmissionFiles, uploadUnitMaterial } from '../api';
+import { addAssignmentComment, addSubmissionComment, createSubjectUnit, createUnitAssignment, deleteAssignmentSubmission, deleteSubmissionComment, deleteSubmissionFiles, deleteSubjectUnit, deleteUnitAssignment, deleteUnitMaterial, downloadAssignmentSubmission, downloadSubmissionFile as downloadSubmissionFileApi, downloadUnitMaterial, loadAssignmentSubmissions, loadSubjectDetail, reviewAssignmentSubmission, updateSubjectUnit, updateUnitAssignment, updateUnitAssignmentStatus, uploadAssignmentSubmissionFiles, uploadUnitMaterial } from '../api';
 import { EmptyState, ErrorState, LoadingState } from '../components/States';
 import { useAsyncData } from '../hooks';
 import type { AssignmentSubmissionReviewRow, DocumentItem, SubjectDetailData, SubjectUnit, UnitAssignment, UnitContentItem, User } from '../types';
@@ -419,14 +419,12 @@ function AssignmentDetail({
             <span>Comentarios</span>
             <strong className="submission-comments-cell">{ownSubmission?.comments?.length ?? 0} comentario(s)</strong>
           </div>
-          {ownSubmission && (
-            <SubmissionComments
-              comments={ownSubmission.comments}
-              canWrite={!isClosed}
-              onAdd={(body) => onAddSubmissionComment(assignment, body)}
-              onDelete={onDeleteSubmissionComment}
-            />
-          )}
+          <SubmissionComments
+            comments={ownSubmission?.comments}
+            canWrite={!isClosed}
+            onAdd={(body) => onAddSubmissionComment(assignment, body)}
+            onDelete={onDeleteSubmissionComment}
+          />
         </>
       )}
       {canSubmit && !editingDelivery && (
@@ -635,7 +633,8 @@ function ReviewSubmissionsModal({
   error,
   onClose,
   onDownload,
-  onSave
+  onSave,
+  onComment
 }: {
   assignment: UnitAssignment | null;
   rows: AssignmentSubmissionReviewRow[];
@@ -644,6 +643,7 @@ function ReviewSubmissionsModal({
   onClose: () => void;
   onDownload: (row: AssignmentSubmissionReviewRow) => void;
   onSave: (row: AssignmentSubmissionReviewRow, event: FormEvent<HTMLFormElement>) => void;
+  onComment: (row: AssignmentSubmissionReviewRow, body: string) => Promise<void> | void;
 }) {
   if (!assignment) return null;
 
@@ -680,9 +680,6 @@ function ReviewSubmissionsModal({
               <label>Nota
                 <input name="grade" type="number" min="1" max="7" step="0.1" defaultValue={row.submission?.grade ?? ''} placeholder="1.0 - 7.0" disabled={!row.submission} />
               </label>
-              <label className="review-feedback-field">Comentario
-                <textarea name="comment" rows={3} placeholder="Agregar comentario para este estudiante" disabled={!row.submission} />
-              </label>
               <div className="review-row-actions">
                 <button type="button" className="secondary-button" onClick={() => onDownload(row)} disabled={!row.submission}>
                   <Download size={16} /> Descargar
@@ -691,6 +688,19 @@ function ReviewSubmissionsModal({
                   <ClipboardCheck size={16} /> Guardar
                 </button>
               </div>
+              <div className="review-thread-preview">
+                <strong>Comentarios</strong>
+                {row.submission?.comments?.length ? (
+                  <div>
+                    {row.submission.comments.map((comment) => (
+                      <p key={comment.id}><b>{comment.author}:</b> {comment.body}</p>
+                    ))}
+                  </div>
+                ) : (
+                  <span>Sin comentarios.</span>
+                )}
+                {row.submission && <ReviewCommentComposer busy={busy} onSubmit={(body) => onComment(row, body)} />}
+              </div>
             </form>
           ))}
         </div>
@@ -698,6 +708,30 @@ function ReviewSubmissionsModal({
           <button type="button" className="secondary-button" onClick={onClose}>Cerrar</button>
         </footer>
       </section>
+    </div>
+  );
+}
+
+function ReviewCommentComposer({
+  busy,
+  onSubmit
+}: {
+  busy: boolean;
+  onSubmit: (body: string) => Promise<void> | void;
+}) {
+  const [body, setBody] = useState('');
+
+  async function sendComment() {
+    const value = body.trim();
+    if (!value) return;
+    await onSubmit(value);
+    setBody('');
+  }
+
+  return (
+    <div className="review-comment-composer">
+      <textarea rows={2} value={body} placeholder="Escribir comentario..." onChange={(event) => setBody(event.target.value)} />
+      <button type="button" className="secondary-button" disabled={busy || !body.trim()} onClick={sendComment}>Enviar comentario</button>
     </div>
   );
 }
@@ -917,6 +951,7 @@ export function SubjectDetailPage({ user }: { user: User }) {
   const [reviewSavedOpen, setReviewSavedOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [indexCollapsed, setIndexCollapsed] = useState(true);
+  const [activeIndexTarget, setActiveIndexTarget] = useState('course-start');
   const canManageCourse = ['admin', 'director', 'teacher'].includes(user.primaryRole);
   const canEditCourse = canManageCourse && editMode;
   const canReviewCourse = canManageCourse;
@@ -943,11 +978,55 @@ export function SubjectDetailPage({ user }: { user: User }) {
   function goToCourseSection(unitId: string, sectionId?: string) {
     setActiveTab('curso');
     setActiveUnit(unitId);
+    setActiveIndexTarget(unitId === 'inicio' ? 'course-start' : sectionId ?? `unit-${unitId}`);
     window.setTimeout(() => {
       const targetId = unitId === 'inicio' ? 'course-start' : sectionId ?? `unit-${unitId}`;
       document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 50);
   }
+
+  useEffect(() => {
+    if (activeTab !== 'curso') return undefined;
+    const ids = activeUnit === 'inicio'
+      ? ['course-start']
+      : [
+          `unit-${activeUnit}`,
+          `unit-${activeUnit}-antecedentes`,
+          `unit-${activeUnit}-aprendizajes`,
+          `unit-${activeUnit}-bibliografia`,
+          `unit-${activeUnit}-materiales`,
+          `unit-${activeUnit}-entregables`
+        ];
+    const elements = ids.map((item) => document.getElementById(item)).filter((item): item is HTMLElement => Boolean(item));
+    if (!elements.length) return undefined;
+    let frame = 0;
+    const topOffset = 246;
+    const activationBand = 80;
+    function updateActiveSection() {
+      frame = 0;
+      const ranked = elements.map((element) => ({
+        id: element.id,
+        top: element.getBoundingClientRect().top
+      }));
+      const passed = ranked.filter((item) => item.top <= topOffset + activationBand);
+      const next = passed.length
+        ? passed.reduce((closest, item) => item.top > closest.top ? item : closest).id
+        : ranked.reduce((closest, item) => Math.abs(item.top - topOffset) < Math.abs(closest.top - topOffset) ? item : closest).id;
+      setActiveIndexTarget((current) => current === next ? current : next);
+    }
+    function scheduleUpdate() {
+      if (frame) return;
+      frame = window.requestAnimationFrame(updateActiveSection);
+    }
+    updateActiveSection();
+    window.addEventListener('scroll', scheduleUpdate, { passive: true });
+    window.addEventListener('resize', scheduleUpdate);
+    return () => {
+      if (frame) window.cancelAnimationFrame(frame);
+      window.removeEventListener('scroll', scheduleUpdate);
+      window.removeEventListener('resize', scheduleUpdate);
+    };
+  }, [activeTab, activeUnit]);
 
   function toggleEditMode() {
     setEditMode((current) => {
@@ -1087,10 +1166,13 @@ export function SubjectDetailPage({ user }: { user: User }) {
 
   async function addSubmissionThreadComment(assignment: UnitAssignment, comment: string) {
     const submission = assignment.submissionItems?.[0];
-    if (!submission) return;
     setSaving(true);
     try {
-      await addSubmissionComment(submission.id, comment.trim());
+      if (submission) {
+        await addSubmissionComment(submission.id, comment.trim());
+      } else {
+        await addAssignmentComment(assignment.id, comment.trim());
+      }
       showNotice('Comentario guardado.');
       reloadDetail();
     } catch {
@@ -1180,13 +1262,28 @@ export function SubjectDetailPage({ user }: { user: User }) {
       await reviewAssignmentSubmission(row.submission.id, {
         status: String(form.get('status') ?? row.status),
         grade: gradeValue ? Number(gradeValue) : null,
-        comment: String(form.get('comment') ?? '').trim() || null
+        comment: null
       });
       setReviewRows(await loadAssignmentSubmissions(reviewAssignment.id));
       setReviewSavedOpen(true);
       reloadDetail();
     } catch {
       setReviewError('No se pudo guardar la revision. Revisa nota, estado y permisos.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function sendReviewThreadComment(row: AssignmentSubmissionReviewRow, body: string) {
+    if (!row.submission || !reviewAssignment) return;
+    setSaving(true);
+    setReviewError('');
+    try {
+      await addSubmissionComment(row.submission.id, body);
+      setReviewRows(await loadAssignmentSubmissions(reviewAssignment.id));
+      reloadDetail();
+    } catch {
+      setReviewError('No se pudo agregar el comentario para este estudiante.');
     } finally {
       setSaving(false);
     }
@@ -1318,11 +1415,14 @@ export function SubjectDetailPage({ user }: { user: User }) {
           <div className="index-header">
             <button
               aria-label={indexCollapsed ? 'Abrir indice' : 'Cerrar indice'}
-              data-tooltip={indexCollapsed ? 'Abrir indice' : 'Cerrar indice'}
+              aria-describedby="index-toggle-tooltip"
               onClick={() => setIndexCollapsed((value) => !value)}
             >
               {indexCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
             </button>
+            <span id="index-toggle-tooltip" className="index-tooltip" role="tooltip">
+              {indexCollapsed ? 'Abrir indice' : 'Cerrar indice'}
+            </span>
             <strong>Contenidos</strong>
           </div>
           {!indexCollapsed && (
@@ -1331,20 +1431,20 @@ export function SubjectDetailPage({ user }: { user: User }) {
               {subject.units.map((unit) => (
                 <div className="index-unit" key={unit.id}>
                   <button className={activeUnit === unit.id ? 'active' : ''} onClick={() => goToCourseSection(unit.id)}>{unit.title}</button>
-                  <button className="index-child" onClick={() => goToCourseSection(unit.id, `unit-${unit.id}-antecedentes`)}><BookOpen size={14} /> Antecedentes</button>
-                  <button className="index-child" onClick={() => goToCourseSection(unit.id, `unit-${unit.id}-aprendizajes`)}><ClipboardCheck size={14} /> Aprendizajes esperados</button>
-                  <button className="index-child" onClick={() => goToCourseSection(unit.id, `unit-${unit.id}-bibliografia`)}><FileText size={14} /> Bibliografia</button>
-                  <button className="index-child" onClick={() => goToCourseSection(unit.id, `unit-${unit.id}-materiales`)}><FileArchive size={14} /> Materiales</button>
+                  <button className={`index-child ${activeIndexTarget === `unit-${unit.id}-antecedentes` ? 'active' : ''}`} onClick={() => goToCourseSection(unit.id, `unit-${unit.id}-antecedentes`)}><BookOpen size={14} /> Antecedentes</button>
+                  <button className={`index-child ${activeIndexTarget === `unit-${unit.id}-aprendizajes` ? 'active' : ''}`} onClick={() => goToCourseSection(unit.id, `unit-${unit.id}-aprendizajes`)}><ClipboardCheck size={14} /> Aprendizajes esperados</button>
+                  <button className={`index-child ${activeIndexTarget === `unit-${unit.id}-bibliografia` ? 'active' : ''}`} onClick={() => goToCourseSection(unit.id, `unit-${unit.id}-bibliografia`)}><FileText size={14} /> Bibliografia</button>
+                  <button className={`index-child ${activeIndexTarget === `unit-${unit.id}-materiales` ? 'active' : ''}`} onClick={() => goToCourseSection(unit.id, `unit-${unit.id}-materiales`)}><FileArchive size={14} /> Materiales</button>
                   {unit.contents.map((item) => {
                     const Icon = contentIcon(item.type);
                     return (
-                      <button className="index-child" key={item.id} onClick={() => goToCourseSection(unit.id, `unit-${unit.id}-materiales`)}>
+                      <button className={`index-child ${activeIndexTarget === `unit-${unit.id}-materiales` ? 'active' : ''}`} key={item.id} onClick={() => goToCourseSection(unit.id, `unit-${unit.id}-materiales`)}>
                         <Icon size={14} /> {item.title}
                       </button>
                     );
                   })}
                   {(unit.assignments ?? []).map((assignment) => (
-                    <button className="index-child" key={assignment.id} onClick={() => goToCourseSection(unit.id, `unit-${unit.id}-entregables`)}>
+                    <button className={`index-child ${activeIndexTarget === `unit-${unit.id}-entregables` ? 'active' : ''}`} key={assignment.id} onClick={() => goToCourseSection(unit.id, `unit-${unit.id}-entregables`)}>
                       <Inbox size={14} /> {assignment.title}
                     </button>
                   ))}
@@ -1503,6 +1603,7 @@ export function SubjectDetailPage({ user }: { user: User }) {
         }}
         onDownload={downloadSubmissionFile}
         onSave={saveSubmissionReview}
+        onComment={sendReviewThreadComment}
       />
       <ReviewSavedModal
         open={reviewSavedOpen}

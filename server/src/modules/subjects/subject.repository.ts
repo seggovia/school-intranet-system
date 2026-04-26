@@ -246,6 +246,20 @@ export class SubjectRepository {
     });
   }
 
+  ensureSubmissionForComment(input: { assignmentId: string; studentId: string; authorId: string }) {
+    return prisma.assignmentSubmission.upsert({
+      where: { assignmentId_studentId: { assignmentId: input.assignmentId, studentId: input.studentId } },
+      update: { authorId: input.authorId },
+      create: {
+        assignmentId: input.assignmentId,
+        studentId: input.studentId,
+        authorId: input.authorId,
+        status: 'pendiente'
+      },
+      include: submissionListInclude
+    });
+  }
+
   findSubmissionWithScope(submissionId: string) {
     return prisma.assignmentSubmission.findUnique({
       where: { id: submissionId },
