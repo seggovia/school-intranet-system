@@ -95,6 +95,98 @@ export interface ScheduleItem {
   section: string;
 }
 
+export interface ScheduleCalendarEvent {
+  id: string;
+  title: string;
+  start: string;
+  end: string;
+  subjectId: string;
+  subject: string;
+  teacher: string;
+  room: string;
+  section: string;
+  course: string;
+}
+
+export interface UnitContentItem {
+  id: string;
+  type: 'presentacion' | 'guia' | 'documento' | 'link';
+  title: string;
+  status: string;
+  fileUrl?: string | null;
+  owner?: string;
+  updatedAt?: string;
+}
+
+export interface AssignmentSubmissionItem {
+  id: string;
+  studentId: string;
+  student: string;
+  fileUrl?: string | null;
+  originalName?: string | null;
+  files?: Array<{ id: string; originalName: string; mimeType?: string | null; size?: number | null; createdAt?: string | null }>;
+  comment?: string | null;
+  status: string;
+  grade?: number | null;
+  commentThread?: { teacher?: string | null; student?: string | null };
+  comments?: Array<{ id: string; body: string; authorId: string; author: string; createdAt?: string | null }>;
+  reviewedAt?: string | null;
+  reviewedBy?: string | null;
+  submittedAt: string;
+}
+
+export interface AssignmentSubmissionReviewRow {
+  studentId: string;
+  student: string;
+  status: string;
+  submission: AssignmentSubmissionItem | null;
+}
+
+export interface UnitAssignment {
+  id: string;
+  title: string;
+  description: string;
+  dueDate: string | null;
+  openedAt?: string | null;
+  status: string;
+  submissions: number;
+  submissionItems?: AssignmentSubmissionItem[];
+}
+
+export interface SubjectUnit {
+  id: string;
+  title: string;
+  description: string;
+  duration?: string;
+  outcomes?: string[];
+  bibliography?: string[];
+  contents: UnitContentItem[];
+  assignments?: UnitAssignment[];
+}
+
+export interface SubjectDetailData {
+  subject: {
+    id: string;
+    name: string;
+    code: string;
+  };
+  teacher: string;
+  section: string;
+  room: string;
+  schedule: ScheduleItem[];
+  units: SubjectUnit[];
+  materials: DocumentItem[];
+  assessments: { id: string; title: string; date: string; grades: number }[];
+  sections: {
+    id: string;
+    name: string;
+    teacher: string;
+    classroom: string;
+    students: SectionStudent[];
+    schedules: Omit<ScheduleItem, 'weekdayName' | 'subjectId' | 'section'>[];
+  }[];
+}
+
 export interface SectionSummary {
   id: string;
   name: string;
@@ -138,6 +230,20 @@ export interface RoleDashboard {
   linkedStudents: { id: string; name: string; relationship: string }[];
   announcements: { id: string; title: string; priority: string }[];
   documents: DocumentItem[];
+}
+
+export interface UserProfileData {
+  id: string;
+  name: string;
+  email: string;
+  avatar: string;
+  department: string;
+  roles: Role[];
+  timezone: string;
+  lastAccess: string;
+  courses: Array<{ id: string; name: string; classroom: string; students: number }>;
+  subjects: Array<{ id: string; name: string; code: string; section: string }>;
+  linkedStudents: Array<{ id: string; name: string; relationship: string }>;
 }
 
 export interface Student {

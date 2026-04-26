@@ -40,6 +40,43 @@ function serializeSchedule(schedule: {
   };
 }
 
+function dateForWeekday(weekday: number) {
+  const today = new Date();
+  const currentWeekday = today.getDay();
+  const mondayOffset = currentWeekday === 0 ? -6 : 1 - currentWeekday;
+  const date = new Date(today);
+  date.setHours(0, 0, 0, 0);
+  date.setDate(today.getDate() + mondayOffset + (weekday - 1));
+  return date.toISOString().slice(0, 10);
+}
+
+function serializeCalendarSchedule(schedule: {
+  id: string;
+  weekday: number;
+  startsAt: string;
+  endsAt: string;
+  subject: { id: string; name: string };
+  teacher: { user: { name: string } };
+  classroom: { name: string };
+  section: { course: { name: string }; name: string };
+}) {
+  const date = dateForWeekday(schedule.weekday);
+  const section = `${schedule.section.course.name} ${schedule.section.name}`;
+
+  return {
+    id: schedule.id,
+    title: schedule.subject.name,
+    start: `${date}T${schedule.startsAt}`,
+    end: `${date}T${schedule.endsAt}`,
+    subjectId: schedule.subject.id,
+    subject: schedule.subject.name,
+    teacher: schedule.teacher.user.name,
+    room: schedule.classroom.name,
+    section,
+    course: section
+  };
+}
+
 function serializeDocument(document: { id: string; title: string; status: string; fileUrl: string | null; updatedAt: Date; category: { name: string }; owner: { name: string } }) {
   return {
     id: document.id,
@@ -53,6 +90,42 @@ function serializeDocument(document: { id: string; title: string; status: string
 }
 
 export class MeService {
+  async profile(user: JwtUser) {
+    const [profile, sections] = await Promise.all([
+      repository.findUserProfile(user.id),
+      this.sectionsForUser(user)
+    ]);
+    const subjectMap = new Map<string, { id: string; name: string; code: string; section: string }>();
+    sections.forEach((section) => {
+      section.subjects.forEach((item) => {
+        subjectMap.set(`${item.subject.id}-${section.id}`, {
+          id: item.subject.id,
+          name: item.subject.name,
+          code: item.subject.code,
+          section: `${section.course.name} ${section.name}`
+        });
+      });
+    });
+    return {
+      id: user.id,
+      name: profile?.name ?? user.email,
+      email: profile?.email ?? user.email,
+      avatar: profile?.avatar ?? '',
+      department: profile?.department ?? '',
+      roles: user.roles,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      lastAccess: new Date().toISOString(),
+      courses: sections.map((section) => ({
+        id: section.id,
+        name: `${section.course.name} ${section.name}`,
+        classroom: section.classroom?.name ?? 'Sin sala',
+        students: section.enrollments.length
+      })),
+      subjects: Array.from(subjectMap.values()),
+      linkedStudents: profile?.guardian?.students.map((item) => ({ id: item.student.id, name: item.student.user.name, relationship: item.relationship })) ?? []
+    };
+  }
+
   async dashboard(user: JwtUser) {
     const [profile, sections, announcements, documents] = await Promise.all([
       repository.findUserProfile(user.id),
@@ -127,7 +200,7 @@ export class MeService {
 
   async schedule(user: JwtUser) {
     const sections = await this.sectionsForUser(user);
-    return sections.flatMap((section) => section.schedules.map((schedule) => serializeSchedule({ ...schedule, section })));
+    return sections.flatMap((section) => section.schedules.map((schedule) => serializeCalendarSchedule({ ...schedule, section })));
   }
 
   async grades(user: JwtUser) {

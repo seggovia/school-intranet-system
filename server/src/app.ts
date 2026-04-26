@@ -15,11 +15,12 @@ import { courseRoutes } from './modules/courses/course.routes.js';
 import { documentRoutes } from './modules/documents/document.routes.js';
 import { gradeRoutes } from './modules/grades/grade.routes.js';
 import { meRoutes } from './modules/me/me.routes.js';
+import { materialRoutes } from './modules/materials/material.routes.js';
 import { notificationRoutes } from './modules/notifications/notification.routes.js';
 import { requestRoutes } from './modules/requests/request.routes.js';
 import { schoolRoutes } from './modules/school/school.routes.js';
 import { sectionRoutes } from './modules/sections/section.routes.js';
-import { subjectRoutes } from './modules/subjects/subject.routes.js';
+import { assignmentReviewRoutes, subjectRoutes } from './modules/subjects/subject.routes.js';
 import { userRoutes } from './modules/users/user.routes.js';
 
 export const app = express();
@@ -48,8 +49,10 @@ app.get('/api/health', async (_req, res) => {
 app.use('/api/auth/login', loginLimiter);
 app.use('/api/auth', authRoutes);
 app.use('/api/me', meRoutes);
+app.use('/api/materials', materialRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/courses', courseRoutes);
+app.use('/api', assignmentReviewRoutes);
 app.use('/api/subjects', subjectRoutes);
 app.use('/api/sections', sectionRoutes);
 app.use('/api/assessments', assessmentRoutes);

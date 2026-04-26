@@ -12,3 +12,4 @@ meRoutes.get('/subjects', asyncHandler(controller.subjects.bind(controller)));
 meRoutes.get('/schedule', asyncHandler(controller.schedule.bind(controller)));
 meRoutes.get('/grades', asyncHandler(controller.grades.bind(controller)));
 meRoutes.get('/attendance', asyncHandler(controller.attendance.bind(controller)));
+meRoutes.get('/profile', asyncHandler(controller.profile.bind(controller)));

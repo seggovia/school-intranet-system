@@ -38,7 +38,7 @@ export function LoginPage({ onLogin }: { onLogin: (session: AuthSession) => void
         <div className="school-crest">
           <School size={42} />
         </div>
-        <h1>Sistema de Intranet Escolar</h1>
+        <h1>Sistema de Intranet Colegio</h1>
         <p>Gestion academica, comunicacion familiar, operacion escolar y flujos administrativos en una plataforma interna.</p>
         <div className="login-metrics">
           <span><strong>1.172</strong> estudiantes</span>
