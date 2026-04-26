@@ -10,6 +10,7 @@ import { announcementRoutes } from './modules/announcements/announcement.routes.
 import { assessmentRoutes } from './modules/assessments/assessment.routes.js';
 import { attendanceRoutes } from './modules/attendance/attendance.routes.js';
 import { authRoutes } from './modules/auth/auth.routes.js';
+import { adminRoutes } from './modules/admin/admin.routes.js';
 import { calendarRoutes } from './modules/calendar/calendar.routes.js';
 import { courseRoutes } from './modules/courses/course.routes.js';
 import { documentRoutes } from './modules/documents/document.routes.js';
@@ -49,6 +50,7 @@ app.get('/api/health', async (_req, res) => {
 app.use('/api/auth/login', loginLimiter);
 app.use('/api/auth', authRoutes);
 app.use('/api/me', meRoutes);
+app.use('/api/admin', adminRoutes);
 app.use('/api/materials', materialRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/courses', courseRoutes);
