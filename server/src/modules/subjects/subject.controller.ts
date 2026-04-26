@@ -101,6 +101,16 @@ export class SubjectController {
     res.json(await service.replyToSubmission(req.user, String(req.params.submissionId), req.body));
   }
 
+  async addSubmissionComment(req: Request, res: Response) {
+    if (!req.user) throw new HttpError(401, 'Usuario autenticado requerido.');
+    res.status(201).json(await service.addSubmissionComment(req.user, String(req.params.submissionId), req.body));
+  }
+
+  async deleteSubmissionComment(req: Request, res: Response) {
+    if (!req.user) throw new HttpError(401, 'Usuario autenticado requerido.');
+    res.json(await service.deleteSubmissionComment(req.user, String(req.params.commentId)));
+  }
+
   async deleteSubmissionFiles(req: Request, res: Response) {
     if (!req.user) throw new HttpError(401, 'Usuario autenticado requerido.');
     res.json(await service.deleteSubmissionFiles(req.user, String(req.params.submissionId), req.body));

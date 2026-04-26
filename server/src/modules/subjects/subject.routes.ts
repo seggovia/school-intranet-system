@@ -8,6 +8,7 @@ import { handleSubmissionUpload } from './submission-upload.middleware.js';
 import {
   assignmentIdParamSchema,
   createAssignmentSchema,
+  createSubmissionCommentSchema,
   createMaterialSchema,
   createSubjectSchema,
   createUnitSchema,
@@ -19,6 +20,7 @@ import {
   reviewSubmissionSchema,
   replySubmissionSchema,
   submissionFileIdParamSchema,
+  submissionCommentIdParamSchema,
   submissionIdParamSchema,
   unitIdParamSchema,
   uploadAssignmentSubmissionSchema,
@@ -54,6 +56,8 @@ assignmentReviewRoutes.use(authenticate);
 assignmentReviewRoutes.get('/assignments/:assignmentId/submissions', validateParams(assignmentIdParamSchema), asyncHandler(controller.listAssignmentSubmissions.bind(controller)));
 assignmentReviewRoutes.patch('/submissions/:submissionId/review', authorizeRoles('admin', 'director', 'teacher'), validateParams(submissionIdParamSchema), validateBody(reviewSubmissionSchema), asyncHandler(controller.reviewSubmission.bind(controller)));
 assignmentReviewRoutes.patch('/submissions/:submissionId/reply', authorizeRoles('student', 'guardian'), validateParams(submissionIdParamSchema), validateBody(replySubmissionSchema), asyncHandler(controller.replyToSubmission.bind(controller)));
+assignmentReviewRoutes.post('/submissions/:submissionId/comments', validateParams(submissionIdParamSchema), validateBody(createSubmissionCommentSchema), asyncHandler(controller.addSubmissionComment.bind(controller)));
+assignmentReviewRoutes.delete('/submission-comments/:commentId', validateParams(submissionCommentIdParamSchema), asyncHandler(controller.deleteSubmissionComment.bind(controller)));
 assignmentReviewRoutes.delete('/submissions/:submissionId/files', authorizeRoles('student', 'guardian'), validateParams(submissionIdParamSchema), validateBody(deleteSubmissionFilesSchema), asyncHandler(controller.deleteSubmissionFiles.bind(controller)));
 assignmentReviewRoutes.get('/submissions/:submissionId/download', validateParams(submissionIdParamSchema), asyncHandler(controller.downloadSubmission.bind(controller)));
 assignmentReviewRoutes.get('/submission-files/:fileId/download', validateParams(submissionFileIdParamSchema), asyncHandler(controller.downloadSubmissionFile.bind(controller)));

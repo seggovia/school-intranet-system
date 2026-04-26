@@ -29,6 +29,7 @@ model User {
   unitMaterials  UnitMaterial[]  @relation("UnitMaterialOwner")
   submissions    AssignmentSubmission[] @relation("SubmissionAuthor")
   reviewedSubmissions AssignmentSubmission[] @relation("SubmissionReviewer")
+  submissionComments SubmissionComment[] @relation("SubmissionCommentAuthor")
 }
 
 model Role {
@@ -202,9 +203,22 @@ model AssignmentSubmission {
   author       User       @relation("SubmissionAuthor", fields: [authorId], references: [id])
   reviewedBy   User?      @relation("SubmissionReviewer", fields: [reviewedById], references: [id])
   files        SubmissionFile[]
+  comments     SubmissionComment[]
 
   @@unique([assignmentId, studentId])
   @@map("assignment_submissions")
+}
+
+model SubmissionComment {
+  id           String               @id @default(cuid())
+  submissionId String
+  authorId     String
+  body         String               @db.Text
+  createdAt    DateTime             @default(now())
+  submission   AssignmentSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  author       User                 @relation("SubmissionCommentAuthor", fields: [authorId], references: [id])
+
+  @@map("submission_comments")
 }
 
 model SubmissionFile {

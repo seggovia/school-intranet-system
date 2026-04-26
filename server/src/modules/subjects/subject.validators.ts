@@ -29,6 +29,10 @@ export const submissionFileIdParamSchema = z.object({
   fileId: z.string().trim().min(1)
 });
 
+export const submissionCommentIdParamSchema = z.object({
+  commentId: z.string().trim().min(1)
+});
+
 export const createUnitSchema = z.object({
   title: z.string().trim().min(2).max(120),
   description: z.string().trim().min(2).max(3000),
@@ -90,6 +94,10 @@ export const reviewSubmissionSchema = z.object({
 
 export const replySubmissionSchema = z.object({
   comment: z.string().trim().max(4000).nullable().optional()
+});
+
+export const createSubmissionCommentSchema = z.object({
+  body: z.string().trim().min(1).max(4000)
 });
 
 export const deleteSubmissionFilesSchema = z.object({

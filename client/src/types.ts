@@ -129,6 +129,7 @@ export interface AssignmentSubmissionItem {
   status: string;
   grade?: number | null;
   commentThread?: { teacher?: string | null; student?: string | null };
+  comments?: Array<{ id: string; body: string; authorId: string; author: string; createdAt?: string | null }>;
   reviewedAt?: string | null;
   reviewedBy?: string | null;
   submittedAt: string;

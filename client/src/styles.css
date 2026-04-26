@@ -222,7 +222,7 @@ select {
   padding: 12px clamp(18px, 2.5vw, 34px);
   color: #ffffff;
   background: linear-gradient(180deg, #0f2f4a 0%, #102a43 48%, #0b2238 100%);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 0;
   box-shadow: 0 12px 28px rgba(16, 42, 67, 0.18);
 }
 
@@ -1146,8 +1146,8 @@ th {
 
 .classroom-sticky-nav {
   position: sticky;
-  top: 78px;
-  z-index: 18;
+  top: 101px;
+  z-index: 19;
   box-shadow: 0 8px 18px rgba(16, 42, 67, 0.18);
 }
 
@@ -1286,10 +1286,10 @@ th {
 
 .classroom-index {
   position: sticky;
-  top: 200px;
-  height: calc(100vh - 200px);
+  top: 224px;
+  height: calc(100vh - 224px);
   overflow-y: auto;
-  overflow-x: hidden;
+  overflow-x: visible;
   display: grid;
   gap: 6px;
   align-content: start;
@@ -1313,9 +1313,11 @@ th {
   padding: 0 14px;
   border-bottom: 1px solid #d6dde5;
   background: #ffffff;
+  overflow: visible;
 }
 
 .index-header button {
+  position: relative;
   grid-column: 2;
   grid-row: 1;
   min-height: 34px;
@@ -1324,6 +1326,33 @@ th {
   border-radius: 999px;
   background: #edf2f6;
   color: #314254;
+}
+
+.index-header button::after {
+  position: absolute;
+  top: 50%;
+  left: calc(100% + 10px);
+  z-index: 1000;
+  transform: translateY(-50%);
+  content: attr(data-tooltip);
+  pointer-events: none;
+  white-space: nowrap;
+  padding: 7px 9px;
+  border-radius: 6px;
+  color: #ffffff;
+  background: #102a43;
+  font-size: 0.78rem;
+  font-weight: 800;
+  opacity: 0;
+  visibility: hidden;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.2);
+  transition: none;
+}
+
+.index-header button:hover::after,
+.index-header button:focus-visible::after {
+  opacity: 1;
+  visibility: visible;
 }
 
 .index-header strong {
@@ -1387,6 +1416,7 @@ th {
 
 .index-collapsed .classroom-index {
   padding: 0 8px 18px;
+  overflow: visible;
 }
 
 .index-collapsed .index-header {
@@ -1955,12 +1985,8 @@ th {
 }
 
 .submission-comments-cell {
-  display: grid;
-  gap: 8px;
-}
-
-.submission-comments-cell textarea {
-  width: 100%;
+  color: #314254;
+  font-weight: 800;
 }
 
 .teacher-submission-list {
@@ -2093,7 +2119,7 @@ th {
 .submission-file-editor,
 .submission-comment-thread {
   display: grid;
-  gap: 10px;
+  gap: 12px;
   padding: 14px;
   border: 1px solid #dbe3ea;
   border-radius: 8px;
@@ -2113,6 +2139,100 @@ th {
 
 .submission-comment-thread p {
   margin: 0;
+}
+
+.comment-thread-title {
+  display: flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 10px;
+  border-left: 4px solid #1f4e5f;
+  color: #102a43;
+  background: #eef6f7;
+}
+
+.comment-list {
+  display: grid;
+  gap: 10px;
+}
+
+.comment-item {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid #dbe3ea;
+  border-radius: 8px;
+  background: #ffffff;
+  transition: transform 180ms ease, opacity 180ms ease, max-height 180ms ease, padding 180ms ease, margin 180ms ease;
+}
+
+.comment-item.comment-removing {
+  max-height: 0;
+  margin: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  opacity: 0;
+  transform: translateX(36px);
+  overflow: hidden;
+}
+
+.comment-avatar {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  color: #075985;
+  background: #e0f2fe;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.comment-item header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.comment-item header strong {
+  color: #0f172a;
+}
+
+.comment-item header span {
+  color: #617282;
+  font-size: 0.82rem;
+}
+
+.comment-item header button {
+  width: 30px;
+  min-height: 30px;
+  margin-left: auto;
+  padding: 0;
+  color: #991b1b;
+  background: transparent;
+}
+
+.comment-item p {
+  margin-top: 4px;
+  color: #314254;
+  white-space: pre-wrap;
+}
+
+.comment-compose {
+  display: grid;
+  gap: 8px;
+}
+
+.comment-compose textarea {
+  width: 100%;
+}
+
+.comment-compose div {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .profile-hero {

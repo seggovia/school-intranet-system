@@ -89,10 +89,25 @@ function serializeSubmission(submission: any) {
       teacher: submission.teacherComment ?? submission.feedback ?? null,
       student: submission.studentReply ?? null
     },
+    comments: (submission.comments ?? []).map((comment: any) => ({
+      id: comment.id,
+      body: comment.body,
+      authorId: comment.authorId,
+      author: comment.author?.name ?? 'Usuario',
+      createdAt: comment.createdAt?.toISOString?.() ?? null
+    })),
     reviewedAt: submission.reviewedAt?.toISOString() ?? null,
     reviewedBy: submission.reviewedBy?.name ?? null,
     submittedAt: submission.submittedAt.toISOString()
   };
+}
+
+function canAccessSubmission(user: JwtUser, submission: any) {
+  const subject = submission.assignment.unit.subject;
+  const canReview = hasSubjectManagementAccess(user, subject);
+  const isOwnStudent = user.roles.includes('student') && submission.student.userId === user.id;
+  const isGuardian = user.roles.includes('guardian') && submission.student.guardians.some((guardian: any) => guardian.guardian.userId === user.id);
+  return { canReview, isOwnStudent, isGuardian, canAccess: canReview || isOwnStudent || isGuardian };
 }
 
 function serializeAssignment(assignment: any, user?: JwtUser) {
@@ -495,23 +510,55 @@ export class SubjectService {
     if (!hasSubjectManagementAccess(user, submission.assignment.unit.subject)) throw new HttpError(403, 'No tienes permisos para revisar esta entrega.');
     const updated = await repository.reviewSubmission(submissionId, {
       grade: input.grade ?? null,
-      teacherComment: input.comment ?? null,
+      teacherComment: input.comment?.trim() || submission.teacherComment || null,
       status: input.status,
       reviewedById: user.id,
       reviewedAt: new Date()
     });
-    return serializeSubmission(updated);
+    if (input.comment?.trim()) {
+      await repository.createSubmissionComment({
+        submissionId,
+        authorId: user.id,
+        body: input.comment.trim()
+      });
+    }
+    const refreshed = await repository.findSubmissionWithScope(submissionId);
+    return serializeSubmission(refreshed ?? updated);
   }
 
   async replyToSubmission(user: JwtUser, submissionId: string, input: { comment?: string | null }) {
     const submission = await repository.findSubmissionWithScope(submissionId);
     if (!submission) throw new HttpError(404, 'Entrega no encontrada.');
-    const isOwnStudent = user.roles.includes('student') && submission.student.userId === user.id;
-    const isGuardian = user.roles.includes('guardian') && submission.student.guardians.some((guardian: any) => guardian.guardian.userId === user.id);
+    const { isOwnStudent, isGuardian } = canAccessSubmission(user, submission);
     if (!isOwnStudent && !isGuardian) throw new HttpError(403, 'No tienes permisos para responder este comentario.');
     if (submission.assignment.status === 'cerrado' || isLate(submission.assignment)) throw new HttpError(409, 'Este buzon esta cerrado.');
-    const updated = await repository.updateSubmissionReply(submissionId, input.comment?.trim() || null);
-    return serializeSubmission(updated);
+    const body = input.comment?.trim();
+    if (!body) throw new HttpError(400, 'El comentario no puede estar vacio.');
+    await repository.updateSubmissionReply(submissionId, body);
+    await repository.createSubmissionComment({ submissionId, authorId: user.id, body });
+    const refreshed = await repository.findSubmissionWithScope(submissionId);
+    return serializeSubmission(refreshed);
+  }
+
+  async addSubmissionComment(user: JwtUser, submissionId: string, input: { body: string }) {
+    const submission = await repository.findSubmissionWithScope(submissionId);
+    if (!submission) throw new HttpError(404, 'Entrega no encontrada.');
+    const { canAccess } = canAccessSubmission(user, submission);
+    if (!canAccess) throw new HttpError(403, 'No tienes permisos para comentar esta entrega.');
+    const body = input.body.trim();
+    if (!body) throw new HttpError(400, 'El comentario no puede estar vacio.');
+    await repository.createSubmissionComment({ submissionId, authorId: user.id, body });
+    const refreshed = await repository.findSubmissionWithScope(submissionId);
+    return serializeSubmission(refreshed);
+  }
+
+  async deleteSubmissionComment(user: JwtUser, commentId: string) {
+    const comment = await repository.findSubmissionCommentWithScope(commentId);
+    if (!comment) throw new HttpError(404, 'Comentario no encontrado.');
+    const { canReview } = canAccessSubmission(user, comment.submission);
+    if (comment.authorId !== user.id && !canReview) throw new HttpError(403, 'No tienes permisos para borrar este comentario.');
+    await repository.deleteSubmissionComment(commentId);
+    return { ok: true };
   }
 
   async downloadSubmission(user: JwtUser, submissionId: string) {

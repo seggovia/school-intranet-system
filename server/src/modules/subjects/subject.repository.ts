@@ -1,5 +1,19 @@
 import { prisma } from '../../config/db.js';
 
+const submissionInclude = {
+  files: true,
+  comments: { include: { author: true }, orderBy: { createdAt: 'asc' as const } },
+  student: { include: { user: true, guardians: { include: { guardian: true } } } },
+  reviewedBy: true
+};
+
+const submissionListInclude = {
+  files: true,
+  comments: { include: { author: true }, orderBy: { createdAt: 'asc' as const } },
+  student: { include: { user: true } },
+  reviewedBy: true
+};
+
 export class SubjectRepository {
   list() {
     return prisma.subject.findMany({
@@ -36,7 +50,7 @@ export class SubjectRepository {
         units: {
           include: {
             materials: { include: { owner: true }, orderBy: { createdAt: 'asc' } },
-            assignments: { include: { submissions: { include: { files: true, student: { include: { user: true, guardians: { include: { guardian: true } } } }, reviewedBy: true } } }, orderBy: { createdAt: 'asc' } }
+            assignments: { include: { submissions: { include: submissionInclude } }, orderBy: { createdAt: 'asc' } }
           },
           orderBy: { order: 'asc' }
         },
@@ -52,7 +66,7 @@ export class SubjectRepository {
   createUnit(input: { subjectId: string; title: string; description: string; duration?: string; outcomes: string[]; bibliography: string[]; order: number }) {
     return prisma.subjectUnit.create({
       data: input,
-      include: { materials: { include: { owner: true } }, assignments: { include: { submissions: { include: { files: true, student: { include: { user: true, guardians: { include: { guardian: true } } } }, reviewedBy: true } } } } }
+      include: { materials: { include: { owner: true } }, assignments: { include: { submissions: { include: submissionInclude } } } }
     });
   }
 
@@ -60,7 +74,7 @@ export class SubjectRepository {
     return prisma.subjectUnit.update({
       where: { id },
       data: input,
-      include: { materials: { include: { owner: true } }, assignments: { include: { submissions: { include: { files: true, student: { include: { user: true, guardians: { include: { guardian: true } } } }, reviewedBy: true } } } } }
+      include: { materials: { include: { owner: true } }, assignments: { include: { submissions: { include: submissionInclude } } } }
     });
   }
 
@@ -88,7 +102,7 @@ export class SubjectRepository {
     return prisma.assignment.update({
       where: { id },
       data: input,
-      include: { submissions: { include: { files: true, student: { include: { user: true, guardians: { include: { guardian: true } } } }, reviewedBy: true } } }
+      include: { submissions: { include: submissionInclude } }
     });
   }
 
@@ -96,7 +110,7 @@ export class SubjectRepository {
     return prisma.assignment.update({
       where: { id },
       data: { status },
-      include: { submissions: { include: { files: true, student: { include: { user: true, guardians: { include: { guardian: true } } } }, reviewedBy: true } } }
+      include: { submissions: { include: submissionInclude } }
     });
   }
 
@@ -168,7 +182,7 @@ export class SubjectRepository {
         comment: input.comment,
         status: 'entregado'
       },
-      include: { files: true, student: { include: { user: true } }, reviewedBy: true }
+      include: submissionListInclude
     });
     if (input.files?.length) {
       await prisma.submissionFile.createMany({
@@ -183,14 +197,14 @@ export class SubjectRepository {
     }
     return prisma.assignmentSubmission.findUniqueOrThrow({
       where: { id: submission.id },
-      include: { files: true, student: { include: { user: true } }, reviewedBy: true }
+      include: submissionListInclude
     });
   }
 
   findSubmission(assignmentId: string, studentId: string) {
     return prisma.assignmentSubmission.findUnique({
       where: { assignmentId_studentId: { assignmentId, studentId } },
-      include: { files: true }
+      include: { files: true, comments: { include: { author: true }, orderBy: { createdAt: 'asc' } } }
     });
   }
 
@@ -198,7 +212,7 @@ export class SubjectRepository {
     return prisma.assignment.findUnique({
       where: { id: assignmentId },
       include: {
-        submissions: { include: { files: true, student: { include: { user: true } }, reviewedBy: true } },
+        submissions: { include: submissionListInclude },
         unit: {
           include: {
             subject: {
@@ -237,6 +251,7 @@ export class SubjectRepository {
       where: { id: submissionId },
       include: {
         files: true,
+        comments: { include: { author: true }, orderBy: { createdAt: 'asc' } },
         student: { include: { user: true, guardians: { include: { guardian: true } } } },
         reviewedBy: true,
         assignment: {
@@ -278,7 +293,7 @@ export class SubjectRepository {
     return prisma.assignmentSubmission.update({
       where: { id: submissionId },
       data: input,
-      include: { files: true, student: { include: { user: true } }, reviewedBy: true }
+      include: submissionListInclude
     });
   }
 
@@ -286,7 +301,49 @@ export class SubjectRepository {
     return prisma.assignmentSubmission.update({
       where: { id: submissionId },
       data: { studentReply },
-      include: { files: true, student: { include: { user: true } }, reviewedBy: true }
+      include: submissionListInclude
+    });
+  }
+
+  createSubmissionComment(input: { submissionId: string; authorId: string; body: string }) {
+    return prisma.submissionComment.create({
+      data: input,
+      include: { author: true }
+    });
+  }
+
+  deleteSubmissionComment(commentId: string) {
+    return prisma.submissionComment.delete({ where: { id: commentId } });
+  }
+
+  findSubmissionCommentWithScope(commentId: string) {
+    return prisma.submissionComment.findUnique({
+      where: { id: commentId },
+      include: {
+        author: true,
+        submission: {
+          include: {
+            files: true,
+            comments: { include: { author: true }, orderBy: { createdAt: 'asc' } },
+            student: { include: { user: true, guardians: { include: { guardian: true } } } },
+            reviewedBy: true,
+            assignment: {
+              include: {
+                unit: {
+                  include: {
+                    subject: {
+                      include: {
+                        teachers: { include: { teacher: true } },
+                        sections: { include: { section: { include: { headTeacher: true, enrollments: { include: { student: { include: { guardians: { include: { guardian: true } } } } } } } } } }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     });
   }
 

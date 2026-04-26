@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { BookOpen, CalendarDays, ChevronLeft, ChevronRight, ClipboardCheck, Clock, Download, Edit3, ExternalLink, FileArchive, FileSpreadsheet, FileText, Inbox, Link as LinkIcon, MapPin, Megaphone, MessageSquare, PencilRuler, Plus, Presentation, Trash2, Upload, UserRound, Users } from 'lucide-react';
-import { createSubjectUnit, createUnitAssignment, deleteAssignmentSubmission, deleteSubmissionFiles, deleteSubjectUnit, deleteUnitAssignment, deleteUnitMaterial, downloadAssignmentSubmission, downloadSubmissionFile as downloadSubmissionFileApi, downloadUnitMaterial, loadAssignmentSubmissions, loadSubjectDetail, replyAssignmentSubmission, reviewAssignmentSubmission, updateSubjectUnit, updateUnitAssignment, updateUnitAssignmentStatus, uploadAssignmentSubmissionFiles, uploadUnitMaterial } from '../api';
+import { addSubmissionComment, createSubjectUnit, createUnitAssignment, deleteAssignmentSubmission, deleteSubmissionComment, deleteSubmissionFiles, deleteSubjectUnit, deleteUnitAssignment, deleteUnitMaterial, downloadAssignmentSubmission, downloadSubmissionFile as downloadSubmissionFileApi, downloadUnitMaterial, loadAssignmentSubmissions, loadSubjectDetail, reviewAssignmentSubmission, updateSubjectUnit, updateUnitAssignment, updateUnitAssignmentStatus, uploadAssignmentSubmissionFiles, uploadUnitMaterial } from '../api';
 import { EmptyState, ErrorState, LoadingState } from '../components/States';
 import { useAsyncData } from '../hooks';
 import type { AssignmentSubmissionReviewRow, DocumentItem, SubjectDetailData, SubjectUnit, UnitAssignment, UnitContentItem, User } from '../types';
@@ -271,6 +271,74 @@ function AssignmentBoxRow({
   );
 }
 
+function SubmissionComments({
+  comments,
+  canWrite,
+  onAdd,
+  onDelete
+}: {
+  comments: NonNullable<AssignmentSubmissionReviewRow['submission']>['comments'];
+  canWrite: boolean;
+  onAdd: (body: string) => Promise<void> | void;
+  onDelete: (commentId: string) => Promise<void> | void;
+}) {
+  const [draft, setDraft] = useState('');
+  const [removing, setRemoving] = useState<string[]>([]);
+  const safeComments = comments ?? [];
+
+  async function submitComment(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const body = draft.trim();
+    if (!body) return;
+    await onAdd(body);
+    setDraft('');
+  }
+
+  async function removeComment(commentId: string) {
+    setRemoving((current) => [...current, commentId]);
+    window.setTimeout(async () => {
+      await onDelete(commentId);
+      setRemoving((current) => current.filter((id) => id !== commentId));
+    }, 220);
+  }
+
+  return (
+    <div className="submission-comment-thread">
+      <div className="comment-thread-title">
+        <strong>Comentarios ({safeComments.length})</strong>
+      </div>
+      {safeComments.length ? (
+        <div className="comment-list">
+          {safeComments.map((comment) => (
+            <article key={comment.id} className={`comment-item ${removing.includes(comment.id) ? 'comment-removing' : ''}`}>
+              <div className="comment-avatar">{comment.author.slice(0, 2).toUpperCase()}</div>
+              <div>
+                <header>
+                  <strong>{comment.author}</strong>
+                  <span>{comment.createdAt ? formatDateTime(comment.createdAt) : ''}</span>
+                  <button type="button" aria-label="Borrar comentario" onClick={() => removeComment(comment.id)}><Trash2 size={15} /></button>
+                </header>
+                <p>{comment.body}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <p className="assignment-muted">Sin comentarios.</p>
+      )}
+      {canWrite && (
+        <form className="comment-compose" onSubmit={submitComment}>
+          <textarea rows={3} value={draft} placeholder="Agregar un comentario..." onChange={(event) => setDraft(event.target.value)} />
+          <div>
+            <button type="button" className="text-button" onClick={() => setDraft('')}>Cancelar</button>
+            <button type="submit" className="secondary-button" disabled={!draft.trim()}>Guardar comentario</button>
+          </div>
+        </form>
+      )}
+    </div>
+  );
+}
+
 function AssignmentDetail({
   assignment,
   canEdit,
@@ -284,7 +352,8 @@ function AssignmentDetail({
   onDeleteAssignment,
   onDeleteSubmission,
   onDeleteSubmissionFiles,
-  onReplySubmission
+  onAddSubmissionComment,
+  onDeleteSubmissionComment
 }: {
   assignment: UnitAssignment;
   canEdit: boolean;
@@ -298,13 +367,13 @@ function AssignmentDetail({
   onDeleteAssignment: (assignment: UnitAssignment) => void;
   onDeleteSubmission: (assignment: UnitAssignment) => void;
   onDeleteSubmissionFiles: (assignment: UnitAssignment, fileIds: string[]) => void;
-  onReplySubmission: (assignment: UnitAssignment, comment: string) => void;
+  onAddSubmissionComment: (assignment: UnitAssignment, comment: string) => Promise<void> | void;
+  onDeleteSubmissionComment: (commentId: string) => Promise<void> | void;
 }) {
   const tone = isAssignmentClosed(assignment) ? 'closed' : dueTone(assignment.dueDate);
   const isClosed = isAssignmentClosed(assignment);
   const ownSubmission = assignment.submissionItems?.[0];
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
-  const [replyText, setReplyText] = useState(ownSubmission?.commentThread?.student ?? '');
   const [editingDelivery, setEditingDelivery] = useState(false);
 
   if (isClosed && !canEdit) {
@@ -348,15 +417,16 @@ function AssignmentDetail({
             <span>Tiempo restante</span><strong>{isClosed ? 'El buzon ya cerro' : `Disponible hasta ${formatDateTime(assignment.dueDate)}`}</strong>
             <span>Archivos enviados</span><strong>{ownSubmission?.files?.map((file) => file.originalName).join(', ') || ownSubmission?.originalName || 'Sin archivo enviado'}</strong>
             <span>Comentarios</span>
-            <strong className="submission-comments-cell">
-              <span><b>Profesor:</b> {ownSubmission?.commentThread?.teacher || 'Sin comentario del docente'}</span>
-              {ownSubmission?.comment && <span><b>Entrega:</b> {ownSubmission.comment}</span>}
-              <label>Respuesta del estudiante
-                <textarea value={replyText} disabled={isClosed || !ownSubmission} rows={3} onChange={(event) => setReplyText(event.target.value)} />
-              </label>
-              {!isClosed && ownSubmission && <button className="secondary-button" onClick={() => onReplySubmission(assignment, replyText)}>Guardar respuesta</button>}
-            </strong>
+            <strong className="submission-comments-cell">{ownSubmission?.comments?.length ?? 0} comentario(s)</strong>
           </div>
+          {ownSubmission && (
+            <SubmissionComments
+              comments={ownSubmission.comments}
+              canWrite={!isClosed}
+              onAdd={(body) => onAddSubmissionComment(assignment, body)}
+              onDelete={onDeleteSubmissionComment}
+            />
+          )}
         </>
       )}
       {canSubmit && !editingDelivery && (
@@ -596,6 +666,7 @@ function ReviewSubmissionsModal({
                 <strong>{row.student}</strong>
                 <span className={`review-badge ${reviewStatusClass(row.status)}`}>{reviewStatusLabel(row.status)}</span>
                 <small>{row.submission?.originalName ?? 'Sin archivo entregado'}</small>
+                {row.submission && <small>{row.submission.comments?.length ?? 0} comentario(s)</small>}
               </div>
               <label>Estado
                 <select name="status" defaultValue={row.submission?.status === 'enviado' ? 'entregado' : row.status} disabled={!row.submission}>
@@ -610,7 +681,7 @@ function ReviewSubmissionsModal({
                 <input name="grade" type="number" min="1" max="7" step="0.1" defaultValue={row.submission?.grade ?? ''} placeholder="1.0 - 7.0" disabled={!row.submission} />
               </label>
               <label className="review-feedback-field">Comentario
-                <textarea name="comment" rows={3} defaultValue={row.submission?.commentThread?.teacher ?? ''} placeholder="Comentario para el estudiante" disabled={!row.submission} />
+                <textarea name="comment" rows={3} placeholder="Agregar comentario para este estudiante" disabled={!row.submission} />
               </label>
               <div className="review-row-actions">
                 <button type="button" className="secondary-button" onClick={() => onDownload(row)} disabled={!row.submission}>
@@ -679,7 +750,8 @@ function UnitContent({
   onDeleteAssignment,
   onDeleteSubmission,
   onDeleteSubmissionFiles,
-  onReplySubmission,
+  onAddSubmissionComment,
+  onDeleteSubmissionComment,
   onSubmitAssignment,
   onEditUnit,
   onDeleteUnit,
@@ -701,7 +773,8 @@ function UnitContent({
   onDeleteAssignment: (assignment: UnitAssignment) => void;
   onDeleteSubmission: (assignment: UnitAssignment) => void;
   onDeleteSubmissionFiles: (assignment: UnitAssignment, fileIds: string[]) => void;
-  onReplySubmission: (assignment: UnitAssignment, comment: string) => void;
+  onAddSubmissionComment: (assignment: UnitAssignment, comment: string) => Promise<void> | void;
+  onDeleteSubmissionComment: (commentId: string) => Promise<void> | void;
   onSubmitAssignment: (assignment: UnitAssignment) => void;
   onEditUnit: (unit: SubjectUnit) => void;
   onDeleteUnit: (unit: SubjectUnit) => void;
@@ -792,7 +865,8 @@ function UnitContent({
             onDeleteAssignment={onDeleteAssignment}
             onDeleteSubmission={onDeleteSubmission}
             onDeleteSubmissionFiles={onDeleteSubmissionFiles}
-            onReplySubmission={onReplySubmission}
+            onAddSubmissionComment={onAddSubmissionComment}
+            onDeleteSubmissionComment={onDeleteSubmissionComment}
           />
         ) : assignments.length ? (
           <div className="assignment-box-list">
@@ -1011,16 +1085,29 @@ export function SubjectDetailPage({ user }: { user: User }) {
     });
   }
 
-  async function replyToSubmissionComment(assignment: UnitAssignment, comment: string) {
+  async function addSubmissionThreadComment(assignment: UnitAssignment, comment: string) {
     const submission = assignment.submissionItems?.[0];
     if (!submission) return;
     setSaving(true);
     try {
-      await replyAssignmentSubmission(submission.id, comment.trim() || null);
-      showNotice('Respuesta guardada.');
+      await addSubmissionComment(submission.id, comment.trim());
+      showNotice('Comentario guardado.');
       reloadDetail();
     } catch {
-      showNotice('No se pudo guardar la respuesta.');
+      showNotice('No se pudo guardar el comentario.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function deleteSubmissionThreadComment(commentId: string) {
+    setSaving(true);
+    try {
+      await deleteSubmissionComment(commentId);
+      showNotice('Comentario eliminado.');
+      reloadDetail();
+    } catch {
+      showNotice('No se pudo eliminar el comentario.');
     } finally {
       setSaving(false);
     }
@@ -1231,7 +1318,7 @@ export function SubjectDetailPage({ user }: { user: User }) {
           <div className="index-header">
             <button
               aria-label={indexCollapsed ? 'Abrir indice' : 'Cerrar indice'}
-              title={indexCollapsed ? 'Abrir indice' : 'Cerrar indice'}
+              data-tooltip={indexCollapsed ? 'Abrir indice' : 'Cerrar indice'}
               onClick={() => setIndexCollapsed((value) => !value)}
             >
               {indexCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
@@ -1329,7 +1416,8 @@ export function SubjectDetailPage({ user }: { user: User }) {
                   onDeleteAssignment={deleteAssignment}
                   onDeleteSubmission={removeSubmission}
                   onDeleteSubmissionFiles={removeSubmissionFiles}
-                  onReplySubmission={replyToSubmissionComment}
+                  onAddSubmissionComment={addSubmissionThreadComment}
+                  onDeleteSubmissionComment={deleteSubmissionThreadComment}
                   onSubmitAssignment={sendSubmission}
                   onEditUnit={editUnit}
                   onDeleteUnit={deleteUnit}
