@@ -124,9 +124,21 @@ export interface AssignmentSubmissionItem {
   student: string;
   fileUrl?: string | null;
   originalName?: string | null;
+  files?: Array<{ id: string; originalName: string; mimeType?: string | null; size?: number | null; createdAt?: string | null }>;
   comment?: string | null;
   status: string;
+  grade?: number | null;
+  commentThread?: { teacher?: string | null; student?: string | null };
+  reviewedAt?: string | null;
+  reviewedBy?: string | null;
   submittedAt: string;
+}
+
+export interface AssignmentSubmissionReviewRow {
+  studentId: string;
+  student: string;
+  status: string;
+  submission: AssignmentSubmissionItem | null;
 }
 
 export interface UnitAssignment {
@@ -217,6 +229,20 @@ export interface RoleDashboard {
   linkedStudents: { id: string; name: string; relationship: string }[];
   announcements: { id: string; title: string; priority: string }[];
   documents: DocumentItem[];
+}
+
+export interface UserProfileData {
+  id: string;
+  name: string;
+  email: string;
+  avatar: string;
+  department: string;
+  roles: Role[];
+  timezone: string;
+  lastAccess: string;
+  courses: Array<{ id: string; name: string; classroom: string; students: number }>;
+  subjects: Array<{ id: string; name: string; code: string; section: string }>;
+  linkedStudents: Array<{ id: string; name: string; relationship: string }>;
 }
 
 export interface Student {

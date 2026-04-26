@@ -14,6 +14,7 @@ import { AttendancePage } from './pages/AttendancePage';
 import { GradesPage } from './pages/GradesPage';
 import { SubjectDetailPage } from './pages/SubjectDetailPage';
 import { AdminPage } from './pages/AdminPage';
+import { ProfilePage } from './pages/ProfilePage';
 
 export function App() {
   const [session, setSession] = useState<AuthSession | null>(() => {
@@ -58,6 +59,7 @@ export function App() {
         <Route path="/documentos" element={<DocumentsPage user={auth.user!} />} />
         <Route path="/solicitudes" element={<RequestsPage user={auth.user!} />} />
         <Route path="/admin" element={<AdminPage user={auth.user!} />} />
+        <Route path="/perfil" element={<ProfilePage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Shell>

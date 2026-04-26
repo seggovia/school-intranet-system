@@ -9,7 +9,7 @@ import { submissionsUploadDir } from '../../shared/upload-paths.js';
 const maxFileSize = 25 * 1024 * 1024;
 const uploadDir = submissionsUploadDir();
 
-const allowedExtensions = new Set(['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.zip', '.rar']);
+const allowedExtensions = new Set(['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.zip', '.rar', '.png', '.jpg', '.jpeg']);
 const allowedMimeTypes = new Set([
   'application/pdf',
   'application/msword',
@@ -22,6 +22,8 @@ const allowedMimeTypes = new Set([
   'application/x-zip-compressed',
   'application/vnd.rar',
   'application/x-rar-compressed',
+  'image/png',
+  'image/jpeg',
   'application/octet-stream'
 ]);
 
@@ -61,7 +63,7 @@ const upload = multer({
 });
 
 export function handleSubmissionUpload(req: Request, res: Response, next: NextFunction) {
-  upload.single('file')(req, res, (error) => {
+  upload.fields([{ name: 'file', maxCount: 1 }, { name: 'files', maxCount: 10 }])(req, res, (error) => {
     if (!error) {
       next();
       return;

@@ -75,11 +75,46 @@ export class SubjectController {
 
   async uploadAssignment(req: Request, res: Response) {
     if (!req.user) throw new HttpError(401, 'Usuario autenticado requerido.');
-    res.status(201).json(await service.uploadAssignment(req.user, String(req.params.assignmentId), { ...req.body, file: req.file }));
+    const files = req.files && !Array.isArray(req.files)
+      ? [...(req.files.file ?? []), ...(req.files.files ?? [])]
+      : [];
+    res.status(201).json(await service.uploadAssignment(req.user, String(req.params.assignmentId), { ...req.body, files }));
   }
 
   async deleteSubmission(req: Request, res: Response) {
     if (!req.user) throw new HttpError(401, 'Usuario autenticado requerido.');
     res.json(await service.deleteSubmission(req.user, String(req.params.assignmentId), req.body));
+  }
+
+  async listAssignmentSubmissions(req: Request, res: Response) {
+    if (!req.user) throw new HttpError(401, 'Usuario autenticado requerido.');
+    res.json(await service.listAssignmentSubmissions(req.user, String(req.params.assignmentId)));
+  }
+
+  async reviewSubmission(req: Request, res: Response) {
+    if (!req.user) throw new HttpError(401, 'Usuario autenticado requerido.');
+    res.json(await service.reviewSubmission(req.user, String(req.params.submissionId), req.body));
+  }
+
+  async replyToSubmission(req: Request, res: Response) {
+    if (!req.user) throw new HttpError(401, 'Usuario autenticado requerido.');
+    res.json(await service.replyToSubmission(req.user, String(req.params.submissionId), req.body));
+  }
+
+  async deleteSubmissionFiles(req: Request, res: Response) {
+    if (!req.user) throw new HttpError(401, 'Usuario autenticado requerido.');
+    res.json(await service.deleteSubmissionFiles(req.user, String(req.params.submissionId), req.body));
+  }
+
+  async downloadSubmission(req: Request, res: Response) {
+    if (!req.user) throw new HttpError(401, 'Usuario autenticado requerido.');
+    const file = await service.downloadSubmission(req.user, String(req.params.submissionId));
+    res.download(file.absolutePath, file.filename);
+  }
+
+  async downloadSubmissionFile(req: Request, res: Response) {
+    if (!req.user) throw new HttpError(401, 'Usuario autenticado requerido.');
+    const file = await service.downloadSubmissionFile(req.user, String(req.params.fileId));
+    res.download(file.absolutePath, file.filename);
   }
 }

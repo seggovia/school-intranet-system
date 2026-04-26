@@ -20,7 +20,7 @@ import { notificationRoutes } from './modules/notifications/notification.routes.
 import { requestRoutes } from './modules/requests/request.routes.js';
 import { schoolRoutes } from './modules/school/school.routes.js';
 import { sectionRoutes } from './modules/sections/section.routes.js';
-import { subjectRoutes } from './modules/subjects/subject.routes.js';
+import { assignmentReviewRoutes, subjectRoutes } from './modules/subjects/subject.routes.js';
 import { userRoutes } from './modules/users/user.routes.js';
 
 export const app = express();
@@ -52,6 +52,7 @@ app.use('/api/me', meRoutes);
 app.use('/api/materials', materialRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/courses', courseRoutes);
+app.use('/api', assignmentReviewRoutes);
 app.use('/api/subjects', subjectRoutes);
 app.use('/api/sections', sectionRoutes);
 app.use('/api/assessments', assessmentRoutes);

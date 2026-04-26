@@ -54,7 +54,45 @@ function studentIdsForUser(user: JwtUser, subject: any) {
 function visibleSubmissionsForUser(user: JwtUser | undefined, submissions: any[]) {
   if (!user || user.roles.some((role) => ['admin', 'director', 'teacher', 'inspector'].includes(role))) return submissions;
   if (user.roles.includes('student')) return submissions.filter((submission) => submission.student.userId === user.id);
+  if (user.roles.includes('guardian')) return submissions.filter((submission) => submission.student.guardians?.some((guardian: any) => guardian.guardian.userId === user.id));
   return submissions;
+}
+
+function serializeSubmission(submission: any) {
+  const files = [
+    ...(submission.files ?? []).map((file: any) => ({
+      id: file.id,
+      originalName: file.originalName,
+      mimeType: file.mimeType,
+      size: file.size,
+      createdAt: file.createdAt?.toISOString?.() ?? null
+    })),
+    ...(!submission.files?.length && submission.storagePath ? [{
+      id: submission.id,
+      originalName: submission.originalName ?? 'entrega',
+      mimeType: null,
+      size: null,
+      createdAt: submission.submittedAt?.toISOString?.() ?? null
+    }] : [])
+  ];
+  return {
+    id: submission.id,
+    studentId: submission.studentId,
+    student: submission.student.user.name,
+    fileUrl: submission.fileUrl,
+    comment: submission.comment,
+    status: submission.status === 'enviado' ? 'entregado' : submission.status,
+    originalName: submission.originalName,
+    files,
+    grade: submission.grade,
+    commentThread: {
+      teacher: submission.teacherComment ?? submission.feedback ?? null,
+      student: submission.studentReply ?? null
+    },
+    reviewedAt: submission.reviewedAt?.toISOString() ?? null,
+    reviewedBy: submission.reviewedBy?.name ?? null,
+    submittedAt: submission.submittedAt.toISOString()
+  };
 }
 
 function serializeAssignment(assignment: any, user?: JwtUser) {
@@ -67,17 +105,32 @@ function serializeAssignment(assignment: any, user?: JwtUser) {
     openedAt: assignment.createdAt?.toISOString() ?? null,
     status: assignment.status,
     submissions: submissions.length,
-    submissionItems: submissions.map((submission: any) => ({
-      id: submission.id,
-      studentId: submission.studentId,
-      student: submission.student.user.name,
-      fileUrl: submission.fileUrl,
-      comment: submission.comment,
-      status: submission.status,
-      originalName: submission.originalName,
-      submittedAt: submission.submittedAt.toISOString()
-    }))
+    submissionItems: submissions.map((submission: any) => serializeSubmission(submission))
   };
+}
+
+function allRosterStudents(subject: any) {
+  const seen = new Set<string>();
+  return subject.sections.flatMap((item: any) => item.section.enrollments)
+    .map((enrollment: any) => enrollment.student)
+    .filter((student: any) => {
+      if (seen.has(student.id)) return false;
+      seen.add(student.id);
+      return true;
+    });
+}
+
+function isLate(assignment: any, submittedAt?: Date | null) {
+  if (!assignment.dueDate) return false;
+  const due = new Date(assignment.dueDate).getTime();
+  const compare = submittedAt ? new Date(submittedAt).getTime() : Date.now();
+  return compare > due;
+}
+
+function computedSubmissionStatus(assignment: any, submission?: any) {
+  if (!submission) return isLate(assignment) ? 'atrasado' : 'pendiente';
+  if (['revisado', 'devuelto'].includes(submission.status)) return submission.status;
+  return isLate(assignment, submission.submittedAt) ? 'atrasado' : 'entregado';
 }
 
 function serializeUnit(unit: any, user?: JwtUser) {
@@ -335,6 +388,13 @@ export class SubjectService {
     await repository.deleteAssignment(assignmentId);
     const uploadDir = submissionsUploadDir();
     await Promise.all(assignment.submissions.map(async (submission: any) => {
+      await Promise.all((submission.files ?? []).map(async (file: any) => {
+        const absolutePath = path.resolve(uploadDir, file.storagePath);
+        const relative = path.relative(uploadDir, absolutePath);
+        if (!relative.startsWith('..') && !path.isAbsolute(relative)) {
+          await fs.unlink(absolutePath).catch(() => undefined);
+        }
+      }));
       if (!submission.storagePath) return;
       const absolutePath = path.resolve(uploadDir, submission.storagePath);
       const relative = path.relative(uploadDir, absolutePath);
@@ -345,9 +405,10 @@ export class SubjectService {
     return { ok: true };
   }
 
-  async submitAssignment(user: JwtUser, assignmentId: string, input: { fileUrl?: string; storagePath?: string; originalName?: string; comment?: string; studentId?: string }) {
+  async submitAssignment(user: JwtUser, assignmentId: string, input: { fileUrl?: string; storagePath?: string; originalName?: string; comment?: string; studentId?: string; files?: Array<{ storagePath: string; originalName: string; mimeType?: string; size?: number }> }) {
     const assignment = await repository.findAssignmentScope(assignmentId);
     if (!assignment) throw new HttpError(404, 'Entregable no encontrado.');
+    if (assignment.status === 'cerrado' || isLate(assignment)) throw new HttpError(409, 'Este buzon ya no acepta entregas.');
     const allowedStudentIds = studentIdsForUser(user, assignment.unit.subject);
     const studentId = input.studentId ?? allowedStudentIds[0];
     if (!studentId || !allowedStudentIds.includes(studentId)) throw new HttpError(403, 'No tienes permisos para enviar esta actividad.');
@@ -358,47 +419,154 @@ export class SubjectService {
       fileUrl: input.fileUrl,
       storagePath: input.storagePath,
       originalName: input.originalName,
-      comment: input.comment
+      comment: input.comment,
+      files: input.files
     });
-    return {
-      id: submission.id,
-      studentId: submission.studentId,
-      student: submission.student.user.name,
-      fileUrl: submission.fileUrl,
-      originalName: submission.originalName,
-      comment: submission.comment,
-      status: submission.status,
-      submittedAt: submission.submittedAt.toISOString()
-    };
+    return serializeSubmission(submission);
   }
 
-  async uploadAssignment(user: JwtUser, assignmentId: string, input: { file?: Express.Multer.File; comment?: string; studentId?: string }) {
-    if (!input.file) throw new HttpError(400, 'Debe adjuntar un archivo valido.');
+  async uploadAssignment(user: JwtUser, assignmentId: string, input: { files?: Express.Multer.File[]; comment?: string; studentId?: string }) {
+    if (!input.files?.length) throw new HttpError(400, 'Debe adjuntar al menos un archivo valido.');
     return this.submitAssignment(user, assignmentId, {
       studentId: input.studentId,
       comment: input.comment,
-      storagePath: input.file.filename,
-      originalName: input.file.originalname
+      files: input.files.map((file) => ({
+        storagePath: file.filename,
+        originalName: file.originalname,
+        mimeType: file.mimetype,
+        size: file.size
+      }))
     });
   }
 
   async deleteSubmission(user: JwtUser, assignmentId: string, input: { studentId?: string }) {
     const assignment = await repository.findAssignmentScope(assignmentId);
     if (!assignment) throw new HttpError(404, 'Buzon no encontrado.');
+    if (assignment.status === 'cerrado' || isLate(assignment)) throw new HttpError(409, 'Este buzon ya no permite modificar entregas.');
     const allowedStudentIds = studentIdsForUser(user, assignment.unit.subject);
     const studentId = input.studentId ?? allowedStudentIds[0];
     if (!studentId || !allowedStudentIds.includes(studentId)) throw new HttpError(403, 'No tienes permisos para eliminar esta entrega.');
     const submission = await repository.findSubmission(assignmentId, studentId);
     if (!submission) return { ok: true };
     await repository.deleteSubmission(assignmentId, studentId);
+    const uploadDir = submissionsUploadDir();
+    await Promise.all((submission.files ?? []).map(async (file: any) => {
+      const absolutePath = path.resolve(uploadDir, file.storagePath);
+      const relative = path.relative(uploadDir, absolutePath);
+      if (!relative.startsWith('..') && !path.isAbsolute(relative)) {
+        await fs.unlink(absolutePath).catch(() => undefined);
+      }
+    }));
     if (submission.storagePath) {
-      const uploadDir = submissionsUploadDir();
       const absolutePath = path.resolve(uploadDir, submission.storagePath);
       const relative = path.relative(uploadDir, absolutePath);
       if (!relative.startsWith('..') && !path.isAbsolute(relative)) {
         await fs.unlink(absolutePath).catch(() => undefined);
       }
     }
+    return { ok: true };
+  }
+
+  async listAssignmentSubmissions(user: JwtUser, assignmentId: string) {
+    const assignment = await repository.findAssignmentWithRoster(assignmentId);
+    if (!assignment) throw new HttpError(404, 'Buzon no encontrado.');
+    const subject = assignment.unit.subject;
+    const canReview = hasSubjectManagementAccess(user, subject);
+    const allowedStudentIds = canReview ? null : new Set(studentIdsForUser(user, subject));
+    if (!canReview && (!allowedStudentIds || allowedStudentIds.size === 0)) throw new HttpError(403, 'No tienes permisos para ver estas entregas.');
+
+    const submissionsByStudent = new Map(assignment.submissions.map((submission: any) => [submission.studentId, submission]));
+    return allRosterStudents(subject)
+      .filter((student: any) => canReview || allowedStudentIds?.has(student.id))
+      .map((student: any) => {
+        const submission = submissionsByStudent.get(student.id) as any | undefined;
+        return {
+          studentId: student.id,
+          student: student.user.name,
+          status: computedSubmissionStatus(assignment, submission),
+          submission: submission ? serializeSubmission(submission) : null
+        };
+      });
+  }
+
+  async reviewSubmission(user: JwtUser, submissionId: string, input: { grade?: number | null; comment?: string | null; status: string }) {
+    const submission = await repository.findSubmissionWithScope(submissionId);
+    if (!submission) throw new HttpError(404, 'Entrega no encontrada.');
+    if (!hasSubjectManagementAccess(user, submission.assignment.unit.subject)) throw new HttpError(403, 'No tienes permisos para revisar esta entrega.');
+    const updated = await repository.reviewSubmission(submissionId, {
+      grade: input.grade ?? null,
+      teacherComment: input.comment ?? null,
+      status: input.status,
+      reviewedById: user.id,
+      reviewedAt: new Date()
+    });
+    return serializeSubmission(updated);
+  }
+
+  async replyToSubmission(user: JwtUser, submissionId: string, input: { comment?: string | null }) {
+    const submission = await repository.findSubmissionWithScope(submissionId);
+    if (!submission) throw new HttpError(404, 'Entrega no encontrada.');
+    const isOwnStudent = user.roles.includes('student') && submission.student.userId === user.id;
+    const isGuardian = user.roles.includes('guardian') && submission.student.guardians.some((guardian: any) => guardian.guardian.userId === user.id);
+    if (!isOwnStudent && !isGuardian) throw new HttpError(403, 'No tienes permisos para responder este comentario.');
+    if (submission.assignment.status === 'cerrado' || isLate(submission.assignment)) throw new HttpError(409, 'Este buzon esta cerrado.');
+    const updated = await repository.updateSubmissionReply(submissionId, input.comment?.trim() || null);
+    return serializeSubmission(updated);
+  }
+
+  async downloadSubmission(user: JwtUser, submissionId: string) {
+    const submission = await repository.findSubmissionWithScope(submissionId);
+    if (!submission) throw new HttpError(404, 'Entrega no encontrada.');
+    const subject = submission.assignment.unit.subject;
+    const canReview = hasSubjectManagementAccess(user, subject);
+    const isOwnStudent = user.roles.includes('student') && submission.student.userId === user.id;
+    const isGuardian = user.roles.includes('guardian') && submission.student.guardians.some((guardian: any) => guardian.guardian.userId === user.id);
+    if (!canReview && !isOwnStudent && !isGuardian) throw new HttpError(403, 'No tienes permisos para descargar esta entrega.');
+    const file = submission.files?.[0] ?? (submission.storagePath ? { storagePath: submission.storagePath, originalName: submission.originalName ?? 'entrega' } : null);
+    if (!file) throw new HttpError(404, 'La entrega no tiene archivo descargable.');
+    const uploadDir = submissionsUploadDir();
+    const absolutePath = path.resolve(uploadDir, file.storagePath);
+    const relative = path.relative(uploadDir, absolutePath);
+    if (relative.startsWith('..') || path.isAbsolute(relative)) throw new HttpError(400, 'Ruta de archivo invalida.');
+    return {
+      absolutePath,
+      filename: file.originalName ?? 'entrega'
+    };
+  }
+
+  async downloadSubmissionFile(user: JwtUser, fileId: string) {
+    const file = await repository.findSubmissionFile(fileId);
+    if (!file) throw new HttpError(404, 'Archivo no encontrado.');
+    const submission = file.submission;
+    const subject = submission.assignment.unit.subject;
+    const canReview = hasSubjectManagementAccess(user, subject);
+    const isOwnStudent = user.roles.includes('student') && submission.student.userId === user.id;
+    const isGuardian = user.roles.includes('guardian') && submission.student.guardians.some((guardian: any) => guardian.guardian.userId === user.id);
+    if (!canReview && !isOwnStudent && !isGuardian) throw new HttpError(403, 'No tienes permisos para descargar este archivo.');
+    const uploadDir = submissionsUploadDir();
+    const absolutePath = path.resolve(uploadDir, file.storagePath);
+    const relative = path.relative(uploadDir, absolutePath);
+    if (relative.startsWith('..') || path.isAbsolute(relative)) throw new HttpError(400, 'Ruta de archivo invalida.');
+    return { absolutePath, filename: file.originalName };
+  }
+
+  async deleteSubmissionFiles(user: JwtUser, submissionId: string, input: { fileIds: string[] }) {
+    const submission = await repository.findSubmissionWithScope(submissionId);
+    if (!submission) throw new HttpError(404, 'Entrega no encontrada.');
+    const isOwnStudent = user.roles.includes('student') && submission.student.userId === user.id;
+    const isGuardian = user.roles.includes('guardian') && submission.student.guardians.some((guardian: any) => guardian.guardian.userId === user.id);
+    if (!isOwnStudent && !isGuardian) throw new HttpError(403, 'No tienes permisos para editar esta entrega.');
+    if (submission.assignment.status === 'cerrado' || isLate(submission.assignment)) throw new HttpError(409, 'Este buzon ya no permite modificar entregas.');
+    const files = (submission.files ?? []).filter((file: any) => input.fileIds.includes(file.id));
+    await repository.deleteSubmissionFiles(files.map((file: any) => file.id));
+    const uploadDir = submissionsUploadDir();
+    await Promise.all(files.map(async (file: any) => {
+      const absolutePath = path.resolve(uploadDir, file.storagePath);
+      const relative = path.relative(uploadDir, absolutePath);
+      if (!relative.startsWith('..') && !path.isAbsolute(relative)) {
+        await fs.unlink(absolutePath).catch(() => undefined);
+      }
+    }));
     return { ok: true };
   }
 }

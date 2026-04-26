@@ -90,6 +90,42 @@ function serializeDocument(document: { id: string; title: string; status: string
 }
 
 export class MeService {
+  async profile(user: JwtUser) {
+    const [profile, sections] = await Promise.all([
+      repository.findUserProfile(user.id),
+      this.sectionsForUser(user)
+    ]);
+    const subjectMap = new Map<string, { id: string; name: string; code: string; section: string }>();
+    sections.forEach((section) => {
+      section.subjects.forEach((item) => {
+        subjectMap.set(`${item.subject.id}-${section.id}`, {
+          id: item.subject.id,
+          name: item.subject.name,
+          code: item.subject.code,
+          section: `${section.course.name} ${section.name}`
+        });
+      });
+    });
+    return {
+      id: user.id,
+      name: profile?.name ?? user.email,
+      email: profile?.email ?? user.email,
+      avatar: profile?.avatar ?? '',
+      department: profile?.department ?? '',
+      roles: user.roles,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      lastAccess: new Date().toISOString(),
+      courses: sections.map((section) => ({
+        id: section.id,
+        name: `${section.course.name} ${section.name}`,
+        classroom: section.classroom?.name ?? 'Sin sala',
+        students: section.enrollments.length
+      })),
+      subjects: Array.from(subjectMap.values()),
+      linkedStudents: profile?.guardian?.students.map((item) => ({ id: item.student.id, name: item.student.user.name, relationship: item.relationship })) ?? []
+    };
+  }
+
   async dashboard(user: JwtUser) {
     const [profile, sections, announcements, documents] = await Promise.all([
       repository.findUserProfile(user.id),

@@ -36,7 +36,7 @@ export class SubjectRepository {
         units: {
           include: {
             materials: { include: { owner: true }, orderBy: { createdAt: 'asc' } },
-            assignments: { include: { submissions: { include: { student: { include: { user: true } } } } }, orderBy: { createdAt: 'asc' } }
+            assignments: { include: { submissions: { include: { files: true, student: { include: { user: true, guardians: { include: { guardian: true } } } }, reviewedBy: true } } }, orderBy: { createdAt: 'asc' } }
           },
           orderBy: { order: 'asc' }
         },
@@ -52,7 +52,7 @@ export class SubjectRepository {
   createUnit(input: { subjectId: string; title: string; description: string; duration?: string; outcomes: string[]; bibliography: string[]; order: number }) {
     return prisma.subjectUnit.create({
       data: input,
-      include: { materials: { include: { owner: true } }, assignments: { include: { submissions: { include: { student: { include: { user: true } } } } } } }
+      include: { materials: { include: { owner: true } }, assignments: { include: { submissions: { include: { files: true, student: { include: { user: true, guardians: { include: { guardian: true } } } }, reviewedBy: true } } } } }
     });
   }
 
@@ -60,7 +60,7 @@ export class SubjectRepository {
     return prisma.subjectUnit.update({
       where: { id },
       data: input,
-      include: { materials: { include: { owner: true } }, assignments: { include: { submissions: { include: { student: { include: { user: true } } } } } } }
+      include: { materials: { include: { owner: true } }, assignments: { include: { submissions: { include: { files: true, student: { include: { user: true, guardians: { include: { guardian: true } } } }, reviewedBy: true } } } } }
     });
   }
 
@@ -88,7 +88,7 @@ export class SubjectRepository {
     return prisma.assignment.update({
       where: { id },
       data: input,
-      include: { submissions: { include: { student: { include: { user: true } } } } }
+      include: { submissions: { include: { files: true, student: { include: { user: true, guardians: { include: { guardian: true } } } }, reviewedBy: true } } }
     });
   }
 
@@ -96,7 +96,7 @@ export class SubjectRepository {
     return prisma.assignment.update({
       where: { id },
       data: { status },
-      include: { submissions: { include: { student: { include: { user: true } } } } }
+      include: { submissions: { include: { files: true, student: { include: { user: true, guardians: { include: { guardian: true } } } }, reviewedBy: true } } }
     });
   }
 
@@ -104,7 +104,7 @@ export class SubjectRepository {
     return prisma.assignment.findUnique({
       where: { id: assignmentId },
       include: {
-        submissions: true,
+        submissions: { include: { files: true } },
         unit: {
           include: {
             subject: {
@@ -140,27 +140,186 @@ export class SubjectRepository {
     return prisma.assignment.delete({ where: { id } });
   }
 
-  submitAssignment(input: { assignmentId: string; studentId: string; authorId: string; fileUrl?: string; storagePath?: string; originalName?: string; comment?: string }) {
-    return prisma.assignmentSubmission.upsert({
+  async submitAssignment(input: { assignmentId: string; studentId: string; authorId: string; fileUrl?: string; storagePath?: string; originalName?: string; comment?: string; files?: Array<{ storagePath: string; originalName: string; mimeType?: string; size?: number }> }) {
+    const submission = await prisma.assignmentSubmission.upsert({
       where: { assignmentId_studentId: { assignmentId: input.assignmentId, studentId: input.studentId } },
       update: {
         fileUrl: input.fileUrl,
-        storagePath: input.storagePath,
-        originalName: input.originalName,
+        storagePath: input.storagePath ?? input.files?.[0]?.storagePath,
+        originalName: input.originalName ?? input.files?.[0]?.originalName,
         comment: input.comment,
         authorId: input.authorId,
         submittedAt: new Date(),
-        status: 'enviado'
+        status: 'entregado',
+        grade: null,
+        feedback: null,
+        teacherComment: null,
+        studentReply: null,
+        reviewedAt: null,
+        reviewedById: null
       },
-      create: input,
-      include: { student: { include: { user: true } } }
+      create: {
+        assignmentId: input.assignmentId,
+        studentId: input.studentId,
+        authorId: input.authorId,
+        fileUrl: input.fileUrl,
+        storagePath: input.storagePath ?? input.files?.[0]?.storagePath,
+        originalName: input.originalName ?? input.files?.[0]?.originalName,
+        comment: input.comment,
+        status: 'entregado'
+      },
+      include: { files: true, student: { include: { user: true } }, reviewedBy: true }
+    });
+    if (input.files?.length) {
+      await prisma.submissionFile.createMany({
+        data: input.files.map((file) => ({
+          submissionId: submission.id,
+          storagePath: file.storagePath,
+          originalName: file.originalName,
+          mimeType: file.mimeType,
+          size: file.size
+        }))
+      });
+    }
+    return prisma.assignmentSubmission.findUniqueOrThrow({
+      where: { id: submission.id },
+      include: { files: true, student: { include: { user: true } }, reviewedBy: true }
     });
   }
 
   findSubmission(assignmentId: string, studentId: string) {
     return prisma.assignmentSubmission.findUnique({
-      where: { assignmentId_studentId: { assignmentId, studentId } }
+      where: { assignmentId_studentId: { assignmentId, studentId } },
+      include: { files: true }
     });
+  }
+
+  findAssignmentWithRoster(assignmentId: string) {
+    return prisma.assignment.findUnique({
+      where: { id: assignmentId },
+      include: {
+        submissions: { include: { files: true, student: { include: { user: true } }, reviewedBy: true } },
+        unit: {
+          include: {
+            subject: {
+              include: {
+                teachers: { include: { teacher: true } },
+                sections: {
+                  include: {
+                    section: {
+                      include: {
+                        course: true,
+                        headTeacher: true,
+                        enrollments: {
+                          include: {
+                            student: {
+                              include: {
+                                user: true,
+                                guardians: { include: { guardian: true } }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  findSubmissionWithScope(submissionId: string) {
+    return prisma.assignmentSubmission.findUnique({
+      where: { id: submissionId },
+      include: {
+        files: true,
+        student: { include: { user: true, guardians: { include: { guardian: true } } } },
+        reviewedBy: true,
+        assignment: {
+          include: {
+            unit: {
+              include: {
+                subject: {
+                  include: {
+                    teachers: { include: { teacher: true } },
+                    sections: {
+                      include: {
+                        section: {
+                          include: {
+                            headTeacher: true,
+                            enrollments: {
+                              include: {
+                                student: {
+                                  include: {
+                                    guardians: { include: { guardian: true } }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  reviewSubmission(submissionId: string, input: { grade?: number | null; teacherComment?: string | null; status: string; reviewedById: string; reviewedAt: Date }) {
+    return prisma.assignmentSubmission.update({
+      where: { id: submissionId },
+      data: input,
+      include: { files: true, student: { include: { user: true } }, reviewedBy: true }
+    });
+  }
+
+  updateSubmissionReply(submissionId: string, studentReply: string | null) {
+    return prisma.assignmentSubmission.update({
+      where: { id: submissionId },
+      data: { studentReply },
+      include: { files: true, student: { include: { user: true } }, reviewedBy: true }
+    });
+  }
+
+  findSubmissionFile(fileId: string) {
+    return prisma.submissionFile.findUnique({
+      where: { id: fileId },
+      include: {
+        submission: {
+          include: {
+            files: true,
+            student: { include: { user: true, guardians: { include: { guardian: true } } } },
+            assignment: {
+              include: {
+                unit: {
+                  include: {
+                    subject: {
+                      include: {
+                        teachers: { include: { teacher: true } },
+                        sections: { include: { section: { include: { headTeacher: true, enrollments: { include: { student: { include: { guardians: { include: { guardian: true } } } } } } } } } }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  deleteSubmissionFiles(fileIds: string[]) {
+    return prisma.submissionFile.deleteMany({ where: { id: { in: fileIds } } });
   }
 
   deleteSubmission(assignmentId: string, studentId: string) {

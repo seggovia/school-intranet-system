@@ -11,10 +11,15 @@ import {
   createMaterialSchema,
   createSubjectSchema,
   createUnitSchema,
+  deleteSubmissionFilesSchema,
   deleteAssignmentSubmissionSchema,
   materialIdParamSchema,
   subjectIdParamSchema,
   submitAssignmentSchema,
+  reviewSubmissionSchema,
+  replySubmissionSchema,
+  submissionFileIdParamSchema,
+  submissionIdParamSchema,
   unitIdParamSchema,
   uploadAssignmentSubmissionSchema,
   uploadMaterialSchema,
@@ -25,6 +30,7 @@ import {
 
 const controller = new SubjectController();
 export const subjectRoutes = Router();
+export const assignmentReviewRoutes = Router();
 
 subjectRoutes.use(authenticate);
 subjectRoutes.get('/', authorizeRoles('admin', 'director', 'inspector'), asyncHandler(controller.list.bind(controller)));
@@ -43,3 +49,11 @@ subjectRoutes.post('/assignments/:assignmentId/submissions/upload', authorizeRol
 subjectRoutes.post('/assignments/:assignmentId/submissions', authorizeRoles('student', 'guardian'), validateParams(assignmentIdParamSchema), validateBody(submitAssignmentSchema), asyncHandler(controller.submitAssignment.bind(controller)));
 subjectRoutes.delete('/assignments/:assignmentId/submissions', authorizeRoles('student', 'guardian'), validateParams(assignmentIdParamSchema), validateBody(deleteAssignmentSubmissionSchema), asyncHandler(controller.deleteSubmission.bind(controller)));
 subjectRoutes.post('/', authorizeRoles('admin', 'director'), authorizePermissions('academics:manage'), validateBody(createSubjectSchema), asyncHandler(controller.create.bind(controller)));
+
+assignmentReviewRoutes.use(authenticate);
+assignmentReviewRoutes.get('/assignments/:assignmentId/submissions', validateParams(assignmentIdParamSchema), asyncHandler(controller.listAssignmentSubmissions.bind(controller)));
+assignmentReviewRoutes.patch('/submissions/:submissionId/review', authorizeRoles('admin', 'director', 'teacher'), validateParams(submissionIdParamSchema), validateBody(reviewSubmissionSchema), asyncHandler(controller.reviewSubmission.bind(controller)));
+assignmentReviewRoutes.patch('/submissions/:submissionId/reply', authorizeRoles('student', 'guardian'), validateParams(submissionIdParamSchema), validateBody(replySubmissionSchema), asyncHandler(controller.replyToSubmission.bind(controller)));
+assignmentReviewRoutes.delete('/submissions/:submissionId/files', authorizeRoles('student', 'guardian'), validateParams(submissionIdParamSchema), validateBody(deleteSubmissionFilesSchema), asyncHandler(controller.deleteSubmissionFiles.bind(controller)));
+assignmentReviewRoutes.get('/submissions/:submissionId/download', validateParams(submissionIdParamSchema), asyncHandler(controller.downloadSubmission.bind(controller)));
+assignmentReviewRoutes.get('/submission-files/:fileId/download', validateParams(submissionFileIdParamSchema), asyncHandler(controller.downloadSubmissionFile.bind(controller)));

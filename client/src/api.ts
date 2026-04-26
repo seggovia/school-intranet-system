@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { Announcement, Assessment, AttendanceRecord, AuthSession, CalendarEvent, Course, DashboardData, DocumentItem, Grade, MySubject, RequestTicket, RoleDashboard, ScheduleCalendarEvent, SectionStudent, Student, Subject, SubjectDetailData } from './types';
+import type { Announcement, Assessment, AssignmentSubmissionReviewRow, AttendanceRecord, AuthSession, CalendarEvent, Course, DashboardData, DocumentItem, Grade, MySubject, RequestTicket, RoleDashboard, ScheduleCalendarEvent, SectionStudent, Student, Subject, SubjectDetailData, UserProfileData } from './types';
 
 export const sessionStorageKey = 'school-intranet-session';
 
@@ -218,8 +218,56 @@ export async function uploadAssignmentSubmission(assignmentId: string, input: { 
   return data;
 }
 
+export async function uploadAssignmentSubmissionFiles(assignmentId: string, input: { files: File[]; comment?: string; studentId?: string }) {
+  const form = new FormData();
+  input.files.forEach((file) => form.append('files', file));
+  if (input.comment) form.append('comment', input.comment);
+  if (input.studentId) form.append('studentId', input.studentId);
+  const { data } = await api.post(`/subjects/assignments/${assignmentId}/submissions/upload`, form);
+  return data;
+}
+
 export async function deleteAssignmentSubmission(assignmentId: string, studentId?: string) {
   const { data } = await api.delete<{ ok: true }>(`/subjects/assignments/${assignmentId}/submissions`, { data: { studentId } });
+  return data;
+}
+
+export async function loadAssignmentSubmissions(assignmentId: string) {
+  const { data } = await api.get<AssignmentSubmissionReviewRow[]>(`/assignments/${assignmentId}/submissions`);
+  return data;
+}
+
+export async function reviewAssignmentSubmission(submissionId: string, input: { grade?: number | null; comment?: string | null; status: string }) {
+  const { data } = await api.patch(`/submissions/${submissionId}/review`, input);
+  return data;
+}
+
+export async function replyAssignmentSubmission(submissionId: string, comment?: string | null) {
+  const { data } = await api.patch(`/submissions/${submissionId}/reply`, { comment });
+  return data;
+}
+
+export async function deleteSubmissionFiles(submissionId: string, fileIds: string[]) {
+  const { data } = await api.delete<{ ok: true }>(`/submissions/${submissionId}/files`, { data: { fileIds } });
+  return data;
+}
+
+export async function downloadAssignmentSubmission(submissionId: string) {
+  const response = await api.get<Blob>(`/submissions/${submissionId}/download`, { responseType: 'blob' });
+  const disposition = response.headers['content-disposition'] ?? '';
+  const match = /filename="?([^"]+)"?/i.exec(disposition);
+  return { blob: response.data, filename: match?.[1] };
+}
+
+export async function downloadSubmissionFile(fileId: string) {
+  const response = await api.get<Blob>(`/submission-files/${fileId}/download`, { responseType: 'blob' });
+  const disposition = response.headers['content-disposition'] ?? '';
+  const match = /filename="?([^"]+)"?/i.exec(disposition);
+  return { blob: response.data, filename: match?.[1] };
+}
+
+export async function loadMyProfile() {
+  const { data } = await api.get<UserProfileData>('/me/profile');
   return data;
 }
 

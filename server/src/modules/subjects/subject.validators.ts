@@ -21,6 +21,14 @@ export const assignmentIdParamSchema = z.object({
   assignmentId: z.string().trim().min(1)
 });
 
+export const submissionIdParamSchema = z.object({
+  submissionId: z.string().trim().min(1)
+});
+
+export const submissionFileIdParamSchema = z.object({
+  fileId: z.string().trim().min(1)
+});
+
 export const createUnitSchema = z.object({
   title: z.string().trim().min(2).max(120),
   description: z.string().trim().min(2).max(3000),
@@ -72,4 +80,18 @@ export const uploadAssignmentSubmissionSchema = z.object({
 
 export const deleteAssignmentSubmissionSchema = z.object({
   studentId: z.string().trim().min(1).optional()
+});
+
+export const reviewSubmissionSchema = z.object({
+  grade: z.coerce.number().min(1).max(7).nullable().optional(),
+  comment: z.string().trim().max(4000).nullable().optional(),
+  status: z.enum(['pendiente', 'entregado', 'atrasado', 'revisado', 'devuelto'])
+});
+
+export const replySubmissionSchema = z.object({
+  comment: z.string().trim().max(4000).nullable().optional()
+});
+
+export const deleteSubmissionFilesSchema = z.object({
+  fileIds: z.array(z.string().trim().min(1)).min(1)
 });

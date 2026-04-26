@@ -77,9 +77,16 @@ export function Shell({ user, onLogout, children }: { user: User; onLogout: () =
               </div>
               <RoleBadge role={user.primaryRole} />
               <div className="profile-menu-divider" />
-              <button type="button" role="menuitem" onClick={() => setProfileOpen(false)}>
+              <NavLink to="/perfil" role="menuitem" onClick={() => setProfileOpen(false)}>
                 <UserCircle size={18} />
-                Ver perfil
+                Perfil
+              </NavLink>
+              <NavLink to="/calificaciones" role="menuitem" onClick={() => setProfileOpen(false)}><Star size={18} /> Calificaciones</NavLink>
+              <NavLink to="/calendario" role="menuitem" onClick={() => setProfileOpen(false)}><CalendarDays size={18} /> Calendario</NavLink>
+              <NavLink to="/documentos" role="menuitem" onClick={() => setProfileOpen(false)}><FileText size={18} /> Documentos</NavLink>
+              <button type="button" role="menuitem" onClick={() => setProfileOpen(false)}>
+                <Shield size={18} />
+                Preferencias
               </button>
               <button
                 type="button"
