@@ -1,6 +1,6 @@
 import { BarChart3, Bell, CalendarDays, ChevronDown, ClipboardCheck, FileText, GraduationCap, HelpCircle, LogOut, Menu, School, Search, Shield, Star, UserCircle, X } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import clsx from 'clsx';
 import type { User } from '../types';
 import { RoleBadge } from './RoleBadge';
@@ -9,17 +9,25 @@ const navItems = [
   { to: '/', label: 'Panel', icon: BarChart3, roles: ['admin', 'director', 'teacher', 'student', 'guardian', 'inspector'] },
   { to: '/academico', label: 'Academico', icon: GraduationCap, roles: ['admin', 'director', 'teacher', 'student', 'guardian', 'inspector'] },
   { to: '/asistencia', label: 'Asistencia', icon: ClipboardCheck, roles: ['admin', 'director', 'teacher', 'student', 'guardian', 'inspector'] },
-  { to: '/calificaciones', label: 'Calificaciones', icon: Star, roles: ['admin', 'director', 'teacher', 'student', 'guardian'] },
   { to: '/comunicaciones', label: 'Comunicados', icon: Bell, roles: ['admin', 'director', 'teacher', 'student', 'guardian', 'inspector'] },
-  { to: '/documentos', label: 'Documentos', icon: FileText, roles: ['admin', 'director', 'teacher', 'student', 'guardian', 'inspector'] },
   { to: '/solicitudes', label: 'Solicitudes', icon: HelpCircle, roles: ['admin', 'director', 'teacher', 'student', 'guardian', 'inspector'] },
-  { to: '/calendario', label: 'Calendario', icon: CalendarDays, roles: ['admin', 'director', 'teacher', 'student', 'guardian', 'inspector'] },
   { to: '/admin', label: 'Administracion', icon: Shield, roles: ['admin', 'director', 'inspector'] }
 ];
 
 export function Shell({ user, onLogout, children }: { user: User; onLogout: () => void; children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handlePointerDown(event: PointerEvent) {
+      if (!profileMenuRef.current?.contains(event.target as Node)) {
+        setProfileOpen(false);
+      }
+    }
+    if (profileOpen) document.addEventListener('pointerdown', handlePointerDown);
+    return () => document.removeEventListener('pointerdown', handlePointerDown);
+  }, [profileOpen]);
 
   return (
     <div className={clsx('app-shell', open && 'mobile-nav-open')}>
@@ -55,7 +63,7 @@ export function Shell({ user, onLogout, children }: { user: User; onLogout: () =
           <input placeholder="Buscar estudiantes, documentos o comunicados" />
         </div>
 
-        <div className="institution-user">
+        <div className="institution-user" ref={profileMenuRef}>
           <button
             className="profile-menu-button"
             onClick={() => setProfileOpen((value) => !value)}

@@ -212,7 +212,7 @@ function AssignmentBoxRow({
   onReviewAssignment,
   onToggleAssignmentStatus,
   onDeleteAssignment,
-  onSubmitAssignment
+  onSubmitAssignment: _onSubmitAssignment
 }: {
   assignment: UnitAssignment;
   canEdit: boolean;
@@ -266,7 +266,6 @@ function AssignmentBoxRow({
         {canEdit && <button className="secondary-button" onClick={() => onToggleAssignmentStatus(assignment)}><Clock size={17} /> {assignment.status === 'cerrado' ? 'Reabrir' : 'Cerrar'}</button>}
         {canEdit && <button className="danger-button" onClick={() => onDeleteAssignment(assignment)}><Trash2 size={17} /> Eliminar</button>}
         <button className="secondary-button" onClick={() => onOpenAssignment(assignment)}><ExternalLink size={17} /> Abrir</button>
-        {canSubmit && <button className="primary-button" disabled={isClosed} onClick={() => onSubmitAssignment(assignment)}><Upload size={17} /> {hasSubmission ? 'Reemplazar' : 'Agregar entrega'}</button>}
       </div>
     </article>
   );
@@ -306,6 +305,7 @@ function AssignmentDetail({
   const ownSubmission = assignment.submissionItems?.[0];
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
   const [replyText, setReplyText] = useState(ownSubmission?.commentThread?.student ?? '');
+  const [editingDelivery, setEditingDelivery] = useState(false);
 
   if (isClosed && !canEdit) {
     return (
@@ -338,29 +338,40 @@ function AssignmentDetail({
         <span><Clock size={17} /> Fecha limite</span>
         <strong>{formatDateTime(assignment.dueDate)}</strong>
       </div>
-      <h4>Estado de la entrega</h4>
-      <div className="submission-status-table">
-        <span>Estado de la entrega</span><strong>{ownSubmission ? 'Enviado para calificar' : 'No enviado'}</strong>
-        <span>Estado de revision</span><strong>{ownSubmission ? reviewStatusLabel(ownSubmission.status) : 'Sin entrega'}</strong>
-        <span>Nota</span><strong>{ownSubmission?.grade ?? 'Sin nota'}</strong>
-        <span>Comentario del profesor</span><strong>{ownSubmission?.commentThread?.teacher || 'Sin comentario del docente'}</strong>
-        <span>Respuesta del estudiante</span><strong>{ownSubmission?.commentThread?.student || 'Sin respuesta'}</strong>
-        <span>Tiempo restante</span><strong>{isClosed ? 'El buzon ya cerro' : `Disponible hasta ${formatDateTime(assignment.dueDate)}`}</strong>
-        <span>Archivos enviados</span><strong>{ownSubmission?.originalName ?? 'Sin archivo enviado'}</strong>
-        <span>Comentarios</span><strong>{ownSubmission?.comment || 'Sin comentarios'}</strong>
-      </div>
-      {!canEdit && (
+      {canSubmit && !editingDelivery && (
+        <>
+          <h4>Estado de la entrega</h4>
+          <div className="submission-status-table">
+            <span>Estado de la entrega</span><strong>{ownSubmission ? 'Enviado para calificar' : 'No enviado'}</strong>
+            <span>Estado de revision</span><strong>{ownSubmission ? reviewStatusLabel(ownSubmission.status) : 'Sin entrega'}</strong>
+            <span>Nota</span><strong>{ownSubmission?.grade ?? 'Sin nota'}</strong>
+            <span>Tiempo restante</span><strong>{isClosed ? 'El buzon ya cerro' : `Disponible hasta ${formatDateTime(assignment.dueDate)}`}</strong>
+            <span>Archivos enviados</span><strong>{ownSubmission?.files?.map((file) => file.originalName).join(', ') || ownSubmission?.originalName || 'Sin archivo enviado'}</strong>
+            <span>Comentarios</span>
+            <strong className="submission-comments-cell">
+              <span><b>Profesor:</b> {ownSubmission?.commentThread?.teacher || 'Sin comentario del docente'}</span>
+              {ownSubmission?.comment && <span><b>Entrega:</b> {ownSubmission.comment}</span>}
+              <label>Respuesta del estudiante
+                <textarea value={replyText} disabled={isClosed || !ownSubmission} rows={3} onChange={(event) => setReplyText(event.target.value)} />
+              </label>
+              {!isClosed && ownSubmission && <button className="secondary-button" onClick={() => onReplySubmission(assignment, replyText)}>Guardar respuesta</button>}
+            </strong>
+          </div>
+        </>
+      )}
+      {canSubmit && !editingDelivery && (
         <div className="assignment-detail-actions">
-          {ownSubmission && !isClosed && <button className="danger-button" onClick={() => onDeleteSubmission(assignment)}><Trash2 size={17} /> Quitar entrega</button>}
-          {ownSubmission && !isClosed && <button className="secondary-button" onClick={() => onSubmitAssignment(assignment)}><Edit3 size={17} /> Editar entrega</button>}
-          <button className="primary-button" disabled={isClosed} onClick={() => onSubmitAssignment(assignment)}>
-            <Upload size={17} /> {ownSubmission ? 'Reemplazar archivo' : 'Agregar entrega'}
+          <button className="primary-button" disabled={isClosed} onClick={() => ownSubmission ? setEditingDelivery(true) : onSubmitAssignment(assignment)}>
+            <Edit3 size={17} /> {ownSubmission ? 'Editar entrega' : 'Agregar entrega'}
           </button>
         </div>
       )}
-      {ownSubmission && !canEdit && (
+      {ownSubmission && canSubmit && editingDelivery && (
         <div className="submission-file-editor">
-          <strong>Archivos enviados</strong>
+          <div className="assignment-detail-top">
+            <strong>Editar entrega</strong>
+            <button className="secondary-button" onClick={() => setEditingDelivery(false)}>Volver al detalle</button>
+          </div>
           {(ownSubmission.files?.length ? ownSubmission.files : [{ id: ownSubmission.id, originalName: ownSubmission.originalName ?? 'Archivo enviado' }]).map((file) => (
             <label key={file.id} className="submission-file-check">
               <input
@@ -382,16 +393,6 @@ function AssignmentDetail({
               <button className="primary-button" onClick={() => onSubmitAssignment(assignment)}><Upload size={17} /> Subir nuevos archivos</button>
             </div>
           )}
-        </div>
-      )}
-      {ownSubmission && !canEdit && ownSubmission.commentThread?.teacher && (
-        <div className="submission-comment-thread">
-          <strong>Comentario</strong>
-          <p><b>Profesor:</b> {ownSubmission.commentThread.teacher}</p>
-          <label>Respuesta del estudiante
-            <textarea value={replyText} disabled={isClosed} rows={3} onChange={(event) => setReplyText(event.target.value)} />
-          </label>
-          {!isClosed && <button className="secondary-button" onClick={() => onReplySubmission(assignment, replyText)}>Guardar respuesta</button>}
         </div>
       )}
       {canEdit && (
@@ -630,6 +631,38 @@ function ReviewSubmissionsModal({
   );
 }
 
+function ReviewSavedModal({
+  open,
+  busy,
+  onContinue,
+  onCloseReview
+}: {
+  open: boolean;
+  busy: boolean;
+  onContinue: () => void;
+  onCloseReview: () => void;
+}) {
+  if (!open) return null;
+
+  return (
+    <div className="classroom-modal-backdrop" role="presentation" onClick={onContinue}>
+      <div className="confirm-modal success-modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+        <header>
+          <div>
+            <span className="eyebrow">Revision guardada</span>
+            <h2>Guardado correctamente</h2>
+          </div>
+        </header>
+        <p>La nota, estado y comentario quedaron registrados para este estudiante.</p>
+        <footer>
+          <button className="secondary-button" disabled={busy} onClick={onContinue}>Seguir revisando</button>
+          <button className="primary-button" disabled={busy} onClick={onCloseReview}>Cerrar revision de entregas</button>
+        </footer>
+      </div>
+    </div>
+  );
+}
+
 function UnitContent({
   unit,
   index,
@@ -686,7 +719,7 @@ function UnitContent({
   const selectedAssignment = assignments.find((assignment) => assignment.id === selectedAssignmentId);
 
   return (
-    <article className="classroom-unit-card">
+    <article id={`unit-${unit.id}`} className="classroom-unit-card">
       <header>
         <div>
           <span className="eyebrow">{subject.subject.name}</span>
@@ -807,8 +840,9 @@ export function SubjectDetailPage({ user }: { user: User }) {
   const [reviewError, setReviewError] = useState('');
   const [reviewAssignment, setReviewAssignment] = useState<UnitAssignment | null>(null);
   const [reviewRows, setReviewRows] = useState<AssignmentSubmissionReviewRow[]>([]);
+  const [reviewSavedOpen, setReviewSavedOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [indexCollapsed, setIndexCollapsed] = useState(false);
+  const [indexCollapsed, setIndexCollapsed] = useState(true);
   const canManageCourse = ['admin', 'director', 'teacher'].includes(user.primaryRole);
   const canEditCourse = canManageCourse && editMode;
   const canReviewCourse = canManageCourse;
@@ -836,7 +870,7 @@ export function SubjectDetailPage({ user }: { user: User }) {
     setActiveTab('curso');
     setActiveUnit(unitId);
     window.setTimeout(() => {
-      const targetId = unitId === 'inicio' ? 'course-start' : sectionId ?? `unit-${unitId}-antecedentes`;
+      const targetId = unitId === 'inicio' ? 'course-start' : sectionId ?? `unit-${unitId}`;
       document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 50);
   }
@@ -1062,7 +1096,7 @@ export function SubjectDetailPage({ user }: { user: User }) {
         comment: String(form.get('comment') ?? '').trim() || null
       });
       setReviewRows(await loadAssignmentSubmissions(reviewAssignment.id));
-      showNotice('Revision guardada.');
+      setReviewSavedOpen(true);
       reloadDetail();
     } catch {
       setReviewError('No se pudo guardar la revision. Revisa nota, estado y permisos.');
@@ -1160,18 +1194,30 @@ export function SubjectDetailPage({ user }: { user: User }) {
 
   return (
     <div className="classroom-page campus-classroom">
-      <header className="campus-coursebar">
-        <div className="campus-coursebrand">
-          <Link className="course-schedule-link" to="/calendario"><CalendarDays size={18} /> Horario semanal</Link>
-          <strong>{subject.subject.name}</strong>
-        </div>
-        <div className="campus-course-actions">
-          {canCommunicate && <button className="secondary-button" onClick={communicate}><MessageSquare size={17} /> Comunicarse</button>}
-          {canManageCourse && <button className={editMode ? 'primary-button' : 'secondary-button'} onClick={toggleEditMode}><PencilRuler size={17} /> {editMode ? 'Salir de edicion' : 'Modo edicion'}</button>}
-          {canEditCourse && <button className="secondary-button" onClick={createUnit}><Plus size={17} /> Nueva unidad</button>}
-          {canEditCourse && <button className="primary-button" onClick={addCourseMaterial}><Plus size={17} /> Agregar material</button>}
-        </div>
-      </header>
+      <div className="classroom-sticky-nav">
+        <header className="campus-coursebar">
+          <div className="campus-coursebrand">
+            <Link className="course-schedule-link" to="/calendario"><CalendarDays size={18} /> Horario semanal</Link>
+            <strong>{subject.subject.name}</strong>
+          </div>
+          <div className="campus-course-actions">
+            {canCommunicate && <button className="secondary-button" onClick={communicate}><MessageSquare size={17} /> Comunicarse</button>}
+            {canManageCourse && <button className={editMode ? 'primary-button' : 'secondary-button'} onClick={toggleEditMode}><PencilRuler size={17} /> {editMode ? 'Salir de edicion' : 'Modo edicion'}</button>}
+            {canEditCourse && <button className="secondary-button" onClick={createUnit}><Plus size={17} /> Nueva unidad</button>}
+            {canEditCourse && <button className="primary-button" onClick={addCourseMaterial}><Plus size={17} /> Agregar material</button>}
+          </div>
+        </header>
+        <nav className="classroom-top-tabs" aria-label="Navegacion de asignatura">
+          {[
+            ['curso', 'Curso'],
+            ['participantes', 'Participantes'],
+            ['calificaciones', 'Calificaciones'],
+            ['mas', 'Mas']
+          ].map(([value, label]) => (
+            <button key={value} className={activeTab === value ? 'active' : ''} onClick={() => setActiveTab(value as CourseTab)}>{label}</button>
+          ))}
+        </nav>
+      </div>
       {notice && <div className="classroom-notice">{notice}</div>}
       {canManageCourse && editMode && (
         <div className="edit-mode-strip">
@@ -1180,21 +1226,14 @@ export function SubjectDetailPage({ user }: { user: User }) {
         </div>
       )}
 
-      <nav className="classroom-top-tabs" aria-label="Navegacion de asignatura">
-        {[
-          ['curso', 'Curso'],
-          ['participantes', 'Participantes'],
-          ['calificaciones', 'Calificaciones'],
-          ['mas', 'Mas']
-        ].map(([value, label]) => (
-          <button key={value} className={activeTab === value ? 'active' : ''} onClick={() => setActiveTab(value as CourseTab)}>{label}</button>
-        ))}
-      </nav>
-
       <div className={`classroom-layout ${indexCollapsed ? 'index-collapsed' : ''}`}>
         <aside className="classroom-index">
           <div className="index-header">
-            <button aria-label={indexCollapsed ? 'Mostrar contenidos' : 'Ocultar contenidos'} onClick={() => setIndexCollapsed((value) => !value)}>
+            <button
+              aria-label={indexCollapsed ? 'Abrir indice' : 'Cerrar indice'}
+              title={indexCollapsed ? 'Abrir indice' : 'Cerrar indice'}
+              onClick={() => setIndexCollapsed((value) => !value)}
+            >
               {indexCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
             </button>
             <strong>Contenidos</strong>
@@ -1205,6 +1244,10 @@ export function SubjectDetailPage({ user }: { user: User }) {
               {subject.units.map((unit) => (
                 <div className="index-unit" key={unit.id}>
                   <button className={activeUnit === unit.id ? 'active' : ''} onClick={() => goToCourseSection(unit.id)}>{unit.title}</button>
+                  <button className="index-child" onClick={() => goToCourseSection(unit.id, `unit-${unit.id}-antecedentes`)}><BookOpen size={14} /> Antecedentes</button>
+                  <button className="index-child" onClick={() => goToCourseSection(unit.id, `unit-${unit.id}-aprendizajes`)}><ClipboardCheck size={14} /> Aprendizajes esperados</button>
+                  <button className="index-child" onClick={() => goToCourseSection(unit.id, `unit-${unit.id}-bibliografia`)}><FileText size={14} /> Bibliografia</button>
+                  <button className="index-child" onClick={() => goToCourseSection(unit.id, `unit-${unit.id}-materiales`)}><FileArchive size={14} /> Materiales</button>
                   {unit.contents.map((item) => {
                     const Icon = contentIcon(item.type);
                     return (
@@ -1372,6 +1415,20 @@ export function SubjectDetailPage({ user }: { user: User }) {
         }}
         onDownload={downloadSubmissionFile}
         onSave={saveSubmissionReview}
+      />
+      <ReviewSavedModal
+        open={reviewSavedOpen}
+        busy={saving}
+        onContinue={() => setReviewSavedOpen(false)}
+        onCloseReview={() => {
+          setReviewSavedOpen(false);
+          setReviewAssignment(null);
+          setReviewRows([]);
+          setReviewError('');
+          window.setTimeout(() => {
+            document.getElementById(`unit-${activeUnit}-entregables`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }, 50);
+        }}
       />
       <ConfirmDialog
         confirm={confirm}
