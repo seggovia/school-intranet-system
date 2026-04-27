@@ -1,5 +1,6 @@
 import axios from 'axios';
 import type { Announcement, Assessment, AssignmentSubmissionReviewRow, AttendanceAdminSummary, AttendanceContext, AttendanceRecord, AttendanceRecordsResponse, AttendanceStatus, AuthSession, CalendarEvent, Course, DashboardData, DocumentItem, Grade, GuardianAttendanceResponse, MyAttendanceResponse, MySubject, RequestTicket, RoleDashboard, ScheduleCalendarEvent, SectionStudent, Student, Subject, SubjectDetailData, UserProfileData } from './types';
+import type { AdminBundle, AdminCourseRow, AdminGuardianRow, AdminSectionRow, AdminStudentRow, AdminSubjectRow, AdminSummary, AdminTeacherRow, AdminUserRow, Announcement, Assessment, AssignmentSubmissionReviewRow, AttendanceRecord, AuthSession, CalendarEvent, Course, DashboardData, DocumentItem, Grade, MySubject, RequestTicket, RoleDashboard, ScheduleCalendarEvent, SectionStudent, Student, Subject, SubjectDetailData, UserProfileData } from './types';
 
 export const sessionStorageKey = 'school-intranet-session';
 
@@ -413,5 +414,154 @@ export async function createSubjectMaterial(input: { subjectId: string; title: s
 
 export async function updateRequestStatus(id: string, status: string) {
   const { data } = await api.patch<RequestTicket>(`/requests/${id}/status`, { status });
+  return data;
+}
+
+export type AdminUserPayload = {
+  name: string;
+  lastName?: string;
+  email: string;
+  role?: string;
+  department?: string;
+  password?: string;
+  rut?: string;
+  phone?: string;
+  birthDate?: string;
+  sectionId?: string;
+  studentIds?: string[];
+  relationship?: string;
+};
+
+export async function loadAdminSummary() {
+  const { data } = await api.get<AdminSummary>('/admin/summary');
+  return data;
+}
+
+export async function loadAdminBundle(): Promise<AdminBundle> {
+  const [summary, users, students, teachers, guardians, courses, sections, subjects] = await Promise.all([
+    loadAdminSummary(),
+    api.get<AdminUserRow[]>('/admin/users').then((res) => res.data),
+    api.get<AdminStudentRow[]>('/admin/students').then((res) => res.data),
+    api.get<AdminTeacherRow[]>('/admin/teachers').then((res) => res.data),
+    api.get<AdminGuardianRow[]>('/admin/guardians').then((res) => res.data),
+    api.get<AdminCourseRow[]>('/admin/courses').then((res) => res.data),
+    api.get<AdminSectionRow[]>('/admin/sections').then((res) => res.data),
+    api.get<AdminSubjectRow[]>('/admin/subjects').then((res) => res.data)
+  ]);
+  return { summary, users, students, teachers, guardians, courses, sections, subjects };
+}
+
+export async function createAdminUser(input: AdminUserPayload) {
+  const { data } = await api.post<AdminUserRow>('/admin/users', input);
+  return data;
+}
+
+export async function updateAdminUser(id: string, input: Partial<AdminUserPayload>) {
+  const { data } = await api.patch<AdminUserRow>(`/admin/users/${id}`, input);
+  return data;
+}
+
+export async function setAdminUserStatus(id: string, isActive: boolean) {
+  const { data } = await api.patch(`/admin/users/${id}/status`, { isActive });
+  return data;
+}
+
+export async function resetAdminUserPassword(id: string, password?: string) {
+  const { data } = await api.patch<{ temporaryPassword: string }>(`/admin/users/${id}/reset-password`, { password });
+  return data;
+}
+
+export async function createAdminStudent(input: AdminUserPayload) {
+  const { data } = await api.post('/admin/students', input);
+  return data;
+}
+
+export async function updateAdminStudent(id: string, input: Partial<AdminUserPayload>) {
+  const { data } = await api.patch(`/admin/students/${id}`, input);
+  return data;
+}
+
+export async function setAdminStudentStatus(id: string, isActive: boolean) {
+  const { data } = await api.patch(`/admin/students/${id}/status`, { isActive });
+  return data;
+}
+
+export async function createAdminTeacher(input: AdminUserPayload) {
+  const { data } = await api.post('/admin/teachers', input);
+  return data;
+}
+
+export async function updateAdminTeacher(id: string, input: Partial<AdminUserPayload>) {
+  const { data } = await api.patch(`/admin/teachers/${id}`, input);
+  return data;
+}
+
+export async function setAdminTeacherStatus(id: string, isActive: boolean) {
+  const { data } = await api.patch(`/admin/teachers/${id}/status`, { isActive });
+  return data;
+}
+
+export async function assignAdminTeacher(id: string, input: { subjectIds?: string[]; sectionIds?: string[] }) {
+  const { data } = await api.post(`/admin/teachers/${id}/assignments`, input);
+  return data;
+}
+
+export async function createAdminGuardian(input: AdminUserPayload) {
+  const { data } = await api.post('/admin/guardians', input);
+  return data;
+}
+
+export async function updateAdminGuardian(id: string, input: Partial<AdminUserPayload>) {
+  const { data } = await api.patch(`/admin/guardians/${id}`, input);
+  return data;
+}
+
+export async function setAdminGuardianStatus(id: string, isActive: boolean) {
+  const { data } = await api.patch(`/admin/guardians/${id}/status`, { isActive });
+  return data;
+}
+
+export async function linkAdminGuardianStudents(id: string, input: { studentIds: string[]; relationship?: string }) {
+  const { data } = await api.post(`/admin/guardians/${id}/students`, input);
+  return data;
+}
+
+export async function createAdminCourse(input: { name: string; levelId?: string }) {
+  const { data } = await api.post<AdminCourseRow>('/admin/courses', input);
+  return data;
+}
+
+export async function updateAdminCourse(id: string, input: { name?: string; levelId?: string }) {
+  const { data } = await api.patch<AdminCourseRow>(`/admin/courses/${id}`, input);
+  return data;
+}
+
+export async function createAdminSection(input: { name: string; courseId: string; teacherId?: string; classroomId?: string }) {
+  const { data } = await api.post<AdminSectionRow>('/admin/sections', input);
+  return data;
+}
+
+export async function updateAdminSection(id: string, input: { name?: string; courseId?: string; teacherId?: string; classroomId?: string }) {
+  const { data } = await api.patch<AdminSectionRow>(`/admin/sections/${id}`, input);
+  return data;
+}
+
+export async function createAdminSubject(input: { name: string; code: string; courseIds?: string[]; sectionIds?: string[]; teacherIds?: string[] }) {
+  const { data } = await api.post<AdminSubjectRow>('/admin/subjects', input);
+  return data;
+}
+
+export async function updateAdminSubject(id: string, input: { name?: string; code?: string; courseIds?: string[]; sectionIds?: string[]; teacherIds?: string[] }) {
+  const { data } = await api.patch<AdminSubjectRow>(`/admin/subjects/${id}`, input);
+  return data;
+}
+
+export async function assignAdminSubjectTeacher(id: string, input: { teacherId: string; sectionId?: string }) {
+  const { data } = await api.post<AdminSubjectRow>(`/admin/subjects/${id}/assign-teacher`, input);
+  return data;
+}
+
+export async function assignAdminStudentSection(studentId: string, sectionId: string) {
+  const { data } = await api.patch(`/admin/students/${studentId}/section`, { sectionId });
   return data;
 }

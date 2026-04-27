@@ -348,3 +348,128 @@ export interface RequestTicket {
   status: 'nuevo' | 'en_proceso' | 'resuelto';
   createdAt: string;
 }
+
+export interface AdminOption {
+  id: string;
+  label: string;
+  meta?: string;
+}
+
+export interface AdminSummary {
+  users: number;
+  activeUsers: number;
+  students: number;
+  teachers: number;
+  guardians: number;
+  courses: number;
+  sections: number;
+  subjects: number;
+  temporaryPassword: string;
+  options: {
+    roles: AdminOption[];
+    levels: AdminOption[];
+    classrooms: AdminOption[];
+    courses: AdminOption[];
+    sections: AdminOption[];
+    subjects: AdminOption[];
+    teachers: AdminOption[];
+    students: AdminOption[];
+    guardians: AdminOption[];
+  };
+}
+
+export interface AdminUserRow {
+  id: string;
+  name: string;
+  email: string;
+  avatar: string;
+  department: string;
+  role: Role;
+  roles: Role[];
+  isActive: boolean;
+  teacherId?: string | null;
+  studentId?: string | null;
+  guardianId?: string | null;
+  section?: string | null;
+  linkedStudents?: string[];
+}
+
+export interface AdminStudentRow {
+  id: string;
+  userId: string;
+  name: string;
+  email: string;
+  rut: string;
+  birthDate: string;
+  isActive: boolean;
+  sectionId: string | null;
+  section: string;
+  course: string;
+  classroom: string;
+  guardians: Array<{ id: string; name: string; relationship: string }>;
+}
+
+export interface AdminTeacherRow {
+  id: string;
+  userId: string;
+  name: string;
+  email: string;
+  employeeCode: string;
+  specialty: string;
+  isActive: boolean;
+  subjects: Array<{ id: string; name: string }>;
+  sections: Array<{ id: string; name: string; course: string; classroom: string }>;
+}
+
+export interface AdminGuardianRow {
+  id: string;
+  userId: string;
+  name: string;
+  email: string;
+  phone: string;
+  isActive: boolean;
+  students: Array<{ id: string; name: string; relationship: string }>;
+}
+
+export interface AdminCourseRow {
+  id: string;
+  name: string;
+  levelId: string;
+  level: string;
+  sections: number;
+  students: number;
+  subjects: Array<{ id: string; name: string }>;
+}
+
+export interface AdminSectionRow {
+  id: string;
+  name: string;
+  courseId: string;
+  course: string;
+  teacherId?: string | null;
+  teacher: string;
+  classroomId?: string | null;
+  classroom: string;
+  students: number;
+  subjects: Array<{ id: string; name: string }>;
+}
+
+export interface AdminSubjectRow {
+  id: string;
+  name: string;
+  code: string;
+  teachers: Array<{ id: string; name: string }>;
+  courses: Array<{ id: string; name: string }>;
+  sections: Array<{ id: string; name: string; course: string }>;
+}
+
+export interface AdminBundle {
+  summary: AdminSummary;
+  users: AdminUserRow[];
+  students: AdminStudentRow[];
+  teachers: AdminTeacherRow[];
+  guardians: AdminGuardianRow[];
+  courses: AdminCourseRow[];
+  sections: AdminSectionRow[];
+  subjects: AdminSubjectRow[];
+}
