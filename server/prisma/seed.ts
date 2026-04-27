@@ -268,9 +268,9 @@ async function main() {
 
   await prisma.attendance.createMany({
     data: enrollments.flatMap((item, index) => [
-      { enrollmentId: item.id, studentId: item.studentId, date: new Date('2026-04-20'), status: index % 5 === 0 ? 'ausente' : 'presente' },
-      { enrollmentId: item.id, studentId: item.studentId, date: new Date('2026-04-21'), status: index % 4 === 0 ? 'atrasado' : 'presente', note: index % 4 === 0 ? 'Ingreso posterior al inicio de clase' : undefined },
-      { enrollmentId: item.id, studentId: item.studentId, date: new Date('2026-04-22'), status: index % 6 === 0 ? 'justificado' : 'presente' }
+      { enrollmentId: item.id, studentId: item.studentId, sectionId: item.sectionId, subjectId: math.id, date: new Date('2026-04-20'), status: index % 5 === 0 ? 'ausente' : 'presente', recordedById: teacherUser.id, updatedById: teacherUser.id },
+      { enrollmentId: item.id, studentId: item.studentId, sectionId: item.sectionId, subjectId: math.id, date: new Date('2026-04-21'), status: index % 4 === 0 ? 'atrasado' : 'presente', note: index % 4 === 0 ? 'Ingreso posterior al inicio de clase' : undefined, recordedById: teacherUser.id, updatedById: teacherUser.id },
+      { enrollmentId: item.id, studentId: item.studentId, sectionId: item.sectionId, subjectId: math.id, date: new Date('2026-04-22'), status: index % 6 === 0 ? 'justificado' : 'presente', recordedById: teacherUser.id, updatedById: teacherUser.id }
     ]),
     skipDuplicates: true
   });

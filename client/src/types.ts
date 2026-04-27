@@ -80,7 +80,63 @@ export interface AttendanceRecord {
   note?: string | null;
 }
 
-export type AttendanceStatus = AttendanceRecord['status'];
+export type AttendanceStatus = 'presente' | 'ausente' | 'atrasado' | 'justificado';
+export type AttendanceRosterStatus = AttendanceStatus | 'sin_registrar';
+
+export interface AttendanceContext {
+  sections: Array<{ id: string; name: string; subjects: Array<{ id: string; name: string; code: string }> }>;
+}
+
+export interface AttendanceRosterRecord {
+  studentId: string;
+  enrollmentId: string;
+  name: string;
+  email: string;
+  status: AttendanceRosterStatus;
+  note: string;
+  registered: boolean;
+  updatedAt: string | null;
+}
+
+export interface AttendanceRecordsResponse {
+  section: { id: string; name: string };
+  subject: { id: string; name: string } | null;
+  date: string;
+  students: AttendanceRosterRecord[];
+}
+
+export interface AttendanceHistoryItem {
+  id: string;
+  date: string;
+  subject: string;
+  section: string;
+  status: AttendanceStatus;
+  note?: string | null;
+}
+
+export interface AttendanceSummary {
+  presente: number;
+  ausente: number;
+  atrasado: number;
+  justificado: number;
+  total: number;
+  percentage: number;
+}
+
+export interface MyAttendanceResponse {
+  summary: AttendanceSummary;
+  history: AttendanceHistoryItem[];
+}
+
+export interface GuardianAttendanceResponse {
+  students: Array<{ id: string; name: string; summary: AttendanceSummary; history: AttendanceHistoryItem[] }>;
+}
+
+export interface AttendanceAdminSummary {
+  date: string;
+  totals: AttendanceSummary;
+  sections: Array<{ id: string; name: string; students: number; records: number; summary: AttendanceSummary }>;
+}
 
 export interface ScheduleItem {
   id: string;

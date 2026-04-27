@@ -1,51 +1,76 @@
 import { prisma } from '../../config/db.js';
 
+const sectionInclude = {
+  course: true,
+  subjects: { include: { subject: true } },
+  schedules: { include: { subject: true, teacher: { include: { user: true } } } },
+  enrollments: {
+    where: { status: 'activo' },
+    include: { student: { include: { user: true } } },
+    orderBy: { student: { user: { name: 'asc' } } }
+  }
+} as const;
+
 export class AttendanceRepository {
-  list() {
+  listAllContext() {
+    return prisma.section.findMany({ include: sectionInclude, orderBy: [{ course: { name: 'asc' } }, { name: 'asc' }] });
+  }
+
+  listTeacherContext(userId: string) {
+    return prisma.section.findMany({
+      where: { schedules: { some: { teacher: { userId } } } },
+      include: sectionInclude,
+      orderBy: [{ course: { name: 'asc' } }, { name: 'asc' }]
+    });
+  }
+
+  findSection(sectionId: string) {
+    return prisma.section.findUnique({ where: { id: sectionId }, include: sectionInclude });
+  }
+
+  findSubjectSection(sectionId: string, subjectId: string) {
+    return prisma.subjectSection.findUnique({ where: { sectionId_subjectId: { sectionId, subjectId } } });
+  }
+
+  findTeacherAssignment(userId: string, sectionId: string, subjectId: string) {
+    return prisma.classSchedule.findFirst({ where: { sectionId, subjectId, teacher: { userId } } });
+  }
+
+  findRecords(input: { sectionId: string; subjectId: string; date: Date }) {
     return prisma.attendance.findMany({
-      include: { student: { include: { user: true } }, enrollment: { include: { section: { include: { course: true } } } } },
-      orderBy: { date: 'desc' },
-      take: 100
+      where: input,
+      include: { student: { include: { user: true } }, subject: true, section: { include: { course: true } } }
     });
   }
 
-  create(input: { enrollmentId: string; studentId: string; date: Date; status: string; note?: string }) {
-    return prisma.attendance.upsert({
-      where: { studentId_date: { studentId: input.studentId, date: input.date } },
-      update: { status: input.status, note: input.note, enrollmentId: input.enrollmentId },
-      create: input,
-      include: { student: { include: { user: true } }, enrollment: { include: { section: { include: { course: true } } } } }
-    });
-  }
-
-  bulkCreate(input: { date: Date; records: { enrollmentId: string; studentId: string; status: string; note?: string }[] }) {
+  bulkUpsert(input: { sectionId: string; subjectId: string; date: Date; userId: string; records: Array<{ enrollmentId: string; studentId: string; status: string; note?: string }> }) {
     return prisma.$transaction(input.records.map((record) => prisma.attendance.upsert({
-      where: { studentId_date: { studentId: record.studentId, date: input.date } },
-      update: { status: record.status, note: record.note, enrollmentId: record.enrollmentId },
-      create: { ...record, date: input.date },
-      include: { student: { include: { user: true } }, enrollment: { include: { section: { include: { course: true } } } } }
+      where: { studentId_subjectId_sectionId_date: { studentId: record.studentId, subjectId: input.subjectId, sectionId: input.sectionId, date: input.date } },
+      update: { status: record.status, note: record.note, updatedById: input.userId },
+      create: { enrollmentId: record.enrollmentId, studentId: record.studentId, subjectId: input.subjectId, sectionId: input.sectionId, date: input.date, status: record.status, note: record.note, recordedById: input.userId, updatedById: input.userId },
+      include: { student: { include: { user: true } }, subject: true, section: { include: { course: true } } }
     })));
   }
 
-  findEnrollmentScope(enrollmentId: string) {
-    return prisma.enrollment.findUnique({
-      where: { id: enrollmentId },
-      include: { section: { include: { headTeacher: true } }, student: true }
+  findStudentByUser(userId: string) {
+    return prisma.student.findUnique({ where: { userId }, include: { attendance: { include: { subject: true, section: { include: { course: true } } }, orderBy: { date: 'desc' } } } });
+  }
+
+  findGuardianByUser(userId: string) {
+    return prisma.guardian.findUnique({
+      where: { userId },
+      include: { students: { include: { student: { include: { user: true, attendance: { include: { subject: true, section: { include: { course: true } } }, orderBy: { date: 'desc' } } } } } } }
     });
   }
 
-  findById(id: string) {
-    return prisma.attendance.findUnique({
-      where: { id },
-      include: { student: { include: { user: true } }, enrollment: { include: { section: { include: { course: true, headTeacher: true } } } } }
-    });
-  }
-
-  update(id: string, input: { status: string; note?: string }) {
-    return prisma.attendance.update({
-      where: { id },
-      data: input,
-      include: { student: { include: { user: true } }, enrollment: { include: { section: { include: { course: true } } } } }
+  listSummary(date: Date) {
+    return prisma.section.findMany({
+      include: {
+        course: true,
+        enrollments: { where: { status: 'activo' } },
+        attendance: { where: { date }, include: { subject: true } }
+      },
+      orderBy: [{ course: { name: 'asc' } }, { name: 'asc' }]
     });
   }
 }

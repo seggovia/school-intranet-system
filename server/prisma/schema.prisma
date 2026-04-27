@@ -30,6 +30,8 @@ model User {
   submissions    AssignmentSubmission[] @relation("SubmissionAuthor")
   reviewedSubmissions AssignmentSubmission[] @relation("SubmissionReviewer")
   submissionComments SubmissionComment[] @relation("SubmissionCommentAuthor")
+  recordedAttendance Attendance[] @relation("AttendanceRecordedBy")
+  updatedAttendance  Attendance[] @relation("AttendanceUpdatedBy")
 }
 
 model Role {
@@ -112,6 +114,7 @@ model Section {
   enrollments Enrollment[]
   schedules   ClassSchedule[]
   subjects    SubjectSection[]
+  attendance  Attendance[]
 
   @@unique([courseId, name])
   @@map("sections")
@@ -127,6 +130,7 @@ model Subject {
   schedules ClassSchedule[]
   assessments Assessment[]
   units     SubjectUnit[]
+  attendance Attendance[]
 
   @@map("subjects")
 }
@@ -368,13 +372,23 @@ model Attendance {
   id           String     @id @default(cuid())
   enrollmentId String
   studentId    String
+  subjectId    String
+  sectionId    String
   date         DateTime
   status       String
   note         String?
+  recordedById String?
+  updatedById  String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
   enrollment   Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
   student      Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subject      Subject    @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  section      Section    @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  recordedBy   User?      @relation("AttendanceRecordedBy", fields: [recordedById], references: [id])
+  updatedBy    User?      @relation("AttendanceUpdatedBy", fields: [updatedById], references: [id])
 
-  @@unique([studentId, date])
+  @@unique([studentId, subjectId, sectionId, date])
   @@map("attendance")
 }
 
