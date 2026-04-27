@@ -277,19 +277,19 @@ async function main() {
 
   const assessment = await prisma.assessment.upsert({
     where: { id: 'assessment-mat-1' },
-    update: { title: 'Prueba unidades y proporcionalidad', subjectId: math.id, date: new Date('2026-04-18') },
-    create: { id: 'assessment-mat-1', title: 'Prueba unidades y proporcionalidad', subjectId: math.id, date: new Date('2026-04-18'), weight: 1 }
+    update: { title: 'Prueba unidades y proporcionalidad', subjectId: math.id, sectionId: section.id, date: new Date('2026-04-18'), type: 'prueba', description: 'Evaluacion diagnostica de contenidos iniciales.' },
+    create: { id: 'assessment-mat-1', title: 'Prueba unidades y proporcionalidad', subjectId: math.id, sectionId: section.id, date: new Date('2026-04-18'), weight: 1, type: 'prueba', description: 'Evaluacion diagnostica de contenidos iniciales.' }
   });
   await prisma.grade.upsert({
     where: { assessmentId_studentId: { assessmentId: assessment.id, studentId: student.id } },
-    update: { score: 6.4 },
-    create: { assessmentId: assessment.id, studentId: student.id, enrollmentId: enrollment.id, score: 6.4 }
+    update: { score: 6.4, status: 'con_nota' },
+    create: { assessmentId: assessment.id, studentId: student.id, enrollmentId: enrollment.id, score: 6.4, status: 'con_nota' }
   });
   for (const [index, item] of enrollments.entries()) {
     await prisma.grade.upsert({
       where: { assessmentId_studentId: { assessmentId: assessment.id, studentId: item.studentId } },
-      update: { score: Number((4.8 + (index % 5) * 0.4).toFixed(1)) },
-      create: { assessmentId: assessment.id, studentId: item.studentId, enrollmentId: item.id, score: Number((4.8 + (index % 5) * 0.4).toFixed(1)) }
+      update: { score: Number((4.8 + (index % 5) * 0.4).toFixed(1)), status: 'con_nota' },
+      create: { assessmentId: assessment.id, studentId: item.studentId, enrollmentId: item.id, score: Number((4.8 + (index % 5) * 0.4).toFixed(1)), status: 'con_nota' }
     });
   }
 

@@ -23,3 +23,14 @@ export function validateParams(schema: ZodSchema) {
     return next();
   };
 }
+
+export function validateQuery(schema: ZodSchema) {
+  return (req: Request, _res: Response, next: NextFunction) => {
+    const parsed = schema.safeParse(req.query);
+    if (!parsed.success) {
+      return next(new HttpError(400, 'Consulta invalida.', parsed.error.flatten()));
+    }
+    req.query = parsed.data as typeof req.query;
+    return next();
+  };
+}

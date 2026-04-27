@@ -6,14 +6,19 @@ import { SubjectCard } from '../components/SubjectCard';
 import { useAsyncData } from '../hooks';
 import type { Assessment, AttendanceRecord, Course, Grade, MySubject, Student, Subject, User } from '../types';
 
+const emptyCourses = async () => [] as Course[];
+const emptyStudents = async () => [] as Student[];
+const emptySubjects = async () => [] as Subject[];
+const emptyAssessments = async () => [] as Assessment[];
+
 export function AcademicsPage({ user }: { user: User }) {
   const canSeeGlobalAcademics = ['admin', 'director', 'inspector'].includes(user.primaryRole);
   const canSeeAssessments = ['admin', 'director'].includes(user.primaryRole);
-  const courses = useAsyncData(loadCourses, [] as Course[]);
-  const students = useAsyncData(loadStudents, [] as Student[]);
-  const subjects = useAsyncData(loadSubjects, [] as Subject[]);
+  const courses = useAsyncData(canSeeGlobalAcademics ? loadCourses : emptyCourses, [] as Course[]);
+  const students = useAsyncData(canSeeGlobalAcademics ? loadStudents : emptyStudents, [] as Student[]);
+  const subjects = useAsyncData(canSeeGlobalAcademics ? loadSubjects : emptySubjects, [] as Subject[]);
   const mySubjects = useAsyncData(loadMySubjects, [] as MySubject[]);
-  const assessments = useAsyncData(canSeeAssessments ? loadAssessments : async () => [] as Assessment[], [] as Assessment[]);
+  const assessments = useAsyncData(canSeeAssessments ? loadAssessments : emptyAssessments, [] as Assessment[]);
   const grades = useAsyncData(canSeeGlobalAcademics ? loadGrades : loadMyGrades, [] as Grade[]);
   const attendance = useAsyncData(canSeeGlobalAcademics ? loadAttendance : loadMyAttendance, [] as AttendanceRecord[]);
 

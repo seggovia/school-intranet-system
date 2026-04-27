@@ -115,6 +115,7 @@ model Section {
   schedules   ClassSchedule[]
   subjects    SubjectSection[]
   attendance  Attendance[]
+  assessments Assessment[]
 
   @@unique([courseId, name])
   @@map("sections")
@@ -395,10 +396,14 @@ model Attendance {
 model Assessment {
   id        String   @id @default(cuid())
   subjectId String
+  sectionId String
   title     String
   date      DateTime
   weight    Float    @default(1)
-  subject   Subject  @relation(fields: [subjectId], references: [id])
+  type      String   @default("prueba")
+  description String? @db.Text
+  subject   Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  section   Section  @relation(fields: [sectionId], references: [id], onDelete: Cascade)
   grades    Grade[]
 
   @@map("assessments")
@@ -409,10 +414,14 @@ model Grade {
   assessmentId String
   studentId    String
   enrollmentId String
-  score        Float
-  assessment   Assessment @relation(fields: [assessmentId], references: [id])
-  student      Student    @relation(fields: [studentId], references: [id])
-  enrollment   Enrollment @relation(fields: [enrollmentId], references: [id])
+  score        Float?
+  status       String     @default("con_nota")
+  comment      String?    @db.Text
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  student      Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  enrollment   Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
 
   @@unique([assessmentId, studentId])
   @@map("grades")

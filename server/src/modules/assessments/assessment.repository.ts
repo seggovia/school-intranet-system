@@ -2,11 +2,11 @@ import { prisma } from '../../config/db.js';
 
 export class AssessmentRepository {
   list() {
-    return prisma.assessment.findMany({ include: { subject: true, grades: true }, orderBy: { date: 'desc' } });
+    return prisma.assessment.findMany({ include: { subject: true, section: { include: { course: true } }, grades: true }, orderBy: { date: 'desc' } });
   }
 
-  create(input: { subjectId: string; title: string; date: Date; weight: number }) {
-    return prisma.assessment.create({ data: input, include: { subject: true, grades: true } });
+  create(input: { subjectId: string; sectionId: string; title: string; date: Date; weight: number }) {
+    return prisma.assessment.create({ data: input, include: { subject: true, section: { include: { course: true } }, grades: true } });
   }
 
   findSubjectScope(subjectId: string) {
@@ -14,5 +14,9 @@ export class AssessmentRepository {
       where: { id: subjectId },
       include: { sections: { include: { section: { include: { headTeacher: true } } } } }
     });
+  }
+
+  findFirstSubjectSection(subjectId: string) {
+    return prisma.subjectSection.findFirst({ where: { subjectId }, orderBy: { section: { name: 'asc' } } });
   }
 }

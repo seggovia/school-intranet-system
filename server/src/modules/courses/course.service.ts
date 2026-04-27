@@ -2,9 +2,10 @@ import { CourseRepository } from './course.repository.js';
 
 const repository = new CourseRepository();
 
-function average(values: number[]) {
-  if (!values.length) return 0;
-  return Number((values.reduce((sum, value) => sum + value, 0) / values.length).toFixed(1));
+function average(values: Array<number | null>) {
+  const scored = values.filter((value): value is number => value !== null);
+  if (!scored.length) return 0;
+  return Number((scored.reduce((sum, value) => sum + value, 0) / scored.length).toFixed(1));
 }
 
 function attendanceRate(records: { status: string }[]) {

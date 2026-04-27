@@ -138,6 +138,89 @@ export interface AttendanceAdminSummary {
   sections: Array<{ id: string; name: string; students: number; records: number; summary: AttendanceSummary }>;
 }
 
+export type GradeStatus = 'con_nota' | 'pendiente' | 'ausente' | 'eximido';
+export type EvaluationType = 'prueba' | 'trabajo' | 'tarea' | 'proyecto' | 'participacion';
+
+export interface GradebookContext {
+  sections: Array<{ id: string; name: string; subjects: Array<{ id: string; name: string; code: string }> }>;
+}
+
+export interface GradebookEvaluation {
+  id: string;
+  title: string;
+  subjectId: string;
+  subject: string;
+  sectionId: string;
+  section: string;
+  date: string;
+  weight: number;
+  type: EvaluationType;
+  description?: string | null;
+  grades: number;
+}
+
+export interface GradebookRecord {
+  studentId: string;
+  enrollmentId: string;
+  name: string;
+  email: string;
+  score: number | null;
+  status: GradeStatus;
+  comment: string;
+  registered: boolean;
+  updatedAt: string | null;
+}
+
+export interface GradebookRecordsResponse {
+  evaluation: GradebookEvaluation;
+  students: GradebookRecord[];
+}
+
+export interface GradebookSummary {
+  average: number | null;
+  total: number;
+  scored: number;
+  pending: number;
+  absent: number;
+  exempt: number;
+  subjects: Array<{ subjectId: string; subject: string; average: number | null; grades: number }>;
+}
+
+export interface GradebookHistoryItem {
+  id: string;
+  evaluationId: string;
+  evaluation: string;
+  subject: string;
+  section: string;
+  date: string;
+  type: EvaluationType;
+  weight: number;
+  status: GradeStatus;
+  score: number | null;
+  comment?: string | null;
+}
+
+export interface MyGradebookResponse {
+  summary: GradebookSummary;
+  history: GradebookHistoryItem[];
+}
+
+export interface GuardianGradebookResponse {
+  students: Array<{ id: string; name: string; summary: GradebookSummary; history: GradebookHistoryItem[] }>;
+}
+
+export interface GradebookAdminSummary {
+  sections: Array<{
+    id: string;
+    name: string;
+    average: number | null;
+    students: number;
+    belowAverage: number;
+    subjects: GradebookSummary['subjects'];
+    recentEvaluations: GradebookEvaluation[];
+  }>;
+}
+
 export interface ScheduleItem {
   id: string;
   weekday: number;

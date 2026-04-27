@@ -18,7 +18,12 @@ export class AttendanceRepository {
 
   listTeacherContext(userId: string) {
     return prisma.section.findMany({
-      where: { schedules: { some: { teacher: { userId } } } },
+      where: {
+        OR: [
+          { schedules: { some: { teacher: { userId } } } },
+          { headTeacher: { userId } }
+        ]
+      },
       include: sectionInclude,
       orderBy: [{ course: { name: 'asc' } }, { name: 'asc' }]
     });
@@ -33,7 +38,16 @@ export class AttendanceRepository {
   }
 
   findTeacherAssignment(userId: string, sectionId: string, subjectId: string) {
-    return prisma.classSchedule.findFirst({ where: { sectionId, subjectId, teacher: { userId } } });
+    return prisma.section.findFirst({
+      where: {
+        id: sectionId,
+        subjects: { some: { subjectId } },
+        OR: [
+          { schedules: { some: { subjectId, teacher: { userId } } } },
+          { headTeacher: { userId, subjects: { some: { subjectId } } } }
+        ]
+      }
+    });
   }
 
   findRecords(input: { sectionId: string; subjectId: string; date: Date }) {
