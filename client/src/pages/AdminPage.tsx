@@ -147,17 +147,20 @@ function PasswordInput({ name, label, value, onChange, error, help, placeholder 
 
 function StudentPickerModal({ students, selectedIds, onCancel, onConfirm }: { students: AdminStudentRow[]; selectedIds: string[]; onCancel: () => void; onConfirm: (ids: string[]) => void }) {
   const [query, setQuery] = useState('');
+  const [course, setCourse] = useState('');
   const [section, setSection] = useState('');
   const [draft, setDraft] = useState<string[]>(Array.from(new Set(selectedIds)));
-  const sectionOptions = useMemo(() => Array.from(new Set(students.map((student) => student.section).filter(Boolean))).sort(), [students]);
+  const courseOptions = useMemo(() => Array.from(new Set(students.map((student) => student.course).filter(Boolean))).sort(), [students]);
+  const sectionOptions = useMemo(() => Array.from(new Set(students.filter((student) => !course || student.course === course).map((student) => student.section).filter(Boolean))).sort(), [course, students]);
   const filteredStudents = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     return students.filter((student) => {
+      const matchesCourse = !course || student.course === course;
       const matchesSection = !section || student.section === section;
       const haystack = `${student.name} ${student.email} ${student.rut} ${student.course} ${student.section}`.toLowerCase();
-      return matchesSection && (!normalized || haystack.includes(normalized));
+      return matchesCourse && matchesSection && (!normalized || haystack.includes(normalized));
     });
-  }, [query, section, students]);
+  }, [course, query, section, students]);
   const selectedStudents = students.filter((student) => draft.includes(student.id));
 
   function toggle(id: string) {
@@ -175,11 +178,21 @@ function StudentPickerModal({ students, selectedIds, onCancel, onConfirm }: { st
           <button type="button" onClick={onCancel} aria-label="Cerrar"><X size={18} /></button>
         </header>
         <div className="student-picker-tools">
-          <label className="admin-search"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar por nombre, correo, RUT o curso" /></label>
-          <select value={section} onChange={(event) => setSection(event.target.value)}>
-            <option value="">Todas las secciones</option>
-            {sectionOptions.map((item) => <option key={item} value={item}>{item}</option>)}
-          </select>
+          <label>
+            Curso
+            <select value={course} onChange={(event) => { setCourse(event.target.value); setSection(''); }}>
+              <option value="">Todos los cursos</option>
+              {courseOptions.map((item) => <option key={item} value={item}>{item}</option>)}
+            </select>
+          </label>
+          <label>
+            Sección
+            <select value={section} onChange={(event) => setSection(event.target.value)}>
+              <option value="">Todas las secciones</option>
+              {sectionOptions.map((item) => <option key={item} value={item}>{item}</option>)}
+            </select>
+          </label>
+          <label className="admin-search student-picker-search"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar por nombre, correo o RUT" /></label>
         </div>
         <div className="selected-student-strip">
           {selectedStudents.length ? selectedStudents.map((student) => (
@@ -194,11 +207,13 @@ function StudentPickerModal({ students, selectedIds, onCancel, onConfirm }: { st
               <input type="checkbox" checked={draft.includes(student.id)} onChange={() => toggle(student.id)} />
               <span>
                 <strong>{student.name}</strong>
-                <small>{student.email} · {student.rut || 'Sin RUT'} · {student.course} {student.section}</small>
+                <small>{student.email}</small>
+                <small>RUT / identificador: {student.rut || 'Sin registro'}</small>
+                <small>{student.course} · {student.section}</small>
               </span>
             </label>
           ))}
-          {!filteredStudents.length && <div className="admin-empty"><Search size={20} /><strong>Sin estudiantes</strong><span>No hay resultados para los filtros actuales.</span></div>}
+          {!filteredStudents.length && <div className="admin-empty"><Search size={20} /><strong>Sin estudiantes</strong><span>No se encontraron estudiantes con esos filtros.</span></div>}
         </div>
         <footer>
           <button type="button" className="secondary-button" onClick={onCancel}>Cancelar</button>
@@ -261,7 +276,7 @@ function UserFields({
           {errors.role && <span className="field-error">{errors.role}</span>}
         </label>
       )}
-      {showPassword && <PasswordInput name="password" label="Clave temporal" value={password} onChange={onPasswordChange} error={errors.password} help="Si dejas la clave vacía, se asignará demo1234." />}
+      {showPassword && <PasswordInput name="password" label="Contraseña" value={password} onChange={onPasswordChange} error={errors.password} help="Si dejas la contraseña vacía, se asignará demo1234." />}
       {showPassword && password && <PasswordInput name="confirmPassword" label="Repetir contraseña" value={confirmPassword} onChange={onConfirmPasswordChange} error={errors.confirmPassword} placeholder="Repite la contraseña" />}
       </fieldset>
       {role && (
@@ -298,7 +313,7 @@ function EntityModal({ modal, options, students, onClose, onSaved }: { modal: Mo
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [studentPickerOpen, setStudentPickerOpen] = useState(false);
-  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>(modal.type === 'guardian' ? modal.row?.students?.map((item) => item.id) ?? [] : []);
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>(modal.type === 'guardian' ? modal.row?.students?.map((item) => item.id) ? [] : []);
   const [saving, setSaving] = useState(false);
   const hasFieldErrors = Object.keys(fieldErrors).length > 0;
 
@@ -308,10 +323,10 @@ function EntityModal({ modal, options, students, onClose, onSaved }: { modal: Mo
     if (!payload.email.trim()) nextErrors.email = 'Correo requerido';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.email)) nextErrors.email = 'Correo inválido';
     if (requireRole && !payload.role) nextErrors.role = 'Rol requerido';
-    if (payload.password && payload.password.length < 6) nextErrors.password = 'La clave debe tener al menos 6 caracteres';
+    if (payload.password && payload.password.length < 6) nextErrors.password = 'La contrase?a debe tener al menos 6 caracteres';
     if (payload.password && payload.password !== confirmPassword) nextErrors.confirmPassword = 'Las contraseñas no coinciden';
     if (payload.rut && (payload.rut.length < 5 || payload.rut.length > 30)) nextErrors.rut = 'Debe tener entre 5 y 30 caracteres';
-    if (payload.phone && !/^[+\d\s()-]{7,30}$/.test(payload.phone)) nextErrors.phone = 'Usa un teléfono válido';
+    if (payload.phone && !/^(?:\+?56\s?)?(?:9\s?)?\d{4}\s?\d{4}$/.test(payload.phone.replace(/[()-]/g, '').trim())) nextErrors.phone = 'Usa un teléfono chileno válido';
     setFieldErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
   }
@@ -336,7 +351,7 @@ function EntityModal({ modal, options, students, onClose, onSaved }: { modal: Mo
     }
     if (role === 'guardian') {
       cleaned.phone = payload.phone?.trim() || undefined;
-      cleaned.studentIds = payload.studentIds ?? [];
+      cleaned.studentIds = payload.studentIds ? [];
     }
     return cleaned;
   }
@@ -383,7 +398,7 @@ function EntityModal({ modal, options, students, onClose, onSaved }: { modal: Mo
         modal.mode === 'create' ? await createAdminSubject(payload) : await updateAdminSubject(modal.row!.id, payload);
       }
       const userModal = ['user', 'student', 'teacher', 'guardian'].includes(modal.type);
-      if (userModal && modal.mode === 'create') onSaved(`Usuario creado correctamente${cleanedUser.password ? '' : '. Clave temporal: demo1234'}`);
+      if (userModal && modal.mode === 'create') onSaved(`Usuario creado correctamente${cleanedUser.password ? '' : '. Contraseña: demo1234'}`);
       else if (userModal) onSaved('Usuario actualizado correctamente');
       else onSaved('Cambios guardados correctamente.');
     } catch (err) {
@@ -521,7 +536,7 @@ export function AdminPage({ user }: { user: User }) {
             {canManage && tab !== 'assignments' && <button className="primary-button" onClick={() => setModal({ type: tab === 'students' ? 'student' : tab === 'teachers' ? 'teacher' : tab === 'guardians' ? 'guardian' : tab === 'courses' ? 'course' : tab === 'subjects' ? 'subject' : 'user', mode: 'create' })}><Plus size={18} />Crear</button>}
           </div>
 
-          {tab === 'users' && <AdminTable rows={filtered as AdminUserRow[]} render={(row) => <><div><strong>{row.name}</strong><small>{row.email}</small></div><span>{roleLabels[row.role]}</span><StatusBadge active={row.isActive} /><div className="admin-row-actions">{canManage && <><button onClick={() => setModal({ type: 'user', mode: 'edit', row })}><Edit3 size={16} />Editar</button><button onClick={() => statusAction('usuario', row.name, row.isActive, () => setAdminUserStatus(row.id, !row.isActive))}>{row.isActive ? <ToggleRight /> : <ToggleLeft />} {row.isActive ? 'Desactivar' : 'Activar'}</button><button onClick={() => setConfirm({ title: 'Resetear clave', message: `Confirma el reseteo de clave para ${row.name}.`, action: async () => { const result = await resetAdminUserPassword(row.id); done(`Clave temporal: ${result.temporaryPassword}`); } })}><KeyRound size={16} />Reset clave</button></>}</div></>} />}
+          {tab === 'users' && <AdminTable rows={filtered as AdminUserRow[]} render={(row) => <><div><strong>{row.name}</strong><small>{row.email}</small></div><span>{roleLabels[row.role]}</span><StatusBadge active={row.isActive} /><div className="admin-row-actions">{canManage && <><button onClick={() => setModal({ type: 'user', mode: 'edit', row })}><Edit3 size={16} />Editar</button><button onClick={() => statusAction('usuario', row.name, row.isActive, () => setAdminUserStatus(row.id, !row.isActive))}>{row.isActive ? <ToggleRight /> : <ToggleLeft />} {row.isActive ? 'Desactivar' : 'Activar'}</button><button onClick={() => setConfirm({ title: 'Resetear contraseña', message: `Confirma el reseteo de contraseña para ${row.name}.`, action: async () => { const result = await resetAdminUserPassword(row.id); done(`Contraseña: ${result.temporaryPassword}`); } })}><KeyRound size={16} />Reset contraseña</button></>}</div></>} />}
 
           {tab === 'students' && <AdminTable rows={filtered as AdminStudentRow[]} render={(row) => <><div><strong>{row.name}</strong><small>{row.email}</small></div><span>{row.course} · {row.section}</span><span>{row.guardians.length ? row.guardians.map((item) => item.name).join(', ') : 'Sin apoderado'}</span><StatusBadge active={row.isActive} /><div className="admin-row-actions">{canManage && <><button onClick={() => setModal({ type: 'student', mode: 'edit', row })}><Edit3 size={16} />Editar</button><button onClick={() => statusAction('estudiante', row.name, row.isActive, () => setAdminStudentStatus(row.id, !row.isActive))}>{row.isActive ? 'Desactivar' : 'Activar'}</button></>}</div></>} />}
 
@@ -529,7 +544,7 @@ export function AdminPage({ user }: { user: User }) {
 
           {tab === 'guardians' && <AdminTable rows={filtered as AdminGuardianRow[]} render={(row) => <><div><strong>{row.name}</strong><small>{row.email}</small></div><span>{row.phone || 'Sin telefono'}</span><span>{row.students.map((item) => item.name).join(', ') || 'Sin estudiantes'}</span><StatusBadge active={row.isActive} /><div className="admin-row-actions">{canManage && <><button onClick={() => setModal({ type: 'guardian', mode: 'edit', row })}><Edit3 size={16} />Editar</button><button onClick={() => statusAction('apoderado', row.name, row.isActive, () => setAdminGuardianStatus(row.id, !row.isActive))}>{row.isActive ? 'Desactivar' : 'Activar'}</button></>}</div></>} />}
 
-          {tab === 'courses' && <AdminTable rows={filtered as Array<AdminCourseRow | AdminSectionRow>} render={(row) => 'level' in row ? <><div><strong>{row.name}</strong><small>Curso · {row.level}</small></div><span>{row.sections} secciones</span><span>{row.students} estudiantes</span><div className="admin-row-actions">{canManage && <button onClick={() => setModal({ type: 'course', mode: 'edit', row })}><Edit3 size={16} />Editar</button>}</div></> : <><div><strong>{row.name}</strong><small>Seccion · {row.course}</small></div><span>{row.teacher}</span><span>{row.classroom} · {row.students} estudiantes</span><div className="admin-row-actions">{canManage && <button onClick={() => setModal({ type: 'section', mode: 'edit', row })}><Edit3 size={16} />Editar</button>}</div></>} />}
+          {tab === 'courses' && <AdminTable rows={filtered as Array<AdminCourseRow | AdminSectionRow>} render={(row) => 'level' in row ? <><div><strong>{row.name}</strong><small>Curso · {row.level}</small></div><span>{row.sections} secciones</span><span>{row.students} estudiantes</span><div className="admin-row-actions">{canManage && <button onClick={() => setModal({ type: 'course', mode: 'edit', row })}><Edit3 size={16} />Editar</button>}</div></> : <><div><strong>{row.name}</strong><small>Sección · {row.course}</small></div><span>{row.teacher}</span><span>{row.classroom} · {row.students} estudiantes</span><div className="admin-row-actions">{canManage && <button onClick={() => setModal({ type: 'section', mode: 'edit', row })}><Edit3 size={16} />Editar</button>}</div></>} />}
 
           {tab === 'subjects' && <AdminTable rows={filtered as AdminSubjectRow[]} render={(row) => <><div><strong>{row.name}</strong><small>{row.code}</small></div><span>{row.teachers.map((item) => item.name).join(', ') || 'Sin profesor'}</span><span>{row.sections.map((item) => `${item.course} ${item.name}`).join(', ') || 'Sin seccion'}</span><div className="admin-row-actions">{canManage && <button onClick={() => setModal({ type: 'subject', mode: 'edit', row })}><Edit3 size={16} />Editar</button>}</div></>} />}
 
@@ -572,10 +587,11 @@ function AssignmentsPanel({ options, onSaved }: { options: AdminBundle['summary'
 
   return (
     <div className="admin-assignment-grid">
-      <form onSubmit={submitTeacher} className="admin-relation-card"><h3>Profesor {'>'} asignatura {'>'} seccion</h3><SelectField label="Profesor" name="teacherId" options={options.teachers} required /><MultiSelectField label="Asignaturas" name="subjectIds" options={options.subjects} /><MultiSelectField label="Secciones" name="sectionIds" options={options.sections} /><button className="primary-button">Guardar relacion</button></form>
-      <form onSubmit={submitStudent} className="admin-relation-card"><h3>Estudiante {'>'} seccion</h3><SelectField label="Estudiante" name="studentId" options={options.students} required /><SelectField label="Seccion" name="sectionId" options={options.sections} required /><button className="primary-button">Asignar estudiante</button></form>
+      <form onSubmit={submitTeacher} className="admin-relation-card"><h3>Profesor {'>'} asignatura {'>'} sección</h3><SelectField label="Profesor" name="teacherId" options={options.teachers} required /><MultiSelectField label="Asignaturas" name="subjectIds" options={options.subjects} /><MultiSelectField label="Secciones" name="sectionIds" options={options.sections} /><button className="primary-button">Guardar relación</button></form>
+      <form onSubmit={submitStudent} className="admin-relation-card"><h3>Estudiante {'>'} sección</h3><SelectField label="Estudiante" name="studentId" options={options.students} required /><SelectField label="Sección" name="sectionId" options={options.sections} required /><button className="primary-button">Asignar estudiante</button></form>
       <form onSubmit={submitGuardian} className="admin-relation-card"><h3>Apoderado {'>'} estudiantes</h3><SelectField label="Apoderado" name="guardianId" options={options.guardians} required /><MultiSelectField label="Estudiantes" name="studentIds" options={options.students} /><label>Relacion<input name="relationship" defaultValue="Apoderado" /></label><button className="primary-button">Vincular</button></form>
-      <form onSubmit={submitSubject} className="admin-relation-card"><h3>Asignatura {'>'} responsable</h3><SelectField label="Asignatura" name="subjectId" options={options.subjects} required /><SelectField label="Profesor" name="teacherId" options={options.teachers} required /><SelectField label="Seccion" name="sectionId" options={options.sections} /><button className="primary-button">Asignar responsable</button></form>
+      <form onSubmit={submitSubject} className="admin-relation-card"><h3>Asignatura {'>'} responsable</h3><SelectField label="Asignatura" name="subjectId" options={options.subjects} required /><SelectField label="Profesor" name="teacherId" options={options.teachers} required /><SelectField label="Sección" name="sectionId" options={options.sections} /><button className="primary-button">Asignar responsable</button></form>
     </div>
   );
 }
+
