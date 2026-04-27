@@ -1,4 +1,4 @@
-import { AlertTriangle, BookOpen, Building2, CheckCircle2, ClipboardList, Edit3, GraduationCap, KeyRound, Link2, Plus, Search, Shield, ToggleLeft, ToggleRight, UserRound, Users } from 'lucide-react';
+import { AlertTriangle, BookOpen, Building2, CheckCircle2, ClipboardList, Edit3, Eye, EyeOff, GraduationCap, KeyRound, Link2, Plus, Search, Shield, ToggleLeft, ToggleRight, UserRound, Users, X } from 'lucide-react';
 import { FormEvent, ReactNode, useEffect, useMemo, useState } from 'react';
 import {
   assignAdminStudentSection,
@@ -106,7 +106,7 @@ function getValues(form: HTMLFormElement, key: string) {
 }
 
 type UserLikeRow = Partial<AdminUserRow> | Partial<AdminStudentRow> | Partial<AdminTeacherRow> | Partial<AdminGuardianRow>;
-type UserFormErrors = Partial<Record<'name' | 'email' | 'role' | 'password' | 'rut' | 'phone', string>>;
+type UserFormErrors = Partial<Record<'name' | 'email' | 'role' | 'password' | 'confirmPassword' | 'rut' | 'phone', string>>;
 
 function roleFromModal(modal: ModalState): Role | '' {
   if (modal.type === 'student') return 'student';
@@ -120,24 +120,128 @@ function isRole(value: string): value is Role {
   return ['admin', 'director', 'teacher', 'student', 'guardian', 'inspector'].includes(value);
 }
 
+function PasswordInput({ name, label, value, onChange, error, help, placeholder = 'Mínimo 6 caracteres' }: { name: string; label: string; value: string; onChange: (value: string) => void; error?: string; help?: string; placeholder?: string }) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <label className="password-field">
+      {label}
+      <span>
+        <input
+          name={name}
+          type={visible ? 'text' : 'password'}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder={placeholder}
+          autoComplete="new-password"
+          className={error ? 'input-error' : undefined}
+        />
+        <button type="button" onClick={() => setVisible((current) => !current)} aria-label={visible ? 'Ocultar contraseña' : 'Mostrar contraseña'}>
+          {visible ? <EyeOff size={18} /> : <Eye size={18} />}
+        </button>
+      </span>
+      {error && <span className="field-error">{error}</span>}
+      {help && <small className="field-help">{help}</small>}
+    </label>
+  );
+}
+
+function StudentPickerModal({ students, selectedIds, onCancel, onConfirm }: { students: AdminStudentRow[]; selectedIds: string[]; onCancel: () => void; onConfirm: (ids: string[]) => void }) {
+  const [query, setQuery] = useState('');
+  const [section, setSection] = useState('');
+  const [draft, setDraft] = useState<string[]>(Array.from(new Set(selectedIds)));
+  const sectionOptions = useMemo(() => Array.from(new Set(students.map((student) => student.section).filter(Boolean))).sort(), [students]);
+  const filteredStudents = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    return students.filter((student) => {
+      const matchesSection = !section || student.section === section;
+      const haystack = `${student.name} ${student.email} ${student.rut} ${student.course} ${student.section}`.toLowerCase();
+      return matchesSection && (!normalized || haystack.includes(normalized));
+    });
+  }, [query, section, students]);
+  const selectedStudents = students.filter((student) => draft.includes(student.id));
+
+  function toggle(id: string) {
+    setDraft((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
+  }
+
+  return (
+    <div className="admin-modal-backdrop" role="dialog" aria-modal="true">
+      <section className="student-picker-modal">
+        <header>
+          <div>
+            <span>Apoderados</span>
+            <h2>Seleccionar estudiantes</h2>
+          </div>
+          <button type="button" onClick={onCancel} aria-label="Cerrar"><X size={18} /></button>
+        </header>
+        <div className="student-picker-tools">
+          <label className="admin-search"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar por nombre, correo, RUT o curso" /></label>
+          <select value={section} onChange={(event) => setSection(event.target.value)}>
+            <option value="">Todas las secciones</option>
+            {sectionOptions.map((item) => <option key={item} value={item}>{item}</option>)}
+          </select>
+        </div>
+        <div className="selected-student-strip">
+          {selectedStudents.length ? selectedStudents.map((student) => (
+            <button key={student.id} type="button" onClick={() => toggle(student.id)}>
+              {student.name}<X size={14} />
+            </button>
+          )) : <span>Sin estudiantes seleccionados</span>}
+        </div>
+        <div className="student-picker-list">
+          {filteredStudents.map((student) => (
+            <label key={student.id} className="student-picker-row">
+              <input type="checkbox" checked={draft.includes(student.id)} onChange={() => toggle(student.id)} />
+              <span>
+                <strong>{student.name}</strong>
+                <small>{student.email} · {student.rut || 'Sin RUT'} · {student.course} {student.section}</small>
+              </span>
+            </label>
+          ))}
+          {!filteredStudents.length && <div className="admin-empty"><Search size={20} /><strong>Sin estudiantes</strong><span>No hay resultados para los filtros actuales.</span></div>}
+        </div>
+        <footer>
+          <button type="button" className="secondary-button" onClick={onCancel}>Cancelar</button>
+          <button type="button" className="primary-button" onClick={() => onConfirm(Array.from(new Set(draft)))}>Confirmar selección</button>
+        </footer>
+      </section>
+    </div>
+  );
+}
+
 function UserFields({
   role,
   row,
   options,
+  students,
+  selectedStudentIds,
+  onOpenStudentPicker,
   canChangeRole = false,
   showPassword = true,
+  password,
+  confirmPassword,
+  onPasswordChange,
+  onConfirmPasswordChange,
   errors = {},
   onRoleChange
 }: {
   role: Role | '';
   row?: UserLikeRow;
   options: AdminBundle['summary']['options'];
+  students: AdminStudentRow[];
+  selectedStudentIds: string[];
+  onOpenStudentPicker: () => void;
   canChangeRole?: boolean;
   showPassword?: boolean;
+  password: string;
+  confirmPassword: string;
+  onPasswordChange: (value: string) => void;
+  onConfirmPasswordChange: (value: string) => void;
   errors?: UserFormErrors;
   onRoleChange?: (role: Role) => void;
 }) {
   const names = splitName(row?.name);
+  const selectedStudents = students.filter((student) => selectedStudentIds.includes(student.id));
   return (
     <>
       <fieldset className="admin-form-section">
@@ -157,7 +261,8 @@ function UserFields({
           {errors.role && <span className="field-error">{errors.role}</span>}
         </label>
       )}
-      {showPassword && <label>Clave temporal<input name="password" type="password" placeholder="Mínimo 6 caracteres" autoComplete="new-password" className={errors.password ? 'input-error' : undefined} />{errors.password && <span className="field-error">{errors.password}</span>}<small className="field-help">Si dejas la clave vacía, se asignará demo1234.</small></label>}
+      {showPassword && <PasswordInput name="password" label="Clave temporal" value={password} onChange={onPasswordChange} error={errors.password} help="Si dejas la clave vacía, se asignará demo1234." />}
+      {showPassword && password && <PasswordInput name="confirmPassword" label="Repetir contraseña" value={confirmPassword} onChange={onConfirmPasswordChange} error={errors.confirmPassword} placeholder="Repite la contraseña" />}
       </fieldset>
       {role && (
         <fieldset className="admin-form-section">
@@ -167,8 +272,17 @@ function UserFields({
           {role === 'teacher' && <label>Código docente<input name="rut" defaultValue={(row as AdminTeacherRow | undefined)?.employeeCode ?? ''} autoComplete="off" placeholder="Opcional" className={errors.rut ? 'input-error' : undefined} />{errors.rut && <span className="field-error">{errors.rut}</span>}</label>}
           {role === 'student' && <label>Fecha nacimiento<input name="birthDate" type="date" defaultValue={(row as AdminStudentRow | undefined)?.birthDate ?? ''} autoComplete="off" /></label>}
           {role === 'student' && <SelectField label="Sección" name="sectionId" options={options.sections} defaultValue={(row as AdminStudentRow | undefined)?.sectionId} placeholder="Selecciona una sección" />}
-          {role === 'guardian' && <label>Teléfono<input name="phone" defaultValue={(row as AdminGuardianRow | undefined)?.phone ?? ''} autoComplete="off" placeholder="+56 9 1234 5678" className={errors.phone ? 'input-error' : undefined} />{errors.phone && <span className="field-error">{errors.phone}</span>}</label>}
-          {role === 'guardian' && <MultiSelectField label="Estudiantes vinculados" name="studentIds" options={options.students} defaultValues={(row as AdminGuardianRow | undefined)?.students?.map((item) => item.id)} help="Opcional. Puedes vincularlos ahora o desde Asignaciones." />}
+          {role === 'guardian' && <label className="compact-field">Teléfono<input name="phone" defaultValue={(row as AdminGuardianRow | undefined)?.phone ?? ''} autoComplete="off" placeholder="+56 9 1234 5678" className={errors.phone ? 'input-error' : undefined} />{errors.phone && <span className="field-error">{errors.phone}</span>}</label>}
+          {role === 'guardian' && (
+            <div className="guardian-student-field">
+              <span>Estudiantes vinculados</span>
+              <button type="button" className="secondary-button" onClick={onOpenStudentPicker}><Users size={16} />Seleccionar estudiantes</button>
+              <div className="selected-student-list">
+                {selectedStudents.length ? selectedStudents.map((student) => <span key={student.id}>{student.name}</span>) : <small className="field-help">Opcional. Puedes vincularlos ahora o desde Asignaciones.</small>}
+              </div>
+              {selectedStudentIds.map((id) => <input key={id} type="hidden" name="studentIds" value={id} />)}
+            </div>
+          )}
           {['admin', 'director', 'inspector'].includes(role) && <p className="field-help admin-role-note">Este rol no requiere datos académicos adicionales.</p>}
         </fieldset>
       )}
@@ -176,11 +290,15 @@ function UserFields({
   );
 }
 
-function EntityModal({ modal, options, onClose, onSaved }: { modal: ModalState; options: AdminBundle['summary']['options']; onClose: () => void; onSaved: (message: string) => void }) {
+function EntityModal({ modal, options, students, onClose, onSaved }: { modal: ModalState; options: AdminBundle['summary']['options']; students: AdminStudentRow[]; onClose: () => void; onSaved: (message: string) => void }) {
   const title = `${modal.mode === 'create' ? 'Crear' : 'Editar'} ${modal.type === 'user' ? 'usuario' : modal.type === 'student' ? 'estudiante' : modal.type === 'teacher' ? 'profesor' : modal.type === 'guardian' ? 'apoderado' : modal.type === 'course' ? 'curso' : modal.type === 'section' ? 'seccion' : 'asignatura'}`;
   const [selectedRole, setSelectedRole] = useState<Role | ''>(roleFromModal(modal));
   const [formError, setFormError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<UserFormErrors>({});
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [studentPickerOpen, setStudentPickerOpen] = useState(false);
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>(modal.type === 'guardian' ? modal.row?.students?.map((item) => item.id) ?? [] : []);
   const [saving, setSaving] = useState(false);
   const hasFieldErrors = Object.keys(fieldErrors).length > 0;
 
@@ -191,6 +309,7 @@ function EntityModal({ modal, options, onClose, onSaved }: { modal: ModalState; 
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.email)) nextErrors.email = 'Correo inválido';
     if (requireRole && !payload.role) nextErrors.role = 'Rol requerido';
     if (payload.password && payload.password.length < 6) nextErrors.password = 'La clave debe tener al menos 6 caracteres';
+    if (payload.password && payload.password !== confirmPassword) nextErrors.confirmPassword = 'Las contraseñas no coinciden';
     if (payload.rut && (payload.rut.length < 5 || payload.rut.length > 30)) nextErrors.rut = 'Debe tener entre 5 y 30 caracteres';
     if (payload.phone && !/^[+\d\s()-]{7,30}$/.test(payload.phone)) nextErrors.phone = 'Usa un teléfono válido';
     setFieldErrors(nextErrors);
@@ -234,12 +353,12 @@ function EntityModal({ modal, options, onClose, onSaved }: { modal: ModalState; 
       email: String(fd.get('email') ?? ''),
       role,
       department: String(fd.get('department') ?? ''),
-      password: String(fd.get('password') ?? '') || undefined,
+      password: password || undefined,
       rut: String(fd.get('rut') ?? '') || undefined,
       phone: String(fd.get('phone') ?? '') || undefined,
       birthDate: String(fd.get('birthDate') ?? '') || undefined,
       sectionId: String(fd.get('sectionId') ?? '') || undefined,
-      studentIds: getValues(form, 'studentIds')
+      studentIds: selectedStudentIds
     };
 
     if (['user', 'student', 'teacher', 'guardian'].includes(modal.type) && !validateUserPayload(baseUser, modal.type === 'user')) return;
@@ -285,10 +404,10 @@ function EntityModal({ modal, options, onClose, onSaved }: { modal: ModalState; 
           <button type="button" onClick={onClose}>x</button>
         </header>
         <div className="admin-form-grid">
-          {modal.type === 'user' && <UserFields role={selectedRole} row={modal.row} options={options} canChangeRole errors={fieldErrors} onRoleChange={(role) => { setSelectedRole(role); setFieldErrors({}); setFormError(''); }} />}
-          {modal.type === 'student' && <UserFields role="student" row={modal.row} options={options} showPassword={modal.mode === 'create'} errors={fieldErrors} />}
-          {modal.type === 'teacher' && <UserFields role="teacher" row={modal.row} options={options} showPassword={modal.mode === 'create'} errors={fieldErrors} />}
-          {modal.type === 'guardian' && <UserFields role="guardian" row={modal.row} options={options} showPassword={modal.mode === 'create'} errors={fieldErrors} />}
+          {modal.type === 'user' && <UserFields role={selectedRole} row={modal.row} options={options} students={students} selectedStudentIds={selectedStudentIds} onOpenStudentPicker={() => setStudentPickerOpen(true)} canChangeRole password={password} confirmPassword={confirmPassword} onPasswordChange={setPassword} onConfirmPasswordChange={setConfirmPassword} errors={fieldErrors} onRoleChange={(role) => { setSelectedRole(role); setSelectedStudentIds([]); setPassword(''); setConfirmPassword(''); setFieldErrors({}); setFormError(''); }} />}
+          {modal.type === 'student' && <UserFields role="student" row={modal.row} options={options} students={students} selectedStudentIds={selectedStudentIds} onOpenStudentPicker={() => setStudentPickerOpen(true)} showPassword={modal.mode === 'create'} password={password} confirmPassword={confirmPassword} onPasswordChange={setPassword} onConfirmPasswordChange={setConfirmPassword} errors={fieldErrors} />}
+          {modal.type === 'teacher' && <UserFields role="teacher" row={modal.row} options={options} students={students} selectedStudentIds={selectedStudentIds} onOpenStudentPicker={() => setStudentPickerOpen(true)} showPassword={modal.mode === 'create'} password={password} confirmPassword={confirmPassword} onPasswordChange={setPassword} onConfirmPasswordChange={setConfirmPassword} errors={fieldErrors} />}
+          {modal.type === 'guardian' && <UserFields role="guardian" row={modal.row} options={options} students={students} selectedStudentIds={selectedStudentIds} onOpenStudentPicker={() => setStudentPickerOpen(true)} showPassword={modal.mode === 'create'} password={password} confirmPassword={confirmPassword} onPasswordChange={setPassword} onConfirmPasswordChange={setConfirmPassword} errors={fieldErrors} />}
           {modal.type === 'course' && <><label>Curso<input name="name" defaultValue={modal.row?.name} required /></label><SelectField label="Nivel" name="levelId" options={options.levels} defaultValue={modal.row?.levelId} required /></>}
           {modal.type === 'section' && <><label>Seccion<input name="name" defaultValue={modal.row?.name} required /></label><SelectField label="Curso" name="courseId" options={options.courses} defaultValue={modal.row?.courseId} required /><SelectField label="Profesor jefe" name="teacherId" options={options.teachers} defaultValue={modal.row?.teacherId} /><SelectField label="Sala" name="classroomId" options={options.classrooms} defaultValue={modal.row?.classroomId} /></>}
           {modal.type === 'subject' && <><label>Asignatura<input name="name" defaultValue={modal.row?.name} required /></label><label>Codigo<input name="code" defaultValue={modal.row?.code} required /></label><MultiSelectField label="Cursos" name="courseIds" options={options.courses} defaultValues={modal.row?.courses?.map((item) => item.id)} /><MultiSelectField label="Secciones" name="sectionIds" options={options.sections} defaultValues={modal.row?.sections?.map((item) => item.id)} /><MultiSelectField label="Profesores" name="teacherIds" options={options.teachers} defaultValues={modal.row?.teachers?.map((item) => item.id)} /></>}
@@ -296,6 +415,7 @@ function EntityModal({ modal, options, onClose, onSaved }: { modal: ModalState; 
         {formError && <p className="admin-modal-error">{formError}</p>}
         <footer><button type="button" className="secondary-button" onClick={onClose}>Cancelar</button><button type="submit" className="primary-button" disabled={saving || hasFieldErrors}>{saving ? 'Guardando...' : 'Guardar usuario'}</button></footer>
       </form>
+      {studentPickerOpen && <StudentPickerModal students={students} selectedIds={selectedStudentIds} onCancel={() => setStudentPickerOpen(false)} onConfirm={(ids) => { setSelectedStudentIds(ids); setStudentPickerOpen(false); }} />}
     </div>
   );
 }
@@ -417,7 +537,7 @@ export function AdminPage({ user }: { user: User }) {
         </main>
       </section>
 
-      {modal && <EntityModal modal={modal} options={options} onClose={() => setModal(null)} onSaved={done} />}
+      {modal && <EntityModal modal={modal} options={options} students={bundle.students} onClose={() => setModal(null)} onSaved={done} />}
       {confirm && <ConfirmDialog confirm={confirm} onClose={() => setConfirm(null)} />}
     </div>
   );

@@ -248,7 +248,8 @@
 }
 
 .admin-modal,
-.admin-confirm {
+.admin-confirm,
+.student-picker-modal {
   width: min(820px, 100%);
   max-height: 88vh;
   overflow: auto;
@@ -264,6 +265,36 @@
   gap: 16px;
   padding: 22px;
   border-bottom: 1px solid #d8e2ec;
+}
+
+.student-picker-modal header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px;
+  border-bottom: 1px solid #d8e2ec;
+}
+
+.student-picker-modal header span {
+  color: #1d4ed8;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.student-picker-modal header h2 {
+  margin: 4px 0 0;
+}
+
+.student-picker-modal header button {
+  width: 42px;
+  height: 42px;
+  border: 0;
+  border-radius: 8px;
+  background: #e7eef5;
+  display: grid;
+  place-items: center;
 }
 
 .admin-modal header span {
@@ -327,6 +358,46 @@
   margin: 0;
 }
 
+.compact-field input {
+  min-height: 42px;
+}
+
+.guardian-student-field {
+  display: grid;
+  gap: 8px;
+  color: #34465a;
+  font-weight: 800;
+}
+
+.guardian-student-field .secondary-button {
+  width: max-content;
+}
+
+.selected-student-list,
+.selected-student-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 34px;
+}
+
+.selected-student-list span,
+.selected-student-strip button {
+  border: 1px solid #cbd7e4;
+  border-radius: 999px;
+  padding: 7px 10px;
+  background: #f8fafc;
+  color: #0f2942;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.selected-student-strip button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .admin-autofill-decoy {
   position: absolute;
   width: 1px;
@@ -336,6 +407,69 @@
 }
 
 .admin-modal footer {
+  padding: 18px 22px;
+  border-top: 1px solid #d8e2ec;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.student-picker-modal {
+  width: min(920px, 100%);
+}
+
+.student-picker-tools {
+  padding: 18px 22px 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 260px);
+  gap: 12px;
+}
+
+.student-picker-modal .selected-student-strip {
+  padding: 14px 22px;
+  border-bottom: 1px solid #e5edf5;
+}
+
+.student-picker-modal .selected-student-strip > span {
+  color: #64748b;
+  font-weight: 800;
+}
+
+.student-picker-list {
+  max-height: 340px;
+  overflow: auto;
+  padding: 0 22px 18px;
+  display: grid;
+  gap: 10px;
+}
+
+.student-picker-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  border: 1px solid #d8e2ec;
+  border-radius: 8px;
+  padding: 12px;
+  background: #ffffff;
+}
+
+.student-picker-row input {
+  width: 18px;
+  height: 18px;
+}
+
+.student-picker-row strong,
+.student-picker-row small {
+  display: block;
+}
+
+.student-picker-row small {
+  color: #64748b;
+  margin-top: 3px;
+}
+
+.student-picker-modal footer {
   padding: 18px 22px;
   border-top: 1px solid #d8e2ec;
   display: flex;
@@ -429,7 +563,8 @@
   .admin-summary-grid,
   .admin-form-grid,
   .admin-form-section,
-  .admin-assignment-grid {
+  .admin-assignment-grid,
+  .student-picker-tools {
     grid-template-columns: 1fr;
   }
 
