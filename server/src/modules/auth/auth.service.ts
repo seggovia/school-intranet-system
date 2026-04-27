@@ -42,14 +42,18 @@ function signRefreshToken(userId: string) {
 export class AuthService {
   async login(email: string, password: string) {
     const user = await repository.findUserByEmail(email);
-    if (!user || !user.isActive) {
-      throw new HttpError(401, 'Usuario o clave incorrectos.');
+    if (!user) {
+      throw new HttpError(401, 'Correo o contraseña incorrectos');
+    }
+
+    if (!user.isActive) {
+      throw new HttpError(403, 'Usuario desactivado. Contacte administración.');
     }
 
     const passwordOk = await bcrypt.compare(password, user.passwordHash);
     if (!passwordOk) {
       console.warn(`Login fallido para ${email}`);
-      throw new HttpError(401, 'Usuario o clave incorrectos.');
+      throw new HttpError(401, 'Correo o contraseña incorrectos');
     }
 
     const publicUser = toPublicUser(user);

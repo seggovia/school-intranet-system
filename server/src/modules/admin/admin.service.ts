@@ -157,6 +157,12 @@ function serializeSubject(subject: Awaited<ReturnType<AdminRepository['listSubje
 }
 
 export class AdminService {
+  private async ensureEmailAvailable(email: string | undefined, currentUserId: string) {
+    if (!email) return;
+    const existing = await repository.findUserByEmail(email);
+    if (existing && existing.id !== currentUserId) throw new HttpError(409, 'Ya existe un usuario con ese correo.');
+  }
+
   async summary() {
     const [[users, activeUsers, students, teachers, guardians, courses, sections, subjects], [roles, levels, classrooms, courseOptions, sectionOptions, subjectOptions, teacherOptions, studentOptions, guardianOptions]] = await Promise.all([
       repository.summary(),
@@ -290,6 +296,7 @@ export class AdminService {
   async updateStudent(id: string, input: UpdateUserInput) {
     const student = await repository.findStudent(id);
     if (!student) throw new HttpError(404, 'Estudiante no encontrado.');
+    await this.ensureEmailAvailable(input.email, student.userId);
     await repository.transaction(async (tx) => {
       await repository.updateUser(tx, student.userId, {
         name: input.name ? fullName(input) : undefined,
@@ -327,6 +334,7 @@ export class AdminService {
   async updateTeacher(id: string, input: UpdateUserInput) {
     const teacher = await repository.findTeacher(id);
     if (!teacher) throw new HttpError(404, 'Profesor no encontrado.');
+    await this.ensureEmailAvailable(input.email, teacher.userId);
     await repository.transaction(async (tx) => {
       await repository.updateUser(tx, teacher.userId, {
         name: input.name ? fullName(input) : undefined,
@@ -363,6 +371,7 @@ export class AdminService {
   async updateGuardian(id: string, input: UpdateUserInput) {
     const guardian = await repository.findGuardian(id);
     if (!guardian) throw new HttpError(404, 'Apoderado no encontrado.');
+    await this.ensureEmailAvailable(input.email, guardian.userId);
     await repository.transaction(async (tx) => {
       await repository.updateUser(tx, guardian.userId, {
         name: input.name ? fullName(input) : undefined,

@@ -73,27 +73,30 @@ function StatusBadge({ active }: { active: boolean }) {
   return <span className={`admin-status ${active ? 'active' : 'inactive'}`}>{active ? 'Activo' : 'Inactivo'}</span>;
 }
 
-function SelectField({ label, name, options, defaultValue, required }: { label: string; name: string; options: AdminOption[]; defaultValue?: string | null; required?: boolean }) {
+function SelectField({ label, name, options, defaultValue, required, placeholder = 'Sin asignar', error, help }: { label: string; name: string; options: AdminOption[]; defaultValue?: string | null; required?: boolean; placeholder?: string; error?: string; help?: string }) {
   return (
     <label>
       {label}
-      <select name={name} defaultValue={defaultValue ?? ''} required={required}>
-        <option value="">Sin asignar</option>
+      <select name={name} defaultValue={defaultValue ?? ''} required={required} className={error ? 'input-error' : undefined}>
+        <option value="">{placeholder}</option>
         {options.map((option) => (
           <option key={option.id} value={option.id}>{option.label}{option.meta ? ` · ${option.meta}` : ''}</option>
         ))}
       </select>
+      {help && <small className="field-help">{help}</small>}
+      {error && <span className="field-error">{error}</span>}
     </label>
   );
 }
 
-function MultiSelectField({ label, name, options, defaultValues = [] }: { label: string; name: string; options: AdminOption[]; defaultValues?: string[] }) {
+function MultiSelectField({ label, name, options, defaultValues = [], help }: { label: string; name: string; options: AdminOption[]; defaultValues?: string[]; help?: string }) {
   return (
     <label>
       {label}
       <select name={name} defaultValue={defaultValues} multiple size={Math.min(5, Math.max(3, options.length))}>
         {options.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
       </select>
+      {help && <small className="field-help">{help}</small>}
     </label>
   );
 }
@@ -103,45 +106,133 @@ function getValues(form: HTMLFormElement, key: string) {
 }
 
 type UserLikeRow = Partial<AdminUserRow> | Partial<AdminStudentRow> | Partial<AdminTeacherRow> | Partial<AdminGuardianRow>;
+type UserFormErrors = Partial<Record<'name' | 'email' | 'role' | 'password' | 'rut' | 'phone', string>>;
 
-function UserFields({ role, row, options }: { role?: Role; row?: UserLikeRow; options: AdminBundle['summary']['options'] }) {
+function roleFromModal(modal: ModalState): Role | '' {
+  if (modal.type === 'student') return 'student';
+  if (modal.type === 'teacher') return 'teacher';
+  if (modal.type === 'guardian') return 'guardian';
+  if (modal.type === 'user') return modal.row?.role ?? '';
+  return 'student';
+}
+
+function isRole(value: string): value is Role {
+  return ['admin', 'director', 'teacher', 'student', 'guardian', 'inspector'].includes(value);
+}
+
+function UserFields({
+  role,
+  row,
+  options,
+  canChangeRole = false,
+  showPassword = true,
+  errors = {},
+  onRoleChange
+}: {
+  role: Role | '';
+  row?: UserLikeRow;
+  options: AdminBundle['summary']['options'];
+  canChangeRole?: boolean;
+  showPassword?: boolean;
+  errors?: UserFormErrors;
+  onRoleChange?: (role: Role) => void;
+}) {
   const names = splitName(row?.name);
   return (
     <>
-      <label>Nombre<input name="name" defaultValue={names.name} required /></label>
-      <label>Apellido<input name="lastName" defaultValue={names.lastName} /></label>
-      <label>Correo<input name="email" type="email" defaultValue={row?.email} required /></label>
-      {!role && (
+      <fieldset className="admin-form-section">
+        <legend>Datos personales</legend>
+        <label>Nombre<input name="name" defaultValue={names.name} required autoComplete="off" placeholder="Nombre del usuario" className={errors.name ? 'input-error' : undefined} />{errors.name && <span className="field-error">{errors.name}</span>}</label>
+        <label>Apellido<input name="lastName" defaultValue={names.lastName} autoComplete="off" placeholder="Apellido" /></label>
+      </fieldset>
+      <fieldset className="admin-form-section">
+        <legend>Acceso</legend>
+        <label>Correo<input name="email" type="email" defaultValue={row?.email ?? ''} required autoComplete="new-email" placeholder="correo@colegio.cl" spellCheck={false} className={errors.email ? 'input-error' : undefined} />{errors.email && <span className="field-error">{errors.email}</span>}</label>
+      {canChangeRole && (
         <label>Rol
-          <select name="role" defaultValue={(row as AdminUserRow | undefined)?.role ?? 'student'} required>
+          <select name="role" value={role} onChange={(event) => isRole(event.target.value) && onRoleChange?.(event.target.value)} required className={errors.role ? 'input-error' : undefined}>
+            <option value="">Selecciona un rol</option>
             {options.roles.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
           </select>
+          {errors.role && <span className="field-error">{errors.role}</span>}
         </label>
       )}
-      <label>Area / especialidad<input name="department" defaultValue={(row as AdminUserRow | undefined)?.department ?? (row as AdminTeacherRow | undefined)?.specialty ?? ''} /></label>
-      <label>Clave temporal<input name="password" type="password" placeholder="demo1234 si se deja vacio" /></label>
-      {(role === 'student' || role === undefined) && <label>RUT / identificador<input name="rut" defaultValue={(row as AdminStudentRow | undefined)?.rut ?? ''} /></label>}
-      {role === 'teacher' && <label>Codigo docente<input name="rut" defaultValue={(row as AdminTeacherRow | undefined)?.employeeCode ?? ''} /></label>}
-      {role === 'student' && <label>Fecha nacimiento<input name="birthDate" type="date" defaultValue={(row as AdminStudentRow | undefined)?.birthDate ?? ''} /></label>}
-      {role === 'student' && <SelectField label="Seccion" name="sectionId" options={options.sections} defaultValue={(row as AdminStudentRow | undefined)?.sectionId} />}
-      {role === 'guardian' && <label>Telefono<input name="phone" defaultValue={(row as AdminGuardianRow | undefined)?.phone ?? ''} /></label>}
-      {role === 'guardian' && <MultiSelectField label="Estudiantes vinculados" name="studentIds" options={options.students} defaultValues={(row as AdminGuardianRow | undefined)?.students?.map((item) => item.id)} />}
+      {showPassword && <label>Clave temporal<input name="password" type="password" placeholder="Mínimo 6 caracteres" autoComplete="new-password" className={errors.password ? 'input-error' : undefined} />{errors.password && <span className="field-error">{errors.password}</span>}<small className="field-help">Si dejas la clave vacía, se asignará demo1234.</small></label>}
+      </fieldset>
+      {role && (
+        <fieldset className="admin-form-section">
+          <legend>Datos según rol</legend>
+          {role === 'teacher' && <label>Área / especialidad<input name="department" defaultValue={(row as AdminUserRow | undefined)?.department ?? (row as AdminTeacherRow | undefined)?.specialty ?? ''} autoComplete="off" placeholder="Ej: Matemática" /></label>}
+          {role === 'student' && <label>RUT / identificador<input name="rut" defaultValue={(row as AdminStudentRow | undefined)?.rut ?? ''} autoComplete="off" placeholder="Ej: 12.345.678-9" className={errors.rut ? 'input-error' : undefined} />{errors.rut && <span className="field-error">{errors.rut}</span>}</label>}
+          {role === 'teacher' && <label>Código docente<input name="rut" defaultValue={(row as AdminTeacherRow | undefined)?.employeeCode ?? ''} autoComplete="off" placeholder="Opcional" className={errors.rut ? 'input-error' : undefined} />{errors.rut && <span className="field-error">{errors.rut}</span>}</label>}
+          {role === 'student' && <label>Fecha nacimiento<input name="birthDate" type="date" defaultValue={(row as AdminStudentRow | undefined)?.birthDate ?? ''} autoComplete="off" /></label>}
+          {role === 'student' && <SelectField label="Sección" name="sectionId" options={options.sections} defaultValue={(row as AdminStudentRow | undefined)?.sectionId} placeholder="Selecciona una sección" />}
+          {role === 'guardian' && <label>Teléfono<input name="phone" defaultValue={(row as AdminGuardianRow | undefined)?.phone ?? ''} autoComplete="off" placeholder="+56 9 1234 5678" className={errors.phone ? 'input-error' : undefined} />{errors.phone && <span className="field-error">{errors.phone}</span>}</label>}
+          {role === 'guardian' && <MultiSelectField label="Estudiantes vinculados" name="studentIds" options={options.students} defaultValues={(row as AdminGuardianRow | undefined)?.students?.map((item) => item.id)} help="Opcional. Puedes vincularlos ahora o desde Asignaciones." />}
+          {['admin', 'director', 'inspector'].includes(role) && <p className="field-help admin-role-note">Este rol no requiere datos académicos adicionales.</p>}
+        </fieldset>
+      )}
     </>
   );
 }
 
 function EntityModal({ modal, options, onClose, onSaved }: { modal: ModalState; options: AdminBundle['summary']['options']; onClose: () => void; onSaved: (message: string) => void }) {
   const title = `${modal.mode === 'create' ? 'Crear' : 'Editar'} ${modal.type === 'user' ? 'usuario' : modal.type === 'student' ? 'estudiante' : modal.type === 'teacher' ? 'profesor' : modal.type === 'guardian' ? 'apoderado' : modal.type === 'course' ? 'curso' : modal.type === 'section' ? 'seccion' : 'asignatura'}`;
+  const [selectedRole, setSelectedRole] = useState<Role | ''>(roleFromModal(modal));
+  const [formError, setFormError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<UserFormErrors>({});
+  const [saving, setSaving] = useState(false);
+  const hasFieldErrors = Object.keys(fieldErrors).length > 0;
+
+  function validateUserPayload(payload: AdminUserPayload, requireRole: boolean) {
+    const nextErrors: UserFormErrors = {};
+    if (!payload.name.trim()) nextErrors.name = 'Nombre requerido';
+    if (!payload.email.trim()) nextErrors.email = 'Correo requerido';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.email)) nextErrors.email = 'Correo inválido';
+    if (requireRole && !payload.role) nextErrors.role = 'Rol requerido';
+    if (payload.password && payload.password.length < 6) nextErrors.password = 'La clave debe tener al menos 6 caracteres';
+    if (payload.rut && (payload.rut.length < 5 || payload.rut.length > 30)) nextErrors.rut = 'Debe tener entre 5 y 30 caracteres';
+    if (payload.phone && !/^[+\d\s()-]{7,30}$/.test(payload.phone)) nextErrors.phone = 'Usa un teléfono válido';
+    setFieldErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  }
+
+  function cleanUserPayload(payload: AdminUserPayload): AdminUserPayload {
+    const role = payload.role;
+    const cleaned: AdminUserPayload = {
+      name: payload.name.trim(),
+      lastName: payload.lastName?.trim() || undefined,
+      email: payload.email.trim(),
+      role,
+      password: payload.password?.trim() || undefined
+    };
+    if (role === 'teacher') {
+      cleaned.department = payload.department?.trim() || undefined;
+      cleaned.rut = payload.rut?.trim() || undefined;
+    }
+    if (role === 'student') {
+      cleaned.rut = payload.rut?.trim() || undefined;
+      cleaned.birthDate = payload.birthDate || undefined;
+      cleaned.sectionId = payload.sectionId || undefined;
+    }
+    if (role === 'guardian') {
+      cleaned.phone = payload.phone?.trim() || undefined;
+      cleaned.studentIds = payload.studentIds ?? [];
+    }
+    return cleaned;
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setFormError('');
     const form = event.currentTarget;
     const fd = new FormData(form);
+    const role = modal.type === 'user' ? selectedRole : roleFromModal(modal);
     const baseUser: AdminUserPayload = {
       name: String(fd.get('name') ?? ''),
       lastName: String(fd.get('lastName') ?? ''),
       email: String(fd.get('email') ?? ''),
-      role: String(fd.get('role') ?? ''),
+      role,
       department: String(fd.get('department') ?? ''),
       password: String(fd.get('password') ?? '') || undefined,
       rut: String(fd.get('rut') ?? '') || undefined,
@@ -151,42 +242,59 @@ function EntityModal({ modal, options, onClose, onSaved }: { modal: ModalState; 
       studentIds: getValues(form, 'studentIds')
     };
 
-    if (modal.type === 'user') modal.mode === 'create' ? await createAdminUser(baseUser) : await updateAdminUser(modal.row!.id, baseUser);
-    if (modal.type === 'student') modal.mode === 'create' ? await createAdminStudent(baseUser) : await updateAdminStudent(modal.row!.id, baseUser);
-    if (modal.type === 'teacher') modal.mode === 'create' ? await createAdminTeacher(baseUser) : await updateAdminTeacher(modal.row!.id, baseUser);
-    if (modal.type === 'guardian') modal.mode === 'create' ? await createAdminGuardian(baseUser) : await updateAdminGuardian(modal.row!.id, baseUser);
-    if (modal.type === 'course') {
-      const payload = { name: String(fd.get('name') ?? ''), levelId: String(fd.get('levelId') ?? '') || undefined };
-      modal.mode === 'create' ? await createAdminCourse(payload) : await updateAdminCourse(modal.row!.id, payload);
+    if (['user', 'student', 'teacher', 'guardian'].includes(modal.type) && !validateUserPayload(baseUser, modal.type === 'user')) return;
+    const cleanedUser = cleanUserPayload(baseUser);
+
+    try {
+      setSaving(true);
+      if (modal.type === 'user') modal.mode === 'create' ? await createAdminUser(cleanedUser) : await updateAdminUser(modal.row!.id, cleanedUser);
+      if (modal.type === 'student') modal.mode === 'create' ? await createAdminStudent(cleanedUser) : await updateAdminStudent(modal.row!.id, cleanedUser);
+      if (modal.type === 'teacher') modal.mode === 'create' ? await createAdminTeacher(cleanedUser) : await updateAdminTeacher(modal.row!.id, cleanedUser);
+      if (modal.type === 'guardian') modal.mode === 'create' ? await createAdminGuardian(cleanedUser) : await updateAdminGuardian(modal.row!.id, cleanedUser);
+      if (modal.type === 'course') {
+        const payload = { name: String(fd.get('name') ?? ''), levelId: String(fd.get('levelId') ?? '') || undefined };
+        modal.mode === 'create' ? await createAdminCourse(payload) : await updateAdminCourse(modal.row!.id, payload);
+      }
+      if (modal.type === 'section') {
+        const payload = { name: String(fd.get('name') ?? ''), courseId: String(fd.get('courseId') ?? ''), teacherId: String(fd.get('teacherId') ?? '') || undefined, classroomId: String(fd.get('classroomId') ?? '') || undefined };
+        modal.mode === 'create' ? await createAdminSection(payload) : await updateAdminSection(modal.row!.id, payload);
+      }
+      if (modal.type === 'subject') {
+        const payload = { name: String(fd.get('name') ?? ''), code: String(fd.get('code') ?? ''), courseIds: getValues(form, 'courseIds'), sectionIds: getValues(form, 'sectionIds'), teacherIds: getValues(form, 'teacherIds') };
+        modal.mode === 'create' ? await createAdminSubject(payload) : await updateAdminSubject(modal.row!.id, payload);
+      }
+      const userModal = ['user', 'student', 'teacher', 'guardian'].includes(modal.type);
+      if (userModal && modal.mode === 'create') onSaved(`Usuario creado correctamente${cleanedUser.password ? '' : '. Clave temporal: demo1234'}`);
+      else if (userModal) onSaved('Usuario actualizado correctamente');
+      else onSaved('Cambios guardados correctamente.');
+    } catch (err) {
+      const message = (err as { response?: { data?: { message?: string } } }).response?.data?.message;
+      setFormError(message ?? 'No se pudieron guardar los cambios.');
+    } finally {
+      setSaving(false);
     }
-    if (modal.type === 'section') {
-      const payload = { name: String(fd.get('name') ?? ''), courseId: String(fd.get('courseId') ?? ''), teacherId: String(fd.get('teacherId') ?? '') || undefined, classroomId: String(fd.get('classroomId') ?? '') || undefined };
-      modal.mode === 'create' ? await createAdminSection(payload) : await updateAdminSection(modal.row!.id, payload);
-    }
-    if (modal.type === 'subject') {
-      const payload = { name: String(fd.get('name') ?? ''), code: String(fd.get('code') ?? ''), courseIds: getValues(form, 'courseIds'), sectionIds: getValues(form, 'sectionIds'), teacherIds: getValues(form, 'teacherIds') };
-      modal.mode === 'create' ? await createAdminSubject(payload) : await updateAdminSubject(modal.row!.id, payload);
-    }
-    onSaved('Cambios guardados correctamente.');
   }
 
   return (
     <div className="admin-modal-backdrop" role="dialog" aria-modal="true">
-      <form className="admin-modal" onSubmit={submit}>
+      <form className="admin-modal" onSubmit={submit} autoComplete="off" onInput={() => { if (hasFieldErrors) setFieldErrors({}); if (formError) setFormError(''); }}>
+        <input className="admin-autofill-decoy" type="text" name="fake-username" autoComplete="username" tabIndex={-1} aria-hidden="true" />
+        <input className="admin-autofill-decoy" type="password" name="fake-password" autoComplete="current-password" tabIndex={-1} aria-hidden="true" />
         <header>
           <div><span>Administracion</span><h2>{title}</h2></div>
           <button type="button" onClick={onClose}>x</button>
         </header>
         <div className="admin-form-grid">
-          {modal.type === 'user' && <UserFields row={modal.row} options={options} />}
-          {modal.type === 'student' && <UserFields role="student" row={modal.row} options={options} />}
-          {modal.type === 'teacher' && <UserFields role="teacher" row={modal.row} options={options} />}
-          {modal.type === 'guardian' && <UserFields role="guardian" row={modal.row} options={options} />}
+          {modal.type === 'user' && <UserFields role={selectedRole} row={modal.row} options={options} canChangeRole errors={fieldErrors} onRoleChange={(role) => { setSelectedRole(role); setFieldErrors({}); setFormError(''); }} />}
+          {modal.type === 'student' && <UserFields role="student" row={modal.row} options={options} showPassword={modal.mode === 'create'} errors={fieldErrors} />}
+          {modal.type === 'teacher' && <UserFields role="teacher" row={modal.row} options={options} showPassword={modal.mode === 'create'} errors={fieldErrors} />}
+          {modal.type === 'guardian' && <UserFields role="guardian" row={modal.row} options={options} showPassword={modal.mode === 'create'} errors={fieldErrors} />}
           {modal.type === 'course' && <><label>Curso<input name="name" defaultValue={modal.row?.name} required /></label><SelectField label="Nivel" name="levelId" options={options.levels} defaultValue={modal.row?.levelId} required /></>}
           {modal.type === 'section' && <><label>Seccion<input name="name" defaultValue={modal.row?.name} required /></label><SelectField label="Curso" name="courseId" options={options.courses} defaultValue={modal.row?.courseId} required /><SelectField label="Profesor jefe" name="teacherId" options={options.teachers} defaultValue={modal.row?.teacherId} /><SelectField label="Sala" name="classroomId" options={options.classrooms} defaultValue={modal.row?.classroomId} /></>}
           {modal.type === 'subject' && <><label>Asignatura<input name="name" defaultValue={modal.row?.name} required /></label><label>Codigo<input name="code" defaultValue={modal.row?.code} required /></label><MultiSelectField label="Cursos" name="courseIds" options={options.courses} defaultValues={modal.row?.courses?.map((item) => item.id)} /><MultiSelectField label="Secciones" name="sectionIds" options={options.sections} defaultValues={modal.row?.sections?.map((item) => item.id)} /><MultiSelectField label="Profesores" name="teacherIds" options={options.teachers} defaultValues={modal.row?.teachers?.map((item) => item.id)} /></>}
         </div>
-        <footer><button type="button" className="secondary-button" onClick={onClose}>Cancelar</button><button type="submit" className="primary-button">Guardar</button></footer>
+        {formError && <p className="admin-modal-error">{formError}</p>}
+        <footer><button type="button" className="secondary-button" onClick={onClose}>Cancelar</button><button type="submit" className="primary-button" disabled={saving || hasFieldErrors}>{saving ? 'Guardando...' : 'Guardar usuario'}</button></footer>
       </form>
     </div>
   );
@@ -207,7 +315,7 @@ function ConfirmDialog({ confirm, onClose }: { confirm: ConfirmState; onClose: (
 }
 
 function AdminTable<T extends { id: string }>({ rows, render, empty = 'Sin registros' }: { rows: T[]; render: (row: T) => ReactNode; empty?: string }) {
-  if (!rows.length) return <div className="admin-empty">{empty}</div>;
+  if (!rows.length) return <div className="admin-empty"><Search size={22} /><strong>{empty}</strong><span>Ajusta la búsqueda o crea un nuevo registro.</span></div>;
   return <div className="admin-table-list">{rows.map((row) => <article key={row.id} className="admin-table-card">{render(row)}</article>)}</div>;
 }
 
@@ -293,7 +401,7 @@ export function AdminPage({ user }: { user: User }) {
             {canManage && tab !== 'assignments' && <button className="primary-button" onClick={() => setModal({ type: tab === 'students' ? 'student' : tab === 'teachers' ? 'teacher' : tab === 'guardians' ? 'guardian' : tab === 'courses' ? 'course' : tab === 'subjects' ? 'subject' : 'user', mode: 'create' })}><Plus size={18} />Crear</button>}
           </div>
 
-          {tab === 'users' && <AdminTable rows={filtered as AdminUserRow[]} render={(row) => <><div><strong>{row.name}</strong><small>{row.email}</small></div><span>{roleLabels[row.role]}</span><StatusBadge active={row.isActive} /><div className="admin-row-actions">{canManage && <><button onClick={() => setModal({ type: 'user', mode: 'edit', row })}><Edit3 size={16} />Editar</button><button onClick={() => statusAction('usuario', row.name, row.isActive, () => setAdminUserStatus(row.id, !row.isActive))}>{row.isActive ? <ToggleRight /> : <ToggleLeft />} {row.isActive ? 'Desactivar' : 'Activar'}</button><button onClick={() => setConfirm({ title: 'Resetear clave', message: `La clave temporal sera ${bundle.summary.temporaryPassword}.`, action: async () => { await resetAdminUserPassword(row.id); done('Clave temporal restablecida.'); } })}><KeyRound size={16} />Reset clave</button></>}</div></>} />}
+          {tab === 'users' && <AdminTable rows={filtered as AdminUserRow[]} render={(row) => <><div><strong>{row.name}</strong><small>{row.email}</small></div><span>{roleLabels[row.role]}</span><StatusBadge active={row.isActive} /><div className="admin-row-actions">{canManage && <><button onClick={() => setModal({ type: 'user', mode: 'edit', row })}><Edit3 size={16} />Editar</button><button onClick={() => statusAction('usuario', row.name, row.isActive, () => setAdminUserStatus(row.id, !row.isActive))}>{row.isActive ? <ToggleRight /> : <ToggleLeft />} {row.isActive ? 'Desactivar' : 'Activar'}</button><button onClick={() => setConfirm({ title: 'Resetear clave', message: `Confirma el reseteo de clave para ${row.name}.`, action: async () => { const result = await resetAdminUserPassword(row.id); done(`Clave temporal: ${result.temporaryPassword}`); } })}><KeyRound size={16} />Reset clave</button></>}</div></>} />}
 
           {tab === 'students' && <AdminTable rows={filtered as AdminStudentRow[]} render={(row) => <><div><strong>{row.name}</strong><small>{row.email}</small></div><span>{row.course} · {row.section}</span><span>{row.guardians.length ? row.guardians.map((item) => item.name).join(', ') : 'Sin apoderado'}</span><StatusBadge active={row.isActive} /><div className="admin-row-actions">{canManage && <><button onClick={() => setModal({ type: 'student', mode: 'edit', row })}><Edit3 size={16} />Editar</button><button onClick={() => statusAction('estudiante', row.name, row.isActive, () => setAdminStudentStatus(row.id, !row.isActive))}>{row.isActive ? 'Desactivar' : 'Activar'}</button></>}</div></>} />}
 

@@ -1,21 +1,25 @@
 import { z } from 'zod';
 
 const roleSchema = z.enum(['admin', 'director', 'teacher', 'student', 'guardian', 'inspector']);
+const optionalTrimmed = (max: number) => z.string().trim().max(max).optional().or(z.literal('').transform(() => undefined));
+const optionalId = z.string().trim().min(1).optional().or(z.literal('').transform(() => undefined));
+const optionalRut = z.string().trim().min(5, 'RUT/identificador demasiado corto').max(30).optional().or(z.literal('').transform(() => undefined));
+const optionalPhone = z.string().trim().regex(/^[+\d\s()-]{7,30}$/, 'Telefono invalido').optional().or(z.literal('').transform(() => undefined));
 
 export const idParamSchema = z.object({ id: z.string().trim().min(1) });
 
 export const createAdminUserSchema = z.object({
-  name: z.string().trim().min(2).max(120),
-  lastName: z.string().trim().max(120).optional(),
-  email: z.string().trim().email(),
+  name: z.string().trim().min(1, 'Nombre requerido').max(120),
+  lastName: optionalTrimmed(120),
+  email: z.string().trim().min(1, 'Correo requerido').email('Correo válido requerido').toLowerCase(),
   role: roleSchema,
-  department: z.string().trim().max(120).optional(),
-  password: z.string().trim().min(6).max(80).optional(),
-  rut: z.string().trim().max(30).optional(),
-  phone: z.string().trim().max(30).optional(),
-  birthDate: z.string().trim().optional(),
-  sectionId: z.string().trim().min(1).optional(),
-  relationship: z.string().trim().max(80).optional(),
+  department: optionalTrimmed(120),
+  password: z.string().trim().min(6).max(80).optional().or(z.literal('').transform(() => undefined)),
+  rut: optionalRut,
+  phone: optionalPhone,
+  birthDate: optionalTrimmed(30),
+  sectionId: optionalId,
+  relationship: optionalTrimmed(80),
   studentIds: z.array(z.string().trim().min(1)).optional()
 });
 

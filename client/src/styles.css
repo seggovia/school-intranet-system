@@ -222,6 +222,19 @@
   padding: 28px;
   color: #52677a;
   text-align: center;
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  background: #fbfdff;
+}
+
+.admin-empty svg {
+  color: #64748b;
+}
+
+.admin-empty strong,
+.admin-empty span {
+  display: block;
 }
 
 .admin-modal-backdrop {
@@ -236,7 +249,7 @@
 
 .admin-modal,
 .admin-confirm {
-  width: min(760px, 100%);
+  width: min(820px, 100%);
   max-height: 88vh;
   overflow: auto;
   background: #fff;
@@ -277,8 +290,9 @@
 .admin-form-grid {
   padding: 22px;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  background: #f8fafc;
 }
 
 .admin-form-grid label,
@@ -289,12 +303,53 @@
   font-weight: 800;
 }
 
+.admin-form-section {
+  border: 1px solid #d8e2ec;
+  border-radius: 8px;
+  padding: 16px;
+  margin: 0;
+  background: #ffffff;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.admin-form-section legend {
+  padding: 0 8px;
+  color: #1d4ed8;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.admin-role-note {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.admin-autofill-decoy {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
 .admin-modal footer {
   padding: 18px 22px;
   border-top: 1px solid #d8e2ec;
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+}
+
+.admin-modal-error {
+  margin: 0 22px 18px;
+  color: #991b1b;
+  background: #fee2e2;
+  border-radius: 8px;
+  padding: 12px;
+  font-weight: 800;
 }
 
 .admin-confirm {
@@ -373,6 +428,7 @@
 @media (max-width: 760px) {
   .admin-summary-grid,
   .admin-form-grid,
+  .admin-form-section,
   .admin-assignment-grid {
     grid-template-columns: 1fr;
   }
@@ -515,6 +571,30 @@ select {
   background: #ffffff;
 }
 
+.password-field > span {
+  position: relative;
+  display: block;
+}
+
+.password-field input {
+  padding-right: 50px;
+}
+
+.password-field button {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  width: 38px;
+  height: 38px;
+  transform: translateY(-50%);
+  border: 0;
+  border-radius: 8px;
+  color: #314254;
+  background: #edf2f6;
+  display: grid;
+  place-items: center;
+}
+
 .primary-button,
 .secondary-button,
 .icon-button {
@@ -579,6 +659,39 @@ select {
   background: #fee2e2;
   border-radius: 8px;
   padding: 12px;
+}
+
+.field-error {
+  color: #991b1b;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.field-help {
+  color: #64748b;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+input:focus,
+select:focus {
+  border-color: #2563eb;
+  outline: 3px solid rgba(37, 99, 235, 0.14);
+}
+
+input.input-error,
+select.input-error,
+input[aria-invalid='true'],
+select[aria-invalid='true'] {
+  border-color: #dc2626;
+  background: #fff7f7;
+}
+
+button:disabled,
+input:disabled,
+select:disabled {
+  cursor: not-allowed;
+  opacity: 0.66;
 }
 
 .app-shell {
