@@ -3,6 +3,7 @@ import { HttpError } from '../../shared/http-error.js';
 import { AdminRepository } from './admin.repository.js';
 import type {
   createAdminUserSchema,
+  createClassroomSchema,
   createCourseSchema,
   createSectionSchema,
   createSubjectSchema,
@@ -14,6 +15,7 @@ import type {
   teacherAssignmentDeleteSchema,
   teacherAssignmentsSchema,
   updateAdminUserSchema,
+  updateClassroomSchema,
   updateCourseSchema,
   updateSectionSchema,
   updateSubjectSchema
@@ -37,6 +39,8 @@ type CreateCourseInput = z.infer<typeof createCourseSchema>;
 type UpdateCourseInput = z.infer<typeof updateCourseSchema>;
 type CreateSectionInput = z.infer<typeof createSectionSchema>;
 type UpdateSectionInput = z.infer<typeof updateSectionSchema>;
+type CreateClassroomInput = z.infer<typeof createClassroomSchema>;
+type UpdateClassroomInput = z.infer<typeof updateClassroomSchema>;
 type CreateSubjectInput = z.infer<typeof createSubjectSchema>;
 type UpdateSubjectInput = z.infer<typeof updateSubjectSchema>;
 type SubjectTeacherInput = z.infer<typeof subjectTeacherSchema>;
@@ -149,6 +153,17 @@ function serializeSection(section: Awaited<ReturnType<AdminRepository['listSecti
   };
 }
 
+function serializeClassroom(classroom: Awaited<ReturnType<AdminRepository['listClassrooms']>>[number]) {
+  return {
+    id: classroom.id,
+    name: classroom.name,
+    capacity: classroom.capacity,
+    type: classroom.type,
+    sections: classroom.sections.length,
+    schedules: classroom.schedules.length
+  };
+}
+
 function serializeSubject(subject: Awaited<ReturnType<AdminRepository['listSubjects']>>[number]) {
   return {
     id: subject.id,
@@ -186,7 +201,7 @@ export class AdminService {
       options: {
         roles: roles.map((role) => ({ id: role.name, label: role.label })),
         levels: levels.map((level) => ({ id: level.id, label: level.name })),
-        classrooms: classrooms.map((classroom) => ({ id: classroom.id, label: classroom.name, meta: `${classroom.capacity} cupos` })),
+        classrooms: classrooms.map((classroom) => ({ id: classroom.id, label: classroom.name, meta: `${classroom.capacity} cupos · ${classroom.type ?? 'aula'}` })),
         courses: courseOptions.map((course) => ({ id: course.id, label: course.name, meta: course.level.name })),
         sections: sectionOptions.map((section) => ({ id: section.id, label: section.name, meta: `${section.course.name} · ${section.classroom?.name ?? 'Sin sala'}` })),
         subjects: subjectOptions.map((subject) => ({ id: subject.id, label: subject.name, meta: subject.code })),
@@ -428,10 +443,11 @@ export class AdminService {
   }
 
   async createCourse(input: CreateCourseInput) {
-    const summary = await this.summary();
-    const levelId = input.levelId ?? summary.options.levels[0]?.id;
-    if (!levelId) throw new HttpError(400, 'Debe existir un nivel escolar para crear cursos.');
-    return serializeCourse(await repository.createCourse({ name: input.name, levelId }));
+    return serializeCourse(await repository.transaction((tx) => repository.createCourseWithSections(tx, {
+      name: input.name,
+      levelId: input.levelId,
+      sections: input.sections ?? []
+    })));
   }
 
   async updateCourse(id: string, input: UpdateCourseInput) {
@@ -448,6 +464,43 @@ export class AdminService {
 
   async updateSection(id: string, input: UpdateSectionInput) {
     return serializeSection(await repository.updateSection(id, { ...input, teacherId: input.teacherId ?? undefined, classroomId: input.classroomId ?? undefined }));
+  }
+
+  async deleteSection(id: string) {
+    const section = await repository.findSection(id);
+    if (!section) throw new HttpError(404, 'Seccion no encontrada.');
+    if (section.enrollments.length) throw new HttpError(400, 'No se puede eliminar una seccion con estudiantes asignados.');
+    if (section.subjects.length || section.schedules.length) throw new HttpError(400, 'No se puede eliminar una seccion en uso por asignaturas u horarios.');
+    await repository.deleteSection(id);
+    return { ok: true };
+  }
+
+  async classrooms() {
+    return (await repository.listClassrooms()).map(serializeClassroom);
+  }
+
+  async createClassroom(input: CreateClassroomInput) {
+    const existing = await repository.findClassroomByName(input.name);
+    if (existing) throw new HttpError(409, 'Ya existe una sala con ese nombre.');
+    return serializeClassroom(await repository.createClassroom(input));
+  }
+
+  async updateClassroom(id: string, input: UpdateClassroomInput) {
+    const current = await repository.findClassroom(id);
+    if (!current) throw new HttpError(404, 'Sala no encontrada.');
+    if (input.name && input.name !== current.name) {
+      const existing = await repository.findClassroomByName(input.name);
+      if (existing) throw new HttpError(409, 'Ya existe una sala con ese nombre.');
+    }
+    return serializeClassroom(await repository.updateClassroom(id, input));
+  }
+
+  async deleteClassroom(id: string) {
+    const classroom = await repository.findClassroom(id);
+    if (!classroom) throw new HttpError(404, 'Sala no encontrada.');
+    if (classroom.sections.length || classroom.schedules.length) throw new HttpError(400, 'No se puede eliminar una sala en uso.');
+    await repository.deleteClassroom(id);
+    return { ok: true };
   }
 
   async subjects() {

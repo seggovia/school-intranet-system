@@ -56,12 +56,31 @@ export const guardianStudentsSchema = z.object({
   relationship: z.string().trim().max(80).optional()
 });
 
-export const createCourseSchema = z.object({
-  name: z.string().trim().min(2).max(120),
-  levelId: z.string().trim().min(1).optional()
+const courseInitialSectionSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  teacherId: optionalId,
+  classroomId: optionalId
 });
 
-export const updateCourseSchema = createCourseSchema.partial().refine((value) => Object.keys(value).length > 0, {
+export const createCourseSchema = z.object({
+  name: z.string().trim().min(2).max(120),
+  levelId: z.string().trim().min(1),
+  sections: z.array(courseInitialSectionSchema).optional().default([])
+}).superRefine((value, ctx) => {
+  const names = new Set<string>();
+  value.sections.forEach((section, index) => {
+    const key = section.name.trim().toLowerCase();
+    if (names.has(key)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['sections', index, 'name'], message: 'La seccion no puede repetirse dentro del curso.' });
+    }
+    names.add(key);
+  });
+});
+
+export const updateCourseSchema = z.object({
+  name: z.string().trim().min(2).max(120).optional(),
+  levelId: optionalId
+}).refine((value) => Object.keys(value).length > 0, {
   message: 'Debe enviar al menos un campo.'
 });
 
@@ -73,6 +92,16 @@ export const createSectionSchema = z.object({
 });
 
 export const updateSectionSchema = createSectionSchema.partial().refine((value) => Object.keys(value).length > 0, {
+  message: 'Debe enviar al menos un campo.'
+});
+
+export const createClassroomSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  capacity: z.coerce.number().int().positive(),
+  type: z.enum(['aula', 'laboratorio', 'biblioteca', 'gimnasio', 'otro']).optional().default('aula')
+});
+
+export const updateClassroomSchema = createClassroomSchema.partial().refine((value) => Object.keys(value).length > 0, {
   message: 'Debe enviar al menos un campo.'
 });
 

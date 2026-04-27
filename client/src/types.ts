@@ -537,6 +537,15 @@ export interface AdminSectionRow {
   subjects: Array<{ id: string; name: string }>;
 }
 
+export interface AdminClassroomRow {
+  id: string;
+  name: string;
+  capacity: number;
+  type: 'aula' | 'laboratorio' | 'biblioteca' | 'gimnasio' | 'otro';
+  sections: number;
+  schedules: number;
+}
+
 export interface AdminSubjectRow {
   id: string;
   name: string;
@@ -554,5 +563,6 @@ export interface AdminBundle {
   guardians: AdminGuardianRow[];
   courses: AdminCourseRow[];
   sections: AdminSectionRow[];
+  classrooms: AdminClassroomRow[];
   subjects: AdminSubjectRow[];
 }

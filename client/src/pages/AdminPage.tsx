@@ -1,10 +1,11 @@
-import { AlertTriangle, BookOpen, Building2, CheckCircle2, ChevronDown, ChevronRight, ClipboardList, Edit3, Eye, EyeOff, GraduationCap, KeyRound, Link2, Plus, Search, Shield, ToggleLeft, ToggleRight, UserRound, Users, X } from 'lucide-react';
+import { AlertTriangle, BookOpen, Building2, CheckCircle2, ChevronDown, ChevronRight, ClipboardList, Edit3, Eye, EyeOff, GraduationCap, KeyRound, Link2, Plus, Search, Shield, ToggleLeft, ToggleRight, Trash2, UserRound, Users, X } from 'lucide-react';
 import { FormEvent, ReactNode, useEffect, useMemo, useState } from 'react';
 import {
   assignAdminStudentSection,
   assignAdminSubjectTeacher,
   assignAdminTeacher,
   clearAdminStudentSection,
+  createAdminClassroom,
   createAdminCourse,
   createAdminGuardian,
   createAdminSection,
@@ -12,6 +13,8 @@ import {
   createAdminSubject,
   createAdminTeacher,
   createAdminUser,
+  deleteAdminClassroom,
+  deleteAdminSection,
   linkAdminGuardianStudents,
   loadAdminBundle,
   removeAdminTeacherAssignment,
@@ -20,6 +23,7 @@ import {
   setAdminStudentStatus,
   setAdminTeacherStatus,
   setAdminUserStatus,
+  updateAdminClassroom,
   updateAdminCourse,
   updateAdminGuardian,
   updateAdminSection,
@@ -31,7 +35,7 @@ import {
   type AdminUserPayload
 } from '../api';
 import { PageHeader } from '../components/PageHeader';
-import type { AdminBundle, AdminCourseRow, AdminGuardianRow, AdminOption, AdminSectionRow, AdminStudentRow, AdminSubjectRow, AdminTeacherRow, AdminUserRow, Role, User } from '../types';
+import type { AdminBundle, AdminClassroomRow, AdminCourseRow, AdminGuardianRow, AdminOption, AdminSectionRow, AdminStudentRow, AdminSubjectRow, AdminTeacherRow, AdminUserRow, Role, User } from '../types';
 
 type AdminTab = 'users' | 'students' | 'teachers' | 'guardians' | 'courses' | 'subjects' | 'assignments-teachers' | 'assignments-students' | 'assignments-guardians' | 'assignments-subjects';
 type ModalState =
@@ -41,6 +45,7 @@ type ModalState =
   | { type: 'guardian'; mode: 'create' | 'edit'; row?: AdminGuardianRow }
   | { type: 'course'; mode: 'create' | 'edit'; row?: AdminCourseRow }
   | { type: 'section'; mode: 'create' | 'edit'; row?: AdminSectionRow }
+  | { type: 'classroom'; mode: 'create' | 'edit'; row?: AdminClassroomRow }
   | { type: 'subject'; mode: 'create' | 'edit'; row?: AdminSubjectRow };
 type ConfirmState = { title: string; message: string; action: () => Promise<void>; danger?: boolean };
 
@@ -82,11 +87,11 @@ function StatusBadge({ active }: { active: boolean }) {
   return <span className={`admin-status ${active ? 'active' : 'inactive'}`}>{active ? 'Activo' : 'Inactivo'}</span>;
 }
 
-function SelectField({ label, name, options, defaultValue, required, placeholder = 'Sin asignar', error, help }: { label: string; name: string; options: AdminOption[]; defaultValue?: string | null; required?: boolean; placeholder?: string; error?: string; help?: string }) {
+function SelectField({ label, name, options, defaultValue, required, placeholder = 'Sin asignar', error, help, onChange }: { label: string; name: string; options: AdminOption[]; defaultValue?: string | null; required?: boolean; placeholder?: string; error?: string; help?: string; onChange?: (value: string) => void }) {
   return (
     <label>
       {label}
-      <select name={name} defaultValue={defaultValue ?? ''} required={required} className={error ? 'input-error' : undefined}>
+      <select name={name} defaultValue={defaultValue ?? ''} required={required} className={error ? 'input-error' : undefined} onChange={(event) => onChange?.(event.target.value)}>
         <option value="">{placeholder}</option>
         {options.map((option) => (
           <option key={option.id} value={option.id}>{option.label}{option.meta ? ` · ${option.meta}` : ''}</option>
@@ -321,8 +326,8 @@ function UserFields({
   );
 }
 
-function EntityModal({ modal, options, students, onClose, onSaved }: { modal: ModalState; options: AdminBundle['summary']['options']; students: AdminStudentRow[]; onClose: () => void; onSaved: (message: string) => void }) {
-  const title = `${modal.mode === 'create' ? 'Crear' : 'Editar'} ${modal.type === 'user' ? 'usuario' : modal.type === 'student' ? 'estudiante' : modal.type === 'teacher' ? 'profesor' : modal.type === 'guardian' ? 'apoderado' : modal.type === 'course' ? 'curso' : modal.type === 'section' ? 'sección' : 'asignatura'}`;
+function EntityModal({ modal, options, students, onClose, onSaved, setConfirm }: { modal: ModalState; options: AdminBundle['summary']['options']; students: AdminStudentRow[]; onClose: () => void; onSaved: (message: string) => void; setConfirm: (confirm: ConfirmState | null) => void }) {
+  const title = `${modal.mode === 'create' ? 'Crear' : 'Editar'} ${modal.type === 'user' ? 'usuario' : modal.type === 'student' ? 'estudiante' : modal.type === 'teacher' ? 'profesor' : modal.type === 'guardian' ? 'apoderado' : modal.type === 'course' ? 'curso' : modal.type === 'section' ? 'sección' : modal.type === 'classroom' ? 'sala' : 'asignatura'}`;
   const [selectedRole, setSelectedRole] = useState<Role | ''>(roleFromModal(modal));
   const [formError, setFormError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<UserFormErrors>({});
@@ -332,6 +337,7 @@ function EntityModal({ modal, options, students, onClose, onSaved }: { modal: Mo
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>(
     modal.type === 'guardian' ? modal.row?.students?.map((item) => item.id) ?? [] : []
   );
+  const [courseSections, setCourseSections] = useState<Array<{ id: string; name: string; teacherId: string; classroomId: string }>>([]);
   const [saving, setSaving] = useState(false);
   const hasFieldErrors = Object.keys(fieldErrors).length > 0;
 
@@ -397,19 +403,34 @@ function EntityModal({ modal, options, students, onClose, onSaved }: { modal: Mo
     if (['user', 'student', 'teacher', 'guardian'].includes(modal.type) && !validateUserPayload(baseUser, modal.type === 'user')) return;
     const cleanedUser = cleanUserPayload(baseUser);
 
-    try {
+    const save = async () => {
+      try {
       setSaving(true);
       if (modal.type === 'user') modal.mode === 'create' ? await createAdminUser(cleanedUser) : await updateAdminUser(modal.row!.id, cleanedUser);
       if (modal.type === 'student') modal.mode === 'create' ? await createAdminStudent(cleanedUser) : await updateAdminStudent(modal.row!.id, cleanedUser);
       if (modal.type === 'teacher') modal.mode === 'create' ? await createAdminTeacher(cleanedUser) : await updateAdminTeacher(modal.row!.id, cleanedUser);
       if (modal.type === 'guardian') modal.mode === 'create' ? await createAdminGuardian(cleanedUser) : await updateAdminGuardian(modal.row!.id, cleanedUser);
       if (modal.type === 'course') {
-        const payload = { name: String(fd.get('name') ?? ''), levelId: String(fd.get('levelId') ?? '') || undefined };
+        const sections = courseSections.map((section) => ({
+          name: section.name.trim(),
+          teacherId: section.teacherId || undefined,
+          classroomId: section.classroomId || undefined
+        })).filter((section) => section.name);
+        const duplicate = sections.find((section, index) => sections.findIndex((item) => item.name.toLowerCase() === section.name.toLowerCase()) !== index);
+        if (duplicate) {
+          setFormError('La sección no puede repetirse dentro del curso.');
+          return;
+        }
+        const payload = { name: String(fd.get('name') ?? ''), levelId: String(fd.get('levelId') ?? ''), sections: modal.mode === 'create' ? sections : undefined };
         modal.mode === 'create' ? await createAdminCourse(payload) : await updateAdminCourse(modal.row!.id, payload);
       }
       if (modal.type === 'section') {
         const payload = { name: String(fd.get('name') ?? ''), courseId: String(fd.get('courseId') ?? ''), teacherId: String(fd.get('teacherId') ?? '') || undefined, classroomId: String(fd.get('classroomId') ?? '') || undefined };
         modal.mode === 'create' ? await createAdminSection(payload) : await updateAdminSection(modal.row!.id, payload);
+      }
+      if (modal.type === 'classroom') {
+        const payload = { name: String(fd.get('name') ?? ''), capacity: Number(fd.get('capacity') ?? 0), type: String(fd.get('type') ?? 'aula') as AdminClassroomRow['type'] };
+        modal.mode === 'create' ? await createAdminClassroom(payload) : await updateAdminClassroom(modal.row!.id, payload);
       }
       if (modal.type === 'subject') {
         const payload = { name: String(fd.get('name') ?? ''), code: String(fd.get('code') ?? ''), courseIds: getValues(form, 'courseIds'), sectionIds: getValues(form, 'sectionIds'), teacherIds: getValues(form, 'teacherIds') };
@@ -419,12 +440,24 @@ function EntityModal({ modal, options, students, onClose, onSaved }: { modal: Mo
       if (userModal && modal.mode === 'create') onSaved(`Usuario creado correctamente${cleanedUser.password ? '' : '. Contraseña: demo1234'}`);
       else if (userModal) onSaved('Usuario actualizado correctamente');
       else onSaved('Cambios guardados correctamente.');
-    } catch (err) {
-      const message = (err as { response?: { data?: { message?: string } } }).response?.data?.message;
-      setFormError(message ?? 'No se pudieron guardar los cambios.');
-    } finally {
-      setSaving(false);
+      } catch (err) {
+        const message = (err as { response?: { data?: { message?: string } } }).response?.data?.message;
+        setFormError(message ?? 'No se pudieron guardar los cambios.');
+      } finally {
+        setSaving(false);
+      }
+    };
+
+    if (['course', 'section', 'classroom'].includes(modal.type)) {
+      confirmAction(setConfirm, {
+        title: modal.mode === 'create' ? `Crear ${modal.type === 'course' ? 'curso' : modal.type === 'section' ? 'sección' : 'sala'}` : `Guardar cambios de ${modal.type === 'course' ? 'curso' : modal.type === 'section' ? 'sección' : 'sala'}`,
+        message: modal.type === 'section' && modal.mode === 'edit' ? 'Confirma el cambio. Si modificas curso, profesor jefe o sala, la sección conservará sus estudiantes actuales.' : 'Confirma que quieres guardar estos cambios.',
+        action: save
+      });
+      return;
     }
+
+    await save();
   }
 
   return (
@@ -441,12 +474,33 @@ function EntityModal({ modal, options, students, onClose, onSaved }: { modal: Mo
           {modal.type === 'student' && <UserFields role="student" row={modal.row} options={options} students={students} selectedStudentIds={selectedStudentIds} onOpenStudentPicker={() => setStudentPickerOpen(true)} showPassword={modal.mode === 'create'} password={password} confirmPassword={confirmPassword} onPasswordChange={setPassword} onConfirmPasswordChange={setConfirmPassword} errors={fieldErrors} />}
           {modal.type === 'teacher' && <UserFields role="teacher" row={modal.row} options={options} students={students} selectedStudentIds={selectedStudentIds} onOpenStudentPicker={() => setStudentPickerOpen(true)} showPassword={modal.mode === 'create'} password={password} confirmPassword={confirmPassword} onPasswordChange={setPassword} onConfirmPasswordChange={setConfirmPassword} errors={fieldErrors} />}
           {modal.type === 'guardian' && <UserFields role="guardian" row={modal.row} options={options} students={students} selectedStudentIds={selectedStudentIds} onOpenStudentPicker={() => setStudentPickerOpen(true)} showPassword={modal.mode === 'create'} password={password} confirmPassword={confirmPassword} onPasswordChange={setPassword} onConfirmPasswordChange={setConfirmPassword} errors={fieldErrors} />}
-          {modal.type === 'course' && <><label>Curso<input name="name" defaultValue={modal.row?.name} required /></label><SelectField label="Nivel" name="levelId" options={options.levels} defaultValue={modal.row?.levelId} required /></>}
-          {modal.type === 'section' && <><label>Sección<input name="name" defaultValue={modal.row?.name} required /></label><SelectField label="Curso" name="courseId" options={options.courses} defaultValue={modal.row?.courseId} required /><SelectField label="Profesor jefe" name="teacherId" options={options.teachers} defaultValue={modal.row?.teacherId} /><SelectField label="Sala" name="classroomId" options={options.classrooms} defaultValue={modal.row?.classroomId} /></>}
+          {modal.type === 'course' && (
+            <>
+              <label>Curso<input name="name" defaultValue={modal.row?.name} required placeholder="Ej: 1 Medio" /></label>
+              <SelectField label="Nivel" name="levelId" options={options.levels} defaultValue={modal.row?.levelId} placeholder="Selecciona un nivel" required />
+              {modal.mode === 'create' && (
+                <fieldset className="admin-form-section full-span course-section-editor">
+                  <legend>Secciones iniciales</legend>
+                  <p className="field-help">Opcional. Puedes crear paralelos como A, B o C y asignar profesor jefe o sala desde el inicio.</p>
+                  {courseSections.map((section, index) => (
+                    <div className="course-section-row" key={section.id}>
+                      <label>Sección<input value={section.name} onChange={(event) => setCourseSections((items) => items.map((item) => item.id === section.id ? { ...item, name: event.target.value } : item))} placeholder="A" /></label>
+                      <SelectField label="Profesor jefe" name={`sectionTeacher-${index}`} options={options.teachers} defaultValue={section.teacherId} onChange={(value) => setCourseSections((items) => items.map((item) => item.id === section.id ? { ...item, teacherId: value } : item))} />
+                      <SelectField label="Sala" name={`sectionClassroom-${index}`} options={options.classrooms} defaultValue={section.classroomId} onChange={(value) => setCourseSections((items) => items.map((item) => item.id === section.id ? { ...item, classroomId: value } : item))} />
+                      <button type="button" className="danger-button icon-only" onClick={() => setCourseSections((items) => items.filter((item) => item.id !== section.id))}><X size={16} /></button>
+                    </div>
+                  ))}
+                  <button type="button" className="secondary-button fit-button" onClick={() => setCourseSections((items) => [...items, { id: crypto.randomUUID(), name: '', teacherId: '', classroomId: '' }])}><Plus size={16} />Agregar sección</button>
+                </fieldset>
+              )}
+            </>
+          )}
+          {modal.type === 'section' && <><label>Sección<input name="name" defaultValue={modal.row?.name} required placeholder="Ej: A" /></label><SelectField label="Curso" name="courseId" options={options.courses} defaultValue={modal.row?.courseId} placeholder="Selecciona un curso" required /><SelectField label="Profesor jefe" name="teacherId" options={options.teachers} defaultValue={modal.row?.teacherId} placeholder="Sin profesor jefe" /><SelectField label="Sala" name="classroomId" options={options.classrooms} defaultValue={modal.row?.classroomId} placeholder="Sin sala" />{modal.row?.students ? <p className="field-help full-span">Esta sección tiene {modal.row.students} estudiantes. Si cambias el curso, revisa que la matrícula siga correspondiendo.</p> : null}</>}
+          {modal.type === 'classroom' && <><label>Sala<input name="name" defaultValue={modal.row?.name} required placeholder="Ej: Sala 308" /></label><label>Capacidad<input name="capacity" type="number" min="1" defaultValue={modal.row?.capacity ?? 30} required /></label><SelectField label="Tipo" name="type" options={[{ id: 'aula', label: 'Aula' }, { id: 'laboratorio', label: 'Laboratorio' }, { id: 'biblioteca', label: 'Biblioteca' }, { id: 'gimnasio', label: 'Gimnasio' }, { id: 'otro', label: 'Otro' }]} defaultValue={modal.row?.type ?? 'aula'} required /></>}
           {modal.type === 'subject' && <><label>Asignatura<input name="name" defaultValue={modal.row?.name} required /></label><label>Código<input name="code" defaultValue={modal.row?.code} required /></label><MultiSelectField label="Cursos" name="courseIds" options={options.courses} defaultValues={modal.row?.courses?.map((item) => item.id)} /><MultiSelectField label="Secciones" name="sectionIds" options={options.sections} defaultValues={modal.row?.sections?.map((item) => item.id)} /><MultiSelectField label="Profesores" name="teacherIds" options={options.teachers} defaultValues={modal.row?.teachers?.map((item) => item.id)} /></>}
         </div>
         {formError && <p className="admin-modal-error">{formError}</p>}
-        <footer><button type="button" className="secondary-button" onClick={onClose}>Cancelar</button><button type="submit" className="primary-button" disabled={saving || hasFieldErrors}>{saving ? 'Guardando...' : 'Guardar usuario'}</button></footer>
+        <footer><button type="button" className="secondary-button" onClick={onClose}>Cancelar</button><button type="submit" className="primary-button" disabled={saving || hasFieldErrors}>{saving ? 'Guardando...' : modal.type === 'course' ? 'Guardar curso' : modal.type === 'section' ? 'Guardar sección' : modal.type === 'classroom' ? 'Guardar sala' : modal.type === 'subject' ? 'Guardar asignatura' : 'Guardar usuario'}</button></footer>
       </form>
       {studentPickerOpen && <StudentPickerModal students={students} selectedIds={selectedStudentIds} onCancel={() => setStudentPickerOpen(false)} onConfirm={(ids) => { setSelectedStudentIds(ids); setStudentPickerOpen(false); }} />}
     </div>
@@ -481,6 +535,98 @@ function confirmAction(setConfirm: (confirm: ConfirmState | null) => void, input
   setConfirm(input);
 }
 
+function CoursesSectionsPage({ bundle, canManage, setModal, setConfirm, onSaved }: { bundle: AdminBundle; canManage: boolean; setModal: (modal: ModalState) => void; setConfirm: (confirm: ConfirmState | null) => void; onSaved: (message: string) => void }) {
+  const [query, setQuery] = useState('');
+  const [expanded, setExpanded] = useState<Record<string, boolean>>(() => Object.fromEntries(bundle.courses.slice(0, 2).map((course) => [course.id, true])));
+  const filteredCourses = bundle.courses.filter((course) => textIncludes(course, query) || bundle.sections.some((section) => section.courseId === course.id && textIncludes(section, query)));
+
+  function confirmDeleteSection(section: AdminSectionRow) {
+    confirmAction(setConfirm, {
+      title: 'Eliminar sección',
+      message: section.students ? `La sección ${section.course} ${section.name} tiene ${section.students} estudiantes. Debes quitar esos estudiantes antes de eliminarla.` : `Confirma que quieres eliminar la sección ${section.course} ${section.name}.`,
+      danger: true,
+      action: async () => {
+        await deleteAdminSection(section.id);
+        onSaved('Sección eliminada correctamente.');
+      }
+    });
+  }
+
+  function confirmDeleteClassroom(classroom: AdminClassroomRow) {
+    confirmAction(setConfirm, {
+      title: 'Eliminar sala',
+      message: classroom.sections || classroom.schedules ? `La sala ${classroom.name} está en uso. Debes quitarla de secciones u horarios antes de eliminarla.` : `Confirma que quieres eliminar la sala ${classroom.name}.`,
+      danger: true,
+      action: async () => {
+        await deleteAdminClassroom(classroom.id);
+        onSaved('Sala eliminada correctamente.');
+      }
+    });
+  }
+
+  return (
+    <div className="course-admin-view">
+      <header className="assignment-header">
+        <div><h2>Cursos, secciones y salas</h2><p>Administra niveles, paralelos, profesores jefe y espacios físicos.</p></div>
+        {canManage && <div className="course-actions"><button className="secondary-button" onClick={() => setModal({ type: 'classroom', mode: 'create' })}><Plus size={17} />Crear sala</button><button className="primary-button" onClick={() => setModal({ type: 'course', mode: 'create' })}><Plus size={17} />Crear curso</button></div>}
+      </header>
+
+      <div className="assignment-filters labelled-filters">
+        <label className="admin-search"><span>Buscar curso o sección</span><div><Search size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Nombre, nivel, sección, sala o profesor" /></div></label>
+      </div>
+
+      <div className="course-card-list">
+        {filteredCourses.map((course) => {
+          const sections = bundle.sections.filter((section) => section.courseId === course.id);
+          const isOpen = expanded[course.id] ?? false;
+          return (
+            <article key={course.id} className="course-card">
+              <div className="course-card-header">
+                <button type="button" className="course-main-button" onClick={() => setExpanded((current) => ({ ...current, [course.id]: !isOpen }))}>
+                  <span className="course-toggle">{isOpen ? <ChevronDown size={18} /> : <ChevronRight size={18} />}</span>
+                  <div><strong>{course.name}</strong><small>{course.level}</small></div>
+                  <span>{course.sections} secciones</span>
+                  <span>{course.students} estudiantes</span>
+                </button>
+                {canManage && <button type="button" className="secondary-button" onClick={() => setModal({ type: 'course', mode: 'edit', row: course })}><Edit3 size={15} />Editar</button>}
+              </div>
+              {isOpen && (
+                <div className="section-list">
+                  {sections.length ? sections.map((section) => (
+                    <div key={section.id} className="section-row">
+                      <span><strong>{section.name}</strong><small>Sección</small></span>
+                      <span><strong>{section.teacher}</strong><small>Profesor jefe</small></span>
+                      <span><strong>{section.classroom}</strong><small>Sala</small></span>
+                      <span><strong>{section.students}</strong><small>Estudiantes</small></span>
+                      {canManage && <div className="admin-row-actions"><button onClick={() => setModal({ type: 'section', mode: 'edit', row: section })}><Edit3 size={15} />Editar</button><button className="danger-button" onClick={() => confirmDeleteSection(section)}><Trash2 size={15} />Eliminar</button></div>}
+                    </div>
+                  )) : <div className="admin-empty compact"><Search size={18} /><strong>Sin secciones</strong><span>Crea secciones desde el modal de curso o con una sección nueva.</span></div>}
+                </div>
+              )}
+            </article>
+          );
+        })}
+      </div>
+
+      {!filteredCourses.length && <div className="admin-empty"><Search size={22} /><strong>Sin cursos</strong><span>No se encontraron cursos con esos filtros.</span></div>}
+
+      <section className="classroom-section">
+        <header className="assignment-header compact-header"><div><h3>Salas</h3><p>Capacidad y tipo de espacio disponible.</p></div>{canManage && <button className="secondary-button" onClick={() => setModal({ type: 'classroom', mode: 'create' })}><Plus size={16} />Nueva sala</button>}</header>
+        <div className="classroom-grid">
+          {bundle.classrooms.map((classroom) => (
+            <article key={classroom.id} className="classroom-card">
+              <div><strong>{classroom.name}</strong><small>{classroom.type}</small></div>
+              <span>{classroom.capacity} cupos</span>
+              <span>{classroom.sections} secciones</span>
+              {canManage && <div className="admin-row-actions"><button onClick={() => setModal({ type: 'classroom', mode: 'edit', row: classroom })}><Edit3 size={15} />Editar</button><button className="danger-button" onClick={() => confirmDeleteClassroom(classroom)}><Trash2 size={15} />Eliminar</button></div>}
+            </article>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
 export function AdminPage({ user }: { user: User }) {
   const [bundle, setBundle] = useState<AdminBundle | null>(null);
   const [tab, setTab] = useState<AdminTab>('users');
@@ -508,6 +654,7 @@ export function AdminPage({ user }: { user: User }) {
 
   const visibleTabs = useMemo(() => (canInspect && !canManage ? tabs.filter((item) => ['students', 'courses'].includes(item.id)) : tabs), [canInspect, canManage]);
   const isAssignmentTab = tab.startsWith('assignments-');
+  const usesCustomView = isAssignmentTab || tab === 'courses';
   const filtered = useMemo(() => {
     if (!bundle) return [];
     const source = tab === 'users' ? bundle.users : tab === 'students' ? bundle.students : tab === 'teachers' ? bundle.teachers : tab === 'guardians' ? bundle.guardians : tab === 'courses' ? [...bundle.courses, ...bundle.sections] : tab === 'subjects' ? bundle.subjects : [];
@@ -558,8 +705,8 @@ export function AdminPage({ user }: { user: User }) {
           })}
           {canManage && <div className="admin-tab-group">
             <button type="button" className={`admin-tab-parent ${isAssignmentTab ? 'active' : ''}`} onClick={() => setAssignmentsOpen((current) => !current)}>
-              {assignmentsOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-              Asignaciones
+              <span><Link2 size={18} />Asignaciones</span>
+              {assignmentsOpen ? <ChevronDown className="submenu-arrow" size={16} /> : <ChevronRight className="submenu-arrow" size={16} />}
             </button>
             {assignmentsOpen && assignmentTabs.map((item) => {
               const Icon = item.icon;
@@ -569,10 +716,10 @@ export function AdminPage({ user }: { user: User }) {
         </aside>
 
         <main className="admin-panel">
-          {!isAssignmentTab && <div className="admin-toolbar">
+          {!usesCustomView && <div className="admin-toolbar">
             <label className="admin-search"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar por nombre, correo, curso o estado" /></label>
             {['users', 'students', 'teachers', 'guardians'].includes(tab) && <select value={status} onChange={(event) => setStatus(event.target.value as typeof status)}><option value="all">Todos</option><option value="active">Activos</option><option value="inactive">Inactivos</option></select>}
-            {canManage && <button className="primary-button" onClick={() => setModal({ type: tab === 'students' ? 'student' : tab === 'teachers' ? 'teacher' : tab === 'guardians' ? 'guardian' : tab === 'courses' ? 'course' : tab === 'subjects' ? 'subject' : 'user', mode: 'create' })}><Plus size={18} />Crear</button>}
+            {canManage && <button className="primary-button" onClick={() => setModal({ type: tab === 'students' ? 'student' : tab === 'teachers' ? 'teacher' : tab === 'guardians' ? 'guardian' : tab === 'subjects' ? 'subject' : 'user', mode: 'create' })}><Plus size={18} />Crear</button>}
           </div>}
 
           {tab === 'users' && <AdminTable rows={filtered as AdminUserRow[]} render={(row) => <><div><strong>{row.name}</strong><small>{row.email}</small></div><span>{roleLabels[row.role]}</span><StatusBadge active={row.isActive} /><div className="admin-row-actions">{canManage && <><button onClick={() => setModal({ type: 'user', mode: 'edit', row })}><Edit3 size={16} />Editar</button><button onClick={() => statusAction('usuario', row.name, row.isActive, () => setAdminUserStatus(row.id, !row.isActive))}>{row.isActive ? <ToggleRight /> : <ToggleLeft />} {row.isActive ? 'Desactivar' : 'Activar'}</button><button onClick={() => setConfirm({ title: 'Resetear contraseña', message: `Confirma el reseteo de contraseña para ${row.name}.`, action: async () => { const result = await resetAdminUserPassword(row.id); done(`Contraseña: ${result.temporaryPassword}`); } })}><KeyRound size={16} />Reset contraseña</button></>}</div></>} />}
@@ -583,7 +730,7 @@ export function AdminPage({ user }: { user: User }) {
 
           {tab === 'guardians' && <AdminTable rows={filtered as AdminGuardianRow[]} render={(row) => <><div><strong>{row.name}</strong><small>{row.email}</small></div><span>{row.phone || 'Sin teléfono'}</span><span>{row.students.map((item) => item.name).join(', ') || 'Sin estudiantes'}</span><StatusBadge active={row.isActive} /><div className="admin-row-actions">{canManage && <><button onClick={() => setModal({ type: 'guardian', mode: 'edit', row })}><Edit3 size={16} />Editar</button><button onClick={() => statusAction('apoderado', row.name, row.isActive, () => setAdminGuardianStatus(row.id, !row.isActive))}>{row.isActive ? 'Desactivar' : 'Activar'}</button></>}</div></>} />}
 
-          {tab === 'courses' && <AdminTable rows={filtered as Array<AdminCourseRow | AdminSectionRow>} render={(row) => 'level' in row ? <><div><strong>{row.name}</strong><small>Curso · {row.level}</small></div><span>{row.sections} secciones</span><span>{row.students} estudiantes</span><div className="admin-row-actions">{canManage && <button onClick={() => setModal({ type: 'course', mode: 'edit', row })}><Edit3 size={16} />Editar</button>}</div></> : <><div><strong>{row.name}</strong><small>Sección · {row.course}</small></div><span>{row.teacher}</span><span>{row.classroom} · {row.students} estudiantes</span><div className="admin-row-actions">{canManage && <button onClick={() => setModal({ type: 'section', mode: 'edit', row })}><Edit3 size={16} />Editar</button>}</div></>} />}
+          {tab === 'courses' && <CoursesSectionsPage bundle={bundle} canManage={canManage} setModal={setModal} setConfirm={setConfirm} onSaved={done} />}
 
           {tab === 'subjects' && <AdminTable rows={filtered as AdminSubjectRow[]} render={(row) => <><div><strong>{row.name}</strong><small>{row.code}</small></div><span>{row.teachers.map((item) => item.name).join(', ') || 'Sin profesor'}</span><span>{row.sections.map((item) => `${item.course} ${item.name}`).join(', ') || 'Sin sección'}</span><div className="admin-row-actions">{canManage && <button onClick={() => setModal({ type: 'subject', mode: 'edit', row })}><Edit3 size={16} />Editar</button>}</div></>} />}
 
@@ -594,7 +741,7 @@ export function AdminPage({ user }: { user: User }) {
         </main>
       </section>
 
-      {modal && <EntityModal modal={modal} options={options} students={bundle.students} onClose={() => setModal(null)} onSaved={done} />}
+      {modal && <EntityModal modal={modal} options={options} students={bundle.students} onClose={() => setModal(null)} onSaved={done} setConfirm={setConfirm} />}
       {confirm && <ConfirmDialog confirm={confirm} onClose={() => setConfirm(null)} />}
     </div>
   );

@@ -116,6 +116,26 @@ export class AdminController {
     return service.updateSection(String(req.params.id), req.body).then((data) => res.json(data));
   }
 
+  deleteSection(req: Request, res: Response) {
+    return service.deleteSection(String(req.params.id)).then((data) => res.json(data));
+  }
+
+  classrooms(_req: Request, res: Response) {
+    return service.classrooms().then((data) => res.json(data));
+  }
+
+  createClassroom(req: Request, res: Response) {
+    return service.createClassroom(req.body).then((data) => res.status(201).json(data));
+  }
+
+  updateClassroom(req: Request, res: Response) {
+    return service.updateClassroom(String(req.params.id), req.body).then((data) => res.json(data));
+  }
+
+  deleteClassroom(req: Request, res: Response) {
+    return service.deleteClassroom(String(req.params.id)).then((data) => res.json(data));
+  }
+
   subjects(_req: Request, res: Response) {
     return service.subjects().then((data) => res.json(data));
   }

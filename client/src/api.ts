@@ -1,6 +1,7 @@
 import axios from 'axios';
 import type {
   AdminBundle,
+  AdminClassroomRow,
   AdminCourseRow,
   AdminGuardianRow,
   AdminSectionRow,
@@ -538,8 +539,12 @@ export async function loadAdminSummary() {
   return data;
 }
 
+export type AdminCourseSectionInput = { name: string; teacherId?: string; classroomId?: string };
+export type AdminCoursePayload = { name: string; levelId: string; sections?: AdminCourseSectionInput[] };
+export type AdminClassroomPayload = { name: string; capacity: number; type?: AdminClassroomRow['type'] };
+
 export async function loadAdminBundle(): Promise<AdminBundle> {
-  const [summary, users, students, teachers, guardians, courses, sections, subjects] = await Promise.all([
+  const [summary, users, students, teachers, guardians, courses, sections, classrooms, subjects] = await Promise.all([
     loadAdminSummary(),
     api.get<AdminUserRow[]>('/admin/users').then((res) => res.data),
     api.get<AdminStudentRow[]>('/admin/students').then((res) => res.data),
@@ -547,9 +552,10 @@ export async function loadAdminBundle(): Promise<AdminBundle> {
     api.get<AdminGuardianRow[]>('/admin/guardians').then((res) => res.data),
     api.get<AdminCourseRow[]>('/admin/courses').then((res) => res.data),
     api.get<AdminSectionRow[]>('/admin/sections').then((res) => res.data),
+    api.get<AdminClassroomRow[]>('/admin/classrooms').then((res) => res.data),
     api.get<AdminSubjectRow[]>('/admin/subjects').then((res) => res.data)
   ]);
-  return { summary, users, students, teachers, guardians, courses, sections, subjects };
+  return { summary, users, students, teachers, guardians, courses, sections, classrooms, subjects };
 }
 
 export async function createAdminUser(input: AdminUserPayload) {
@@ -637,7 +643,7 @@ export async function unlinkAdminGuardianStudent(input: { guardianId: string; st
   return data;
 }
 
-export async function createAdminCourse(input: { name: string; levelId?: string }) {
+export async function createAdminCourse(input: AdminCoursePayload) {
   const { data } = await api.post<AdminCourseRow>('/admin/courses', input);
   return data;
 }
@@ -654,6 +660,26 @@ export async function createAdminSection(input: { name: string; courseId: string
 
 export async function updateAdminSection(id: string, input: { name?: string; courseId?: string; teacherId?: string; classroomId?: string }) {
   const { data } = await api.patch<AdminSectionRow>(`/admin/sections/${id}`, input);
+  return data;
+}
+
+export async function deleteAdminSection(id: string) {
+  const { data } = await api.delete(`/admin/sections/${id}`);
+  return data;
+}
+
+export async function createAdminClassroom(input: AdminClassroomPayload) {
+  const { data } = await api.post<AdminClassroomRow>('/admin/classrooms', input);
+  return data;
+}
+
+export async function updateAdminClassroom(id: string, input: Partial<AdminClassroomPayload>) {
+  const { data } = await api.patch<AdminClassroomRow>(`/admin/classrooms/${id}`, input);
+  return data;
+}
+
+export async function deleteAdminClassroom(id: string) {
+  const { data } = await api.delete(`/admin/classrooms/${id}`);
   return data;
 }
 

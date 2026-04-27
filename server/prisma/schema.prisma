@@ -263,6 +263,7 @@ model Classroom {
   id        String          @id @default(cuid())
   name      String          @unique
   capacity  Int
+  type      String          @default("aula")
   sections  Section[]
   schedules ClassSchedule[]
 

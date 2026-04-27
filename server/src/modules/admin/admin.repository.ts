@@ -236,6 +236,23 @@ export class AdminRepository {
     return prisma.course.create({ data: input, include: { level: true, sections: { include: { enrollments: true } }, subjects: { include: { subject: true } } } });
   }
 
+  createCourseWithSections(tx: Tx, input: { name: string; levelId: string; sections: Array<{ name: string; teacherId?: string; classroomId?: string }> }) {
+    return tx.course.create({
+      data: {
+        name: input.name,
+        levelId: input.levelId,
+        sections: {
+          create: input.sections.map((section) => ({
+            name: section.name,
+            teacherId: section.teacherId,
+            classroomId: section.classroomId
+          }))
+        }
+      },
+      include: { level: true, sections: { include: { enrollments: true } }, subjects: { include: { subject: true } } }
+    });
+  }
+
   updateCourse(id: string, input: Partial<{ name: string; levelId: string }>) {
     return prisma.course.update({ where: { id }, data: input, include: { level: true, sections: { include: { enrollments: true } }, subjects: { include: { subject: true } } } });
   }
@@ -253,6 +270,38 @@ export class AdminRepository {
 
   updateSection(id: string, input: Partial<{ name: string; courseId: string; teacherId: string | null; classroomId: string | null }>) {
     return prisma.section.update({ where: { id }, data: input, include: { course: true, classroom: true, headTeacher: { include: { user: true } }, enrollments: true, subjects: { include: { subject: true } } } });
+  }
+
+  findSection(id: string) {
+    return prisma.section.findUnique({ where: { id }, include: { enrollments: true, subjects: true, schedules: true } });
+  }
+
+  deleteSection(id: string) {
+    return prisma.section.delete({ where: { id } });
+  }
+
+  listClassrooms() {
+    return prisma.classroom.findMany({ include: { sections: true, schedules: true }, orderBy: { name: 'asc' } });
+  }
+
+  findClassroomByName(name: string) {
+    return prisma.classroom.findUnique({ where: { name } });
+  }
+
+  findClassroom(id: string) {
+    return prisma.classroom.findUnique({ where: { id }, include: { sections: true, schedules: true } });
+  }
+
+  createClassroom(input: { name: string; capacity: number; type: string }) {
+    return prisma.classroom.create({ data: input, include: { sections: true, schedules: true } });
+  }
+
+  updateClassroom(id: string, input: Partial<{ name: string; capacity: number; type: string }>) {
+    return prisma.classroom.update({ where: { id }, data: input, include: { sections: true, schedules: true } });
+  }
+
+  deleteClassroom(id: string) {
+    return prisma.classroom.delete({ where: { id } });
   }
 
   listSubjects() {
