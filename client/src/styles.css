@@ -442,8 +442,22 @@
   font-weight: 800;
 }
 
-.student-picker-search {
+.student-picker-tools .student-picker-search {
   align-self: end;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 12px;
+}
+
+.student-picker-tools .student-picker-search svg {
+  flex: 0 0 auto;
+}
+
+.student-picker-tools .student-picker-search input {
+  min-height: auto;
+  padding: 0;
 }
 
 .student-picker-modal .selected-student-strip {

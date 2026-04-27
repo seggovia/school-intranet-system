@@ -306,14 +306,16 @@ function UserFields({
 }
 
 function EntityModal({ modal, options, students, onClose, onSaved }: { modal: ModalState; options: AdminBundle['summary']['options']; students: AdminStudentRow[]; onClose: () => void; onSaved: (message: string) => void }) {
-  const title = `${modal.mode === 'create' ? 'Crear' : 'Editar'} ${modal.type === 'user' ? 'usuario' : modal.type === 'student' ? 'estudiante' : modal.type === 'teacher' ? 'profesor' : modal.type === 'guardian' ? 'apoderado' : modal.type === 'course' ? 'curso' : modal.type === 'section' ? 'seccion' : 'asignatura'}`;
+  const title = `${modal.mode === 'create' ? 'Crear' : 'Editar'} ${modal.type === 'user' ? 'usuario' : modal.type === 'student' ? 'estudiante' : modal.type === 'teacher' ? 'profesor' : modal.type === 'guardian' ? 'apoderado' : modal.type === 'course' ? 'curso' : modal.type === 'section' ? 'sección' : 'asignatura'}`;
   const [selectedRole, setSelectedRole] = useState<Role | ''>(roleFromModal(modal));
   const [formError, setFormError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<UserFormErrors>({});
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [studentPickerOpen, setStudentPickerOpen] = useState(false);
-  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>(modal.type === 'guardian' ? modal.row?.students?.map((item) => item.id) ? [] : []);
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>(
+    modal.type === 'guardian' ? modal.row?.students?.map((item) => item.id) ?? [] : []
+  );
   const [saving, setSaving] = useState(false);
   const hasFieldErrors = Object.keys(fieldErrors).length > 0;
 
@@ -323,7 +325,7 @@ function EntityModal({ modal, options, students, onClose, onSaved }: { modal: Mo
     if (!payload.email.trim()) nextErrors.email = 'Correo requerido';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.email)) nextErrors.email = 'Correo inválido';
     if (requireRole && !payload.role) nextErrors.role = 'Rol requerido';
-    if (payload.password && payload.password.length < 6) nextErrors.password = 'La contrase?a debe tener al menos 6 caracteres';
+    if (payload.password && payload.password.length < 6) nextErrors.password = 'La contraseña debe tener al menos 6 caracteres';
     if (payload.password && payload.password !== confirmPassword) nextErrors.confirmPassword = 'Las contraseñas no coinciden';
     if (payload.rut && (payload.rut.length < 5 || payload.rut.length > 30)) nextErrors.rut = 'Debe tener entre 5 y 30 caracteres';
     if (payload.phone && !/^(?:\+?56\s?)?(?:9\s?)?\d{4}\s?\d{4}$/.test(payload.phone.replace(/[()-]/g, '').trim())) nextErrors.phone = 'Usa un teléfono chileno válido';
@@ -351,7 +353,7 @@ function EntityModal({ modal, options, students, onClose, onSaved }: { modal: Mo
     }
     if (role === 'guardian') {
       cleaned.phone = payload.phone?.trim() || undefined;
-      cleaned.studentIds = payload.studentIds ? [];
+      cleaned.studentIds = payload.studentIds ?? [];
     }
     return cleaned;
   }
@@ -415,7 +417,7 @@ function EntityModal({ modal, options, students, onClose, onSaved }: { modal: Mo
         <input className="admin-autofill-decoy" type="text" name="fake-username" autoComplete="username" tabIndex={-1} aria-hidden="true" />
         <input className="admin-autofill-decoy" type="password" name="fake-password" autoComplete="current-password" tabIndex={-1} aria-hidden="true" />
         <header>
-          <div><span>Administracion</span><h2>{title}</h2></div>
+          <div><span>Administración</span><h2>{title}</h2></div>
           <button type="button" onClick={onClose}>x</button>
         </header>
         <div className="admin-form-grid">
@@ -424,8 +426,8 @@ function EntityModal({ modal, options, students, onClose, onSaved }: { modal: Mo
           {modal.type === 'teacher' && <UserFields role="teacher" row={modal.row} options={options} students={students} selectedStudentIds={selectedStudentIds} onOpenStudentPicker={() => setStudentPickerOpen(true)} showPassword={modal.mode === 'create'} password={password} confirmPassword={confirmPassword} onPasswordChange={setPassword} onConfirmPasswordChange={setConfirmPassword} errors={fieldErrors} />}
           {modal.type === 'guardian' && <UserFields role="guardian" row={modal.row} options={options} students={students} selectedStudentIds={selectedStudentIds} onOpenStudentPicker={() => setStudentPickerOpen(true)} showPassword={modal.mode === 'create'} password={password} confirmPassword={confirmPassword} onPasswordChange={setPassword} onConfirmPasswordChange={setConfirmPassword} errors={fieldErrors} />}
           {modal.type === 'course' && <><label>Curso<input name="name" defaultValue={modal.row?.name} required /></label><SelectField label="Nivel" name="levelId" options={options.levels} defaultValue={modal.row?.levelId} required /></>}
-          {modal.type === 'section' && <><label>Seccion<input name="name" defaultValue={modal.row?.name} required /></label><SelectField label="Curso" name="courseId" options={options.courses} defaultValue={modal.row?.courseId} required /><SelectField label="Profesor jefe" name="teacherId" options={options.teachers} defaultValue={modal.row?.teacherId} /><SelectField label="Sala" name="classroomId" options={options.classrooms} defaultValue={modal.row?.classroomId} /></>}
-          {modal.type === 'subject' && <><label>Asignatura<input name="name" defaultValue={modal.row?.name} required /></label><label>Codigo<input name="code" defaultValue={modal.row?.code} required /></label><MultiSelectField label="Cursos" name="courseIds" options={options.courses} defaultValues={modal.row?.courses?.map((item) => item.id)} /><MultiSelectField label="Secciones" name="sectionIds" options={options.sections} defaultValues={modal.row?.sections?.map((item) => item.id)} /><MultiSelectField label="Profesores" name="teacherIds" options={options.teachers} defaultValues={modal.row?.teachers?.map((item) => item.id)} /></>}
+          {modal.type === 'section' && <><label>Sección<input name="name" defaultValue={modal.row?.name} required /></label><SelectField label="Curso" name="courseId" options={options.courses} defaultValue={modal.row?.courseId} required /><SelectField label="Profesor jefe" name="teacherId" options={options.teachers} defaultValue={modal.row?.teacherId} /><SelectField label="Sala" name="classroomId" options={options.classrooms} defaultValue={modal.row?.classroomId} /></>}
+          {modal.type === 'subject' && <><label>Asignatura<input name="name" defaultValue={modal.row?.name} required /></label><label>Código<input name="code" defaultValue={modal.row?.code} required /></label><MultiSelectField label="Cursos" name="courseIds" options={options.courses} defaultValues={modal.row?.courses?.map((item) => item.id)} /><MultiSelectField label="Secciones" name="sectionIds" options={options.sections} defaultValues={modal.row?.sections?.map((item) => item.id)} /><MultiSelectField label="Profesores" name="teacherIds" options={options.teachers} defaultValues={modal.row?.teachers?.map((item) => item.id)} /></>}
         </div>
         {formError && <p className="admin-modal-error">{formError}</p>}
         <footer><button type="button" className="secondary-button" onClick={onClose}>Cancelar</button><button type="submit" className="primary-button" disabled={saving || hasFieldErrors}>{saving ? 'Guardando...' : 'Guardar usuario'}</button></footer>
@@ -489,10 +491,10 @@ export function AdminPage({ user }: { user: User }) {
   }, [bundle, query, status, tab]);
 
   if (!['admin', 'director', 'inspector'].includes(user.primaryRole)) {
-    return <div className="page-stack"><PageHeader eyebrow="Administracion" title="Acceso restringido" description="Tu rol no tiene acceso al CRUD administrativo." /></div>;
+    return <div className="page-stack"><PageHeader eyebrow="Administración" title="Acceso restringido" description="Tu rol no tiene acceso al CRUD administrativo." /></div>;
   }
 
-  if (!bundle) return <div className="page-stack"><PageHeader eyebrow="Administracion" title="Cargando panel" description="Preparando usuarios, cursos, secciones y asignaciones." /></div>;
+  if (!bundle) return <div className="page-stack"><PageHeader eyebrow="Administración" title="Cargando panel" description="Preparando usuarios, cursos, secciones y asignaciones." /></div>;
 
   const options = bundle.summary.options;
   const summaryCards = [
@@ -513,7 +515,7 @@ export function AdminPage({ user }: { user: User }) {
 
   return (
     <div className="page-stack admin-page">
-      <PageHeader eyebrow="Administracion" title="Panel de estructura escolar" description="Gestiona usuarios, estudiantes, docentes, apoderados, cursos, secciones, asignaturas y relaciones academicas." />
+      <PageHeader eyebrow="Administración" title="Panel de estructura escolar" description="Gestiona usuarios, estudiantes, docentes, apoderados, cursos, secciones, asignaturas y relaciones académicas." />
       {notice && <div className="admin-notice success" onClick={() => setNotice(null)}>{notice}</div>}
       {error && <div className="admin-notice error" onClick={() => setError(null)}>{error}</div>}
 
@@ -542,11 +544,11 @@ export function AdminPage({ user }: { user: User }) {
 
           {tab === 'teachers' && <AdminTable rows={filtered as AdminTeacherRow[]} render={(row) => <><div><strong>{row.name}</strong><small>{row.email}</small></div><span>{row.specialty}</span><span>{row.subjects.map((item) => item.name).join(', ') || 'Sin asignaturas'}</span><StatusBadge active={row.isActive} /><div className="admin-row-actions">{canManage && <><button onClick={() => setModal({ type: 'teacher', mode: 'edit', row })}><Edit3 size={16} />Editar</button><button onClick={() => statusAction('profesor', row.name, row.isActive, () => setAdminTeacherStatus(row.id, !row.isActive))}>{row.isActive ? 'Desactivar' : 'Activar'}</button></>}</div></>} />}
 
-          {tab === 'guardians' && <AdminTable rows={filtered as AdminGuardianRow[]} render={(row) => <><div><strong>{row.name}</strong><small>{row.email}</small></div><span>{row.phone || 'Sin telefono'}</span><span>{row.students.map((item) => item.name).join(', ') || 'Sin estudiantes'}</span><StatusBadge active={row.isActive} /><div className="admin-row-actions">{canManage && <><button onClick={() => setModal({ type: 'guardian', mode: 'edit', row })}><Edit3 size={16} />Editar</button><button onClick={() => statusAction('apoderado', row.name, row.isActive, () => setAdminGuardianStatus(row.id, !row.isActive))}>{row.isActive ? 'Desactivar' : 'Activar'}</button></>}</div></>} />}
+          {tab === 'guardians' && <AdminTable rows={filtered as AdminGuardianRow[]} render={(row) => <><div><strong>{row.name}</strong><small>{row.email}</small></div><span>{row.phone || 'Sin teléfono'}</span><span>{row.students.map((item) => item.name).join(', ') || 'Sin estudiantes'}</span><StatusBadge active={row.isActive} /><div className="admin-row-actions">{canManage && <><button onClick={() => setModal({ type: 'guardian', mode: 'edit', row })}><Edit3 size={16} />Editar</button><button onClick={() => statusAction('apoderado', row.name, row.isActive, () => setAdminGuardianStatus(row.id, !row.isActive))}>{row.isActive ? 'Desactivar' : 'Activar'}</button></>}</div></>} />}
 
           {tab === 'courses' && <AdminTable rows={filtered as Array<AdminCourseRow | AdminSectionRow>} render={(row) => 'level' in row ? <><div><strong>{row.name}</strong><small>Curso · {row.level}</small></div><span>{row.sections} secciones</span><span>{row.students} estudiantes</span><div className="admin-row-actions">{canManage && <button onClick={() => setModal({ type: 'course', mode: 'edit', row })}><Edit3 size={16} />Editar</button>}</div></> : <><div><strong>{row.name}</strong><small>Sección · {row.course}</small></div><span>{row.teacher}</span><span>{row.classroom} · {row.students} estudiantes</span><div className="admin-row-actions">{canManage && <button onClick={() => setModal({ type: 'section', mode: 'edit', row })}><Edit3 size={16} />Editar</button>}</div></>} />}
 
-          {tab === 'subjects' && <AdminTable rows={filtered as AdminSubjectRow[]} render={(row) => <><div><strong>{row.name}</strong><small>{row.code}</small></div><span>{row.teachers.map((item) => item.name).join(', ') || 'Sin profesor'}</span><span>{row.sections.map((item) => `${item.course} ${item.name}`).join(', ') || 'Sin seccion'}</span><div className="admin-row-actions">{canManage && <button onClick={() => setModal({ type: 'subject', mode: 'edit', row })}><Edit3 size={16} />Editar</button>}</div></>} />}
+          {tab === 'subjects' && <AdminTable rows={filtered as AdminSubjectRow[]} render={(row) => <><div><strong>{row.name}</strong><small>{row.code}</small></div><span>{row.teachers.map((item) => item.name).join(', ') || 'Sin profesor'}</span><span>{row.sections.map((item) => `${item.course} ${item.name}`).join(', ') || 'Sin sección'}</span><div className="admin-row-actions">{canManage && <button onClick={() => setModal({ type: 'subject', mode: 'edit', row })}><Edit3 size={16} />Editar</button>}</div></>} />}
 
           {tab === 'assignments' && <AssignmentsPanel options={options} onSaved={done} />}
         </main>
@@ -563,20 +565,20 @@ function AssignmentsPanel({ options, onSaved }: { options: AdminBundle['summary'
     event.preventDefault();
     const form = event.currentTarget;
     await assignAdminTeacher(String(new FormData(form).get('teacherId')), { subjectIds: getValues(form, 'subjectIds'), sectionIds: getValues(form, 'sectionIds') });
-    onSaved('Asignacion docente guardada.');
+    onSaved('Asignación docente guardada.');
   }
   async function submitStudent(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const fd = new FormData(event.currentTarget);
     await assignAdminStudentSection(String(fd.get('studentId')), String(fd.get('sectionId')));
-    onSaved('Estudiante asignado a seccion.');
+    onSaved('Estudiante asignado a sección.');
   }
   async function submitGuardian(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
     const fd = new FormData(form);
     await linkAdminGuardianStudents(String(fd.get('guardianId')), { studentIds: getValues(form, 'studentIds'), relationship: String(fd.get('relationship') || 'Apoderado') });
-    onSaved('Vinculo apoderado-estudiante actualizado.');
+    onSaved('Vínculo apoderado-estudiante actualizado.');
   }
   async function submitSubject(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -589,7 +591,7 @@ function AssignmentsPanel({ options, onSaved }: { options: AdminBundle['summary'
     <div className="admin-assignment-grid">
       <form onSubmit={submitTeacher} className="admin-relation-card"><h3>Profesor {'>'} asignatura {'>'} sección</h3><SelectField label="Profesor" name="teacherId" options={options.teachers} required /><MultiSelectField label="Asignaturas" name="subjectIds" options={options.subjects} /><MultiSelectField label="Secciones" name="sectionIds" options={options.sections} /><button className="primary-button">Guardar relación</button></form>
       <form onSubmit={submitStudent} className="admin-relation-card"><h3>Estudiante {'>'} sección</h3><SelectField label="Estudiante" name="studentId" options={options.students} required /><SelectField label="Sección" name="sectionId" options={options.sections} required /><button className="primary-button">Asignar estudiante</button></form>
-      <form onSubmit={submitGuardian} className="admin-relation-card"><h3>Apoderado {'>'} estudiantes</h3><SelectField label="Apoderado" name="guardianId" options={options.guardians} required /><MultiSelectField label="Estudiantes" name="studentIds" options={options.students} /><label>Relacion<input name="relationship" defaultValue="Apoderado" /></label><button className="primary-button">Vincular</button></form>
+      <form onSubmit={submitGuardian} className="admin-relation-card"><h3>Apoderado {'>'} estudiantes</h3><SelectField label="Apoderado" name="guardianId" options={options.guardians} required /><MultiSelectField label="Estudiantes" name="studentIds" options={options.students} /><label>Relación<input name="relationship" defaultValue="Apoderado" /></label><button className="primary-button">Vincular</button></form>
       <form onSubmit={submitSubject} className="admin-relation-card"><h3>Asignatura {'>'} responsable</h3><SelectField label="Asignatura" name="subjectId" options={options.subjects} required /><SelectField label="Profesor" name="teacherId" options={options.teachers} required /><SelectField label="Sección" name="sectionId" options={options.sections} /><button className="primary-button">Asignar responsable</button></form>
     </div>
   );
