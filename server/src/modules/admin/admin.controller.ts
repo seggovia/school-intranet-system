@@ -48,6 +48,10 @@ export class AdminController {
     return service.assignStudentSection(String(req.params.id), req.body).then((data) => res.json(data));
   }
 
+  clearStudentSection(req: Request, res: Response) {
+    return service.clearStudentSection(String(req.params.id)).then((data) => res.json(data));
+  }
+
   teachers(_req: Request, res: Response) {
     return service.teachers().then((data) => res.json(data));
   }
@@ -136,11 +140,19 @@ export class AdminController {
     return service.assignTeacher(String(req.body.teacherId), req.body).then((data) => res.json(data));
   }
 
+  removeTeacherRelation(req: Request, res: Response) {
+    return service.removeTeacherAssignment(req.body).then((data) => res.json(data));
+  }
+
   assignStudentRelation(req: Request, res: Response) {
     return service.assignStudentSection(String(req.body.studentId), req.body).then((data) => res.json(data));
   }
 
   assignGuardianRelation(req: Request, res: Response) {
     return service.linkGuardianStudents(String(req.body.guardianId), req.body).then((data) => res.json(data));
+  }
+
+  unlinkGuardianRelation(req: Request, res: Response) {
+    return service.unlinkGuardianStudent(req.body).then((data) => res.json(data));
   }
 }

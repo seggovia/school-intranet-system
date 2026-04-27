@@ -7,9 +7,11 @@ import type {
   createSectionSchema,
   createSubjectSchema,
   guardianStudentsSchema,
+  guardianStudentDeleteSchema,
   sectionAssignSchema,
   statusSchema,
   subjectTeacherSchema,
+  teacherAssignmentDeleteSchema,
   teacherAssignmentsSchema,
   updateAdminUserSchema,
   updateCourseSchema,
@@ -29,6 +31,8 @@ type StatusInput = z.infer<typeof statusSchema>;
 type SectionAssignInput = z.infer<typeof sectionAssignSchema>;
 type TeacherAssignmentsInput = z.infer<typeof teacherAssignmentsSchema>;
 type GuardianStudentsInput = z.infer<typeof guardianStudentsSchema>;
+type GuardianStudentDeleteInput = z.infer<typeof guardianStudentDeleteSchema>;
+type TeacherAssignmentDeleteInput = z.infer<typeof teacherAssignmentDeleteSchema>;
 type CreateCourseInput = z.infer<typeof createCourseSchema>;
 type UpdateCourseInput = z.infer<typeof updateCourseSchema>;
 type CreateSectionInput = z.infer<typeof createSectionSchema>;
@@ -323,6 +327,13 @@ export class AdminService {
     return (await this.students()).find((item) => item.id === id);
   }
 
+  async clearStudentSection(id: string) {
+    const student = await repository.findStudent(id);
+    if (!student) throw new HttpError(404, 'Estudiante no encontrado.');
+    await repository.transaction((tx) => repository.clearStudentSection(tx, { studentId: id, year: currentYear() }));
+    return (await this.students()).find((item) => item.id === id);
+  }
+
   async teachers() {
     return (await repository.listTeachers()).map(serializeTeacher);
   }
@@ -358,6 +369,13 @@ export class AdminService {
     if (!teacher) throw new HttpError(404, 'Profesor no encontrado.');
     await repository.transaction((tx) => repository.assignTeacher(tx, { teacherId: id, subjectIds: input.subjectIds ?? [], sectionIds: input.sectionIds ?? [] }));
     return (await this.teachers()).find((item) => item.id === id);
+  }
+
+  async removeTeacherAssignment(input: TeacherAssignmentDeleteInput) {
+    const teacher = await repository.findTeacher(input.teacherId);
+    if (!teacher) throw new HttpError(404, 'Profesor no encontrado.');
+    await repository.transaction((tx) => repository.removeTeacherAssignment(tx, input));
+    return { ok: true };
   }
 
   async guardians() {
@@ -396,6 +414,13 @@ export class AdminService {
     if (!guardian) throw new HttpError(404, 'Apoderado no encontrado.');
     await repository.transaction((tx) => repository.replaceGuardianStudents(tx, { guardianId: id, studentIds: input.studentIds, relationship: input.relationship ?? 'Apoderado' }));
     return (await this.guardians()).find((item) => item.id === id);
+  }
+
+  async unlinkGuardianStudent(input: GuardianStudentDeleteInput) {
+    const guardian = await repository.findGuardian(input.guardianId);
+    if (!guardian) throw new HttpError(404, 'Apoderado no encontrado.');
+    await repository.transaction((tx) => repository.unlinkGuardianStudent(tx, input));
+    return { ok: true };
   }
 
   async courses() {

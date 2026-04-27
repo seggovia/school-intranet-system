@@ -607,6 +607,11 @@ export async function assignAdminTeacher(id: string, input: { subjectIds?: strin
   return data;
 }
 
+export async function removeAdminTeacherAssignment(input: { teacherId: string; subjectId: string; sectionId?: string }) {
+  const { data } = await api.delete('/admin/assignments/teacher-subject-section', { data: input });
+  return data;
+}
+
 export async function createAdminGuardian(input: AdminUserPayload) {
   const { data } = await api.post('/admin/guardians', input);
   return data;
@@ -624,6 +629,11 @@ export async function setAdminGuardianStatus(id: string, isActive: boolean) {
 
 export async function linkAdminGuardianStudents(id: string, input: { studentIds: string[]; relationship?: string }) {
   const { data } = await api.post(`/admin/guardians/${id}/students`, input);
+  return data;
+}
+
+export async function unlinkAdminGuardianStudent(input: { guardianId: string; studentId: string }) {
+  const { data } = await api.delete('/admin/assignments/guardian-students', { data: input });
   return data;
 }
 
@@ -664,5 +674,10 @@ export async function assignAdminSubjectTeacher(id: string, input: { teacherId: 
 
 export async function assignAdminStudentSection(studentId: string, sectionId: string) {
   const { data } = await api.patch(`/admin/students/${studentId}/section`, { sectionId });
+  return data;
+}
+
+export async function clearAdminStudentSection(studentId: string) {
+  const { data } = await api.delete(`/admin/students/${studentId}/section`);
   return data;
 }

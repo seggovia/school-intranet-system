@@ -154,6 +154,10 @@ export class AdminRepository {
     });
   }
 
+  clearStudentSection(tx: Tx, input: { studentId: string; year: number }) {
+    return tx.enrollment.updateMany({ where: { studentId: input.studentId, year: input.year }, data: { status: 'inactivo' } });
+  }
+
   listTeachers() {
     return prisma.teacher.findMany({
       include: {
@@ -186,6 +190,16 @@ export class AdminRepository {
     return Promise.all([...subjectLinks, ...sectionUpdates, ...sectionSubjectLinks]);
   }
 
+  removeTeacherAssignment(tx: Tx, input: { teacherId: string; subjectId: string; sectionId?: string }) {
+    const operations: Array<Promise<unknown>> = [
+      tx.teacherSubject.deleteMany({ where: { teacherId: input.teacherId, subjectId: input.subjectId } })
+    ];
+    if (input.sectionId) {
+      operations.push(tx.section.updateMany({ where: { id: input.sectionId, teacherId: input.teacherId }, data: { teacherId: null } }));
+    }
+    return Promise.all(operations);
+  }
+
   listGuardians() {
     return prisma.guardian.findMany({
       include: { user: true, students: { include: { student: { include: { user: true } } } } },
@@ -208,6 +222,10 @@ export class AdminRepository {
         skipDuplicates: true
       })
     );
+  }
+
+  unlinkGuardianStudent(tx: Tx, input: { guardianId: string; studentId: string }) {
+    return tx.guardianStudent.deleteMany({ where: { guardianId: input.guardianId, studentId: input.studentId } });
   }
 
   listCourses() {

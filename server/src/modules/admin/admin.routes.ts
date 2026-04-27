@@ -9,11 +9,13 @@ import {
   createSectionSchema,
   createSubjectSchema,
   guardianStudentsSchema,
+  guardianStudentDeleteSchema,
   idParamSchema,
   optionalResetPasswordSchema,
   sectionAssignSchema,
   statusSchema,
   subjectTeacherSchema,
+  teacherAssignmentDeleteSchema,
   teacherAssignmentsSchema,
   updateAdminUserSchema,
   updateCourseSchema,
@@ -43,6 +45,7 @@ adminRoutes.post('/students', managers, validateBody(createAdminUserSchema), asy
 adminRoutes.patch('/students/:id', managers, validateParams(idParamSchema), validateBody(updateAdminUserSchema), asyncHandler(controller.updateStudent.bind(controller)));
 adminRoutes.patch('/students/:id/status', managers, validateParams(idParamSchema), validateBody(statusSchema), asyncHandler(controller.setStudentStatus.bind(controller)));
 adminRoutes.patch('/students/:id/section', managers, validateParams(idParamSchema), validateBody(sectionAssignSchema), asyncHandler(controller.assignStudentSection.bind(controller)));
+adminRoutes.delete('/students/:id/section', managers, validateParams(idParamSchema), asyncHandler(controller.clearStudentSection.bind(controller)));
 
 adminRoutes.get('/teachers', managers, asyncHandler(controller.teachers.bind(controller)));
 adminRoutes.post('/teachers', managers, validateBody(createAdminUserSchema), asyncHandler(controller.createTeacher.bind(controller)));
@@ -71,5 +74,7 @@ adminRoutes.post('/subjects/:id/assign-teacher', managers, validateParams(idPara
 
 adminRoutes.get('/assignments', managers, asyncHandler(controller.assignments.bind(controller)));
 adminRoutes.post('/assignments/teacher-subject-section', managers, validateBody(teacherAssignmentsSchema.extend({ teacherId: idParamSchema.shape.id })), asyncHandler(controller.assignTeacherRelation.bind(controller)));
+adminRoutes.delete('/assignments/teacher-subject-section', managers, validateBody(teacherAssignmentDeleteSchema), asyncHandler(controller.removeTeacherRelation.bind(controller)));
 adminRoutes.post('/assignments/student-section', managers, validateBody(sectionAssignSchema.extend({ studentId: idParamSchema.shape.id })), asyncHandler(controller.assignStudentRelation.bind(controller)));
 adminRoutes.post('/assignments/guardian-students', managers, validateBody(guardianStudentsSchema.extend({ guardianId: idParamSchema.shape.id })), asyncHandler(controller.assignGuardianRelation.bind(controller)));
+adminRoutes.delete('/assignments/guardian-students', managers, validateBody(guardianStudentDeleteSchema), asyncHandler(controller.unlinkGuardianRelation.bind(controller)));

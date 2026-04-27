@@ -35,6 +35,17 @@ export const optionalResetPasswordSchema = z.object({
 
 export const sectionAssignSchema = z.object({ sectionId: z.string().trim().min(1) });
 
+export const teacherAssignmentDeleteSchema = z.object({
+  teacherId: z.string().trim().min(1),
+  subjectId: z.string().trim().min(1),
+  sectionId: z.string().trim().min(1).optional()
+});
+
+export const guardianStudentDeleteSchema = z.object({
+  guardianId: z.string().trim().min(1),
+  studentId: z.string().trim().min(1)
+});
+
 export const teacherAssignmentsSchema = z.object({
   subjectIds: z.array(z.string().trim().min(1)).optional(),
   sectionIds: z.array(z.string().trim().min(1)).optional()
