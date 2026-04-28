@@ -903,7 +903,7 @@ function AssignmentsGuardiansPage({ bundle, onSaved, setConfirm }: { bundle: Adm
   const [query, setQuery] = useState('');
   const [guardianId, setGuardianId] = useState('');
   const [pickerOpen, setPickerOpen] = useState(false);
-  const guardians = bundle.guardians.filter((guardian) => assignmentMatch([guardian.name, guardian.email, guardian.phone], query));
+  const guardians = bundle.guardians.filter((guardian) => assignmentMatch([guardian.name, guardian.email, guardian.phone, guardian.isActive ? 'activo' : 'inactivo', guardian.students.length], query));
   const guardian = bundle.guardians.find((item) => item.id === guardianId);
   async function save(ids: string[]) {
     if (!guardian) return;
@@ -930,7 +930,44 @@ function AssignmentsGuardiansPage({ bundle, onSaved, setConfirm }: { bundle: Adm
       }
     });
   }
-  return <div className="assignment-page"><header className="assignment-header"><div><h2>Apoderado → estudiantes</h2><p>Selecciona un apoderado antes de administrar sus estudiantes vinculados.</p></div><button className="primary-button" disabled={!guardian} onClick={() => setPickerOpen(true)}><Plus size={17} />Agregar estudiantes</button></header><div className="assignment-filters guardian-assignment-filters"><label className="admin-search"><Search size={17} /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar apoderado por nombre, correo o RUT" /></label><select value={guardianId} onChange={(e) => setGuardianId(e.target.value)}><option value="">Selecciona un apoderado</option>{guardians.map((item) => <option key={item.id} value={item.id}>{item.name} · {item.email}</option>)}</select></div>{guardian ? <><article className="guardian-selected-card"><strong>{guardian.name}</strong><span>{guardian.email}</span><span>{guardian.phone || 'Sin teléfono'}</span></article><div className="assignment-table"><div className="assignment-row head"><span>Estudiante</span><span>Relación</span><span>Acciones</span></div>{guardian.students.map((student) => <div key={student.id} className="assignment-row guardian"><span>{student.name}</span><span>{student.relationship}</span><span><button className="danger-button" onClick={() => unlink(student.id)}>Desvincular</button></span></div>)}</div></> : <div className="admin-empty"><Users size={20} /><strong>Selecciona un apoderado</strong><span>Selecciona un apoderado para vincular estudiantes.</span></div>}{guardian && !guardian.students.length && <div className="admin-empty"><Users size={20} /><strong>Sin estudiantes vinculados</strong><span>Agrega estudiantes para este apoderado.</span></div>}{pickerOpen && guardian && <StudentPickerModal students={bundle.students} selectedIds={guardian.students.map((item) => item.id)} onCancel={() => setPickerOpen(false)} onConfirm={save} />}</div>;
+  return (
+    <div className="assignment-page">
+      <header className="assignment-header">
+        <div><h2>Apoderado → estudiantes</h2><p>Busca y selecciona un apoderado desde la lista para administrar sus vínculos.</p></div>
+        <button className="primary-button" disabled={!guardian} onClick={() => setPickerOpen(true)}><Plus size={17} />Agregar estudiantes</button>
+      </header>
+      <div className="assignment-filters guardian-assignment-filters">
+        <label className="admin-search"><Search size={17} /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar apoderado por nombre, correo, RUT o teléfono" /></label>
+      </div>
+      <div className="guardian-assignment-layout">
+        <section className="guardian-list-panel">
+          <div className="guardian-list-head"><strong>Apoderados</strong><span>{guardians.length} disponibles</span></div>
+          <div className="guardian-card-list">
+            {guardians.map((item) => (
+              <button type="button" key={item.id} className={`guardian-option-card ${guardianId === item.id ? 'selected' : ''}`} onClick={() => setGuardianId(item.id)}>
+                <span><strong>{item.name}</strong><small>{item.email}</small></span>
+                <span><small>RUT / identificador</small><strong>No registrado</strong></span>
+                <span><small>Teléfono</small><strong>{item.phone || 'Sin teléfono'}</strong></span>
+                <span><small>Estudiantes</small><strong>{item.students.length}</strong></span>
+                <StatusBadge active={item.isActive} />
+              </button>
+            ))}
+          </div>
+          {!guardians.length && <div className="admin-empty compact"><Search size={18} /><strong>Sin apoderados</strong><span>No se encontraron apoderados con esos filtros.</span></div>}
+        </section>
+        <section className="guardian-detail-panel">
+          {guardian ? (
+            <>
+              <article className="guardian-selected-card"><div><strong>{guardian.name}</strong><span>{guardian.email}</span></div><span>{guardian.phone || 'Sin teléfono'}</span><StatusBadge active={guardian.isActive} /><strong>{guardian.students.length} estudiantes vinculados</strong></article>
+              <div className="assignment-table"><div className="assignment-row head"><span>Estudiante</span><span>Relación</span><span>Acciones</span></div>{guardian.students.map((student) => <div key={student.id} className="assignment-row guardian"><span>{student.name}</span><span>{student.relationship}</span><span><button className="danger-button" onClick={() => unlink(student.id)}>Desvincular</button></span></div>)}</div>
+              {!guardian.students.length && <div className="admin-empty"><Users size={20} /><strong>Sin estudiantes vinculados</strong><span>Agrega estudiantes para este apoderado.</span></div>}
+            </>
+          ) : <div className="admin-empty"><Users size={20} /><strong>Selecciona un apoderado</strong><span>Selecciona un apoderado para vincular estudiantes.</span></div>}
+        </section>
+      </div>
+      {pickerOpen && guardian && <StudentPickerModal students={bundle.students} selectedIds={guardian.students.map((item) => item.id)} onCancel={() => setPickerOpen(false)} onConfirm={save} />}
+    </div>
+  );
 }
 
 function AssignmentsSubjectsPage({ bundle, onSaved, setConfirm }: { bundle: AdminBundle; onSaved: (message: string) => void; setConfirm: (confirm: ConfirmState | null) => void }) {

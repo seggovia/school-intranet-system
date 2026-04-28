@@ -397,6 +397,74 @@
   flex-wrap: wrap;
 }
 
+.guardian-assignment-layout {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.9fr) minmax(420px, 1.2fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.guardian-list-panel,
+.guardian-detail-panel {
+  border: 1px solid #d8e2ec;
+  border-radius: 8px;
+  background: #fff;
+  padding: 14px;
+}
+
+.guardian-list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #334155;
+  margin-bottom: 10px;
+}
+
+.guardian-list-head span {
+  color: #64748b;
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.guardian-card-list {
+  display: grid;
+  gap: 10px;
+  max-height: 520px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.guardian-option-card {
+  border: 1px solid #d8e2ec;
+  background: #fbfdff;
+  border-radius: 8px;
+  padding: 12px;
+  display: grid;
+  grid-template-columns: minmax(180px, 1.4fr) minmax(130px, 0.9fr) minmax(130px, 0.9fr) minmax(90px, 0.6fr) auto;
+  gap: 12px;
+  align-items: center;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
+}
+
+.guardian-option-card:hover,
+.guardian-option-card.selected {
+  border-color: #0f766e;
+  background: #ecfdf5;
+  transform: translateY(-1px);
+}
+
+.guardian-option-card strong,
+.guardian-option-card small {
+  display: block;
+}
+
+.guardian-option-card small {
+  color: #64748b;
+  font-size: 0.82rem;
+}
+
 .admin-empty.compact {
   margin: 12px;
   padding: 18px;
@@ -4216,6 +4284,11 @@ th {
   }
 
   .attendance-row {
+    grid-template-columns: 1fr;
+  }
+
+  .guardian-assignment-layout,
+  .guardian-option-card {
     grid-template-columns: 1fr;
   }
 }
