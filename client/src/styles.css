@@ -263,7 +263,7 @@
 
 .admin-table-card {
   display: grid;
-  grid-template-columns: minmax(220px, 1.4fr) minmax(150px, 1fr) minmax(150px, 1fr) auto auto;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 14px;
   align-items: center;
   padding: 14px;
@@ -399,7 +399,7 @@
 
 .guardian-assignment-layout {
   display: grid;
-  grid-template-columns: minmax(320px, 0.9fr) minmax(420px, 1.2fr);
+  grid-template-columns: 1fr;
   gap: 14px;
   align-items: start;
 }
@@ -440,12 +440,92 @@
   border-radius: 8px;
   padding: 12px;
   display: grid;
-  grid-template-columns: minmax(180px, 1.4fr) minmax(130px, 0.9fr) minmax(130px, 0.9fr) minmax(90px, 0.6fr) auto;
+  grid-template-columns: minmax(180px, 1.4fr) repeat(3, minmax(120px, 0.8fr)) auto;
   gap: 12px;
   align-items: center;
   text-align: left;
   cursor: pointer;
   transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
+}
+
+.guardian-detail-modal {
+  width: min(960px, calc(100vw - 32px));
+  max-height: min(760px, calc(100vh - 40px));
+  background: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  animation: modal-in 160ms ease-out;
+}
+
+.guardian-detail-modal header,
+.guardian-detail-modal .guardian-detail-actions {
+  padding: 18px 22px;
+  border-bottom: 1px solid #d8e2ec;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.guardian-detail-modal header button {
+  border: 0;
+  border-radius: 8px;
+  background: #e8eef5;
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+}
+
+.guardian-detail-modal header span {
+  color: #1d4ed8;
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.guardian-detail-modal h2 {
+  margin: 4px 0 0;
+}
+
+.guardian-detail-summary {
+  padding: 16px 22px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.guardian-detail-summary span,
+.guardian-linked-row span {
+  display: grid;
+  gap: 3px;
+}
+
+.guardian-detail-summary small,
+.guardian-linked-row small {
+  color: #64748b;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.guardian-linked-list {
+  overflow: auto;
+  padding: 14px 22px 22px;
+  display: grid;
+  gap: 10px;
+}
+
+.guardian-linked-row {
+  border: 1px solid #d8e2ec;
+  border-radius: 8px;
+  padding: 12px;
+  display: grid;
+  grid-template-columns: minmax(170px, 1.3fr) repeat(4, minmax(100px, 0.8fr)) auto;
+  gap: 12px;
+  align-items: center;
 }
 
 .guardian-option-card:hover,
@@ -4288,7 +4368,8 @@ th {
   }
 
   .guardian-assignment-layout,
-  .guardian-option-card {
+  .guardian-option-card,
+  .guardian-linked-row {
     grid-template-columns: 1fr;
   }
 }

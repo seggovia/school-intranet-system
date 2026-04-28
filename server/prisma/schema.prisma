@@ -315,6 +315,7 @@ model Guardian {
   id        String            @id @default(cuid())
   userId    String            @unique
   phone     String
+  rut       String?           @unique
   user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   students  GuardianStudent[]
 

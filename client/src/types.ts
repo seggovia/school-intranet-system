@@ -509,6 +509,7 @@ export interface AdminGuardianRow {
   userId: string;
   name: string;
   email: string;
+  rut: string;
   phone: string;
   isActive: boolean;
   students: Array<{ id: string; name: string; relationship: string }>;

@@ -57,6 +57,10 @@ export class AdminRepository {
     return prisma.teacher.findUnique({ where: { employeeCode } });
   }
 
+  findGuardianByRut(rut: string) {
+    return prisma.guardian.findUnique({ where: { rut } });
+  }
+
   findUserById(id: string) {
     return prisma.user.findUnique({ where: { id }, select: userSelect });
   }
@@ -118,8 +122,8 @@ export class AdminRepository {
     return tx.student.upsert({ where: { userId }, update: { rut: input.rut, birthDate: input.birthDate }, create: { userId, rut: input.rut, birthDate: input.birthDate } });
   }
 
-  createGuardianProfile(tx: Tx, userId: string, phone: string) {
-    return tx.guardian.upsert({ where: { userId }, update: { phone }, create: { userId, phone } });
+  createGuardianProfile(tx: Tx, userId: string, input: { phone: string; rut?: string }) {
+    return tx.guardian.upsert({ where: { userId }, update: { phone: input.phone, rut: input.rut }, create: { userId, phone: input.phone, rut: input.rut } });
   }
 
   createStaffProfile(tx: Tx, userId: string, input: { position: string; area: string }) {
@@ -219,7 +223,7 @@ export class AdminRepository {
     return prisma.guardian.findUnique({ where: { id }, include: { user: true } });
   }
 
-  updateGuardian(tx: Tx, id: string, input: Partial<{ phone: string }>) {
+  updateGuardian(tx: Tx, id: string, input: Partial<{ phone: string; rut: string | null }>) {
     return tx.guardian.update({ where: { id }, data: input, include: { user: true } });
   }
 

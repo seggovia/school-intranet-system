@@ -120,6 +120,7 @@ function serializeGuardian(guardian: Awaited<ReturnType<AdminRepository['listGua
     userId: guardian.userId,
     name: guardian.user.name,
     email: guardian.user.email,
+    rut: guardian.rut ?? '',
     phone: guardian.phone,
     isActive: guardian.user.isActive,
     students: guardian.students.map((item) => ({ id: item.student.id, name: item.student.user.name, relationship: item.relationship }))
@@ -234,6 +235,7 @@ export class AdminService {
     if (existing) throw new HttpError(409, 'Ya existe un usuario con ese correo.');
     if (role === 'student' && input.rut && await repository.findStudentByRut(input.rut)) throw new HttpError(409, 'Ya existe un estudiante con ese RUT/identificador.');
     if (role === 'teacher' && input.rut && await repository.findTeacherByEmployeeCode(input.rut)) throw new HttpError(409, 'Ya existe un profesor con ese RUT/identificador.');
+    if (role === 'guardian' && input.rut && await repository.findGuardianByRut(input.rut)) throw new HttpError(409, 'Ya existe un apoderado con ese RUT/identificador.');
 
     const roles = await repository.findRoles([role]);
     if (roles.length !== 1) throw new HttpError(400, 'El rol indicado no existe.');
@@ -254,7 +256,7 @@ export class AdminService {
         if (input.sectionId) await repository.upsertEnrollment(tx, { studentId: student.id, sectionId: input.sectionId, year: currentYear() });
       }
       if (role === 'guardian') {
-        const guardian = await repository.createGuardianProfile(tx, created.id, input.phone ?? '');
+        const guardian = await repository.createGuardianProfile(tx, created.id, { phone: input.phone ?? '', rut: input.rut });
         if (input.studentIds?.length) await repository.replaceGuardianStudents(tx, { guardianId: guardian.id, studentIds: input.studentIds, relationship: input.relationship ?? 'Apoderado' });
       }
       if (['admin', 'director', 'inspector'].includes(role)) await repository.createStaffProfile(tx, created.id, { position: role, area: input.department ?? 'Administracion' });
@@ -289,7 +291,7 @@ export class AdminService {
         await repository.replaceRoles(tx, id, roles.map((role) => role.id));
         if (input.role === 'teacher') await repository.createTeacherProfile(tx, id, input.rut || internalCode('DOC'));
         if (input.role === 'student') await repository.createStudentProfile(tx, id, { rut: input.rut || internalCode('EST'), birthDate: dateOrDefault(input.birthDate) });
-        if (input.role === 'guardian') await repository.createGuardianProfile(tx, id, input.phone ?? '');
+        if (input.role === 'guardian') await repository.createGuardianProfile(tx, id, { phone: input.phone ?? '', rut: input.rut });
       }
       return updated;
     });
@@ -418,6 +420,10 @@ export class AdminService {
     const guardian = await repository.findGuardian(id);
     if (!guardian) throw new HttpError(404, 'Apoderado no encontrado.');
     await this.ensureEmailAvailable(input.email, guardian.userId);
+    if (input.rut) {
+      const existing = await repository.findGuardianByRut(input.rut);
+      if (existing && existing.id !== id) throw new HttpError(409, 'Ya existe un apoderado con ese RUT/identificador.');
+    }
     await repository.transaction(async (tx) => {
       await repository.updateUser(tx, guardian.userId, {
         name: input.name ? fullName(input) : undefined,
@@ -425,7 +431,7 @@ export class AdminService {
         department: input.department,
         avatar: input.name ? initials(fullName(input)) : undefined
       });
-      await repository.updateGuardian(tx, id, { phone: input.phone });
+      await repository.updateGuardian(tx, id, { phone: input.phone, rut: input.rut ?? undefined });
       if (input.studentIds) await repository.replaceGuardianStudents(tx, { guardianId: id, studentIds: input.studentIds, relationship: input.relationship ?? 'Apoderado' });
     });
     return (await this.guardians()).find((item) => item.id === id);
