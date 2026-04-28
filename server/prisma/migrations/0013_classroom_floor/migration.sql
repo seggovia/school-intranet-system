@@ -1,0 +1,2 @@
+ALTER TABLE `classrooms`
+  ADD COLUMN `floor` INTEGER NOT NULL DEFAULT 1;

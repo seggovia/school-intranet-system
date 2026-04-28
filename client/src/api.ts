@@ -541,7 +541,7 @@ export async function loadAdminSummary() {
 
 export type AdminCourseSectionInput = { name: string; teacherId?: string; classroomId?: string };
 export type AdminCoursePayload = { name: string; levelId: string; sections?: AdminCourseSectionInput[] };
-export type AdminClassroomPayload = { name: string; capacity: number; type?: AdminClassroomRow['type'] };
+export type AdminClassroomPayload = { name: string; capacity: number; type?: AdminClassroomRow['type']; floor?: number };
 
 export async function loadAdminBundle(): Promise<AdminBundle> {
   const [summary, users, students, teachers, guardians, courses, sections, classrooms, subjects] = await Promise.all([

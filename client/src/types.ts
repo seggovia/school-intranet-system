@@ -545,6 +545,7 @@ export interface AdminClassroomRow {
   name: string;
   capacity: number;
   type: 'aula' | 'laboratorio' | 'biblioteca' | 'gimnasio' | 'otro';
+  floor: number;
   isActive: boolean;
   sections: number;
   schedules: number;

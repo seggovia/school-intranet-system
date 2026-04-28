@@ -296,6 +296,22 @@
   gap: 10px;
 }
 
+.admin-table-header {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 14px;
+  align-items: center;
+  padding: 11px 14px;
+  margin-bottom: 8px;
+  border: 1px solid #d8e2ec;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
 .admin-table-card {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -305,6 +321,7 @@
   border: 1px solid #d8e2ec;
   border-radius: 8px;
   background: #fbfdff;
+  min-width: 0;
 }
 
 .admin-table-card strong,
@@ -402,6 +419,16 @@
   align-items: center;
   padding: 12px;
   border-top: 1px solid #edf2f7;
+}
+
+.section-row.head,
+.classroom-row.head {
+  border-top: 0;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
 }
 
 .section-list.standalone {
@@ -595,6 +622,61 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 12px;
+}
+
+.classroom-filters {
+  grid-template-columns: minmax(240px, 1.4fr) repeat(4, minmax(130px, 1fr));
+}
+
+.classroom-filters label {
+  display: grid;
+  gap: 7px;
+  color: #334155;
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.classroom-filters input,
+.classroom-filters select {
+  min-height: 42px;
+  border: 1px solid #cbd7e4;
+  border-radius: 7px;
+  padding: 9px 10px;
+  background: #fff;
+}
+
+.classroom-table {
+  display: grid;
+  border: 1px solid #d8e2ec;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.classroom-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 1.2fr) minmax(110px, 0.75fr) minmax(80px, 0.55fr) minmax(110px, 0.7fr) minmax(140px, 0.8fr) auto minmax(220px, 1.1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 13px 14px;
+  border-top: 1px solid #e5edf5;
+  min-width: 0;
+}
+
+.classroom-row span,
+.classroom-row strong,
+.classroom-row small {
+  min-width: 0;
+}
+
+.classroom-row strong,
+.classroom-row small {
+  display: block;
+}
+
+.classroom-row small {
+  color: #64748b;
+  font-size: 0.82rem;
 }
 
 .classroom-card {
@@ -1435,7 +1517,9 @@
   .assignment-inline-form,
   .assignment-row,
   .assignment-row.guardian,
-  .assignment-row.subject {
+  .assignment-row.subject,
+  .classroom-filters,
+  .classroom-row {
     grid-template-columns: 1fr;
   }
 }

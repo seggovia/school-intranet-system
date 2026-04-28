@@ -320,11 +320,11 @@ export class AdminRepository {
     return prisma.classroom.findUnique({ where: { id }, include: { sections: true, schedules: true } });
   }
 
-  createClassroom(input: { name: string; capacity: number; type: string }) {
+  createClassroom(input: { name: string; capacity: number; type: string; floor?: number }) {
     return prisma.classroom.create({ data: input, include: { sections: true, schedules: true } });
   }
 
-  updateClassroom(id: string, input: Partial<{ name: string; capacity: number; type: string }>) {
+  updateClassroom(id: string, input: Partial<{ name: string; capacity: number; type: string; floor: number }>) {
     return prisma.classroom.update({ where: { id }, data: input, include: { sections: true, schedules: true } });
   }
 

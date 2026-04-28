@@ -110,7 +110,8 @@ export const updateSectionSchema = createSectionSchema.partial().refine((value) 
 export const createClassroomSchema = z.object({
   name: z.string().trim().min(1).max(120),
   capacity: z.coerce.number().int().positive(),
-  type: z.enum(['aula', 'laboratorio', 'biblioteca', 'gimnasio', 'otro']).optional().default('aula')
+  type: z.enum(['aula', 'laboratorio', 'biblioteca', 'gimnasio', 'otro']).optional().default('aula'),
+  floor: z.coerce.number().int().min(0).max(30).optional().default(1)
 });
 
 export const updateClassroomSchema = createClassroomSchema.partial().refine((value) => Object.keys(value).length > 0, {

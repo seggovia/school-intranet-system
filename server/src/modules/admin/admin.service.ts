@@ -162,6 +162,7 @@ function serializeClassroom(classroom: Awaited<ReturnType<AdminRepository['listC
     name: classroom.name,
     capacity: classroom.capacity,
     type: classroom.type,
+    floor: classroom.floor,
     isActive: classroom.isActive,
     sections: classroom.sections.length,
     schedules: classroom.schedules.length

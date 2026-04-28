@@ -267,6 +267,7 @@ model Classroom {
   name      String          @unique
   capacity  Int
   type      String          @default("aula")
+  floor     Int             @default(1)
   isActive  Boolean         @default(true)
   sections  Section[]
   schedules ClassSchedule[]
