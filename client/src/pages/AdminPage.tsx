@@ -668,6 +668,13 @@ export function AdminPage({ user }: { user: User }) {
   const [tab, setTab] = useState<AdminTab>('users');
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<'all' | 'active' | 'inactive'>('all');
+  const [roleFilter, setRoleFilter] = useState('');
+  const [studentCourseFilter, setStudentCourseFilter] = useState('');
+  const [studentSectionFilter, setStudentSectionFilter] = useState('');
+  const [studentGuardianFilter, setStudentGuardianFilter] = useState<'all' | 'with' | 'without'>('all');
+  const [teacherSpecialtyFilter, setTeacherSpecialtyFilter] = useState('');
+  const [teacherSubjectFilter, setTeacherSubjectFilter] = useState('');
+  const [guardianLinksFilter, setGuardianLinksFilter] = useState<'all' | 'with' | 'without'>('all');
   const [modal, setModal] = useState<ModalState | null>(null);
   const [confirm, setConfirm] = useState<ConfirmState | null>(null);
   const [academicOpen, setAcademicOpen] = useState(true);
@@ -704,8 +711,26 @@ export function AdminPage({ user }: { user: User }) {
     return source.filter((row: unknown) => textIncludes(row, query)).filter((row: unknown) => {
       if (status === 'all' || !('isActive' in (row as object))) return true;
       return status === 'active' ? (row as { isActive?: boolean }).isActive : !(row as { isActive?: boolean }).isActive;
+    }).filter((row: unknown) => {
+      if (tab === 'users' && roleFilter) return (row as AdminUserRow).role === roleFilter;
+      if (tab === 'students') {
+        const student = row as AdminStudentRow;
+        return (!studentCourseFilter || student.course === studentCourseFilter) &&
+          (!studentSectionFilter || student.sectionId === studentSectionFilter) &&
+          (studentGuardianFilter === 'all' || (studentGuardianFilter === 'with' ? student.guardians.length > 0 : student.guardians.length === 0));
+      }
+      if (tab === 'teachers') {
+        const teacher = row as AdminTeacherRow;
+        return (!teacherSpecialtyFilter || teacher.specialty === teacherSpecialtyFilter) &&
+          (!teacherSubjectFilter || teacher.subjects.some((subject) => subject.id === teacherSubjectFilter));
+      }
+      if (tab === 'guardians') {
+        const guardian = row as AdminGuardianRow;
+        return guardianLinksFilter === 'all' || (guardianLinksFilter === 'with' ? guardian.students.length > 0 : guardian.students.length === 0);
+      }
+      return true;
     });
-  }, [bundle, query, status, tab]);
+  }, [bundle, guardianLinksFilter, query, roleFilter, status, studentCourseFilter, studentGuardianFilter, studentSectionFilter, tab, teacherSpecialtyFilter, teacherSubjectFilter]);
 
   if (!['admin', 'director', 'inspector'].includes(user.primaryRole)) {
     return <div className="page-stack"><PageHeader eyebrow="Administración" title="Acceso restringido" description="Tu rol no tiene acceso al CRUD administrativo." /></div>;
@@ -730,6 +755,19 @@ export function AdminPage({ user }: { user: User }) {
     action: async () => { await action(); done('Estado actualizado correctamente.'); }
   });
 
+  const specialtyOptions = Array.from(new Set(bundle.teachers.map((teacher) => teacher.specialty).filter(Boolean))).sort();
+  const resetFilters = () => {
+    setQuery('');
+    setStatus('all');
+    setRoleFilter('');
+    setStudentCourseFilter('');
+    setStudentSectionFilter('');
+    setStudentGuardianFilter('all');
+    setTeacherSpecialtyFilter('');
+    setTeacherSubjectFilter('');
+    setGuardianLinksFilter('all');
+  };
+
   return (
     <div className="page-stack admin-page">
       <PageHeader eyebrow="Administración" title="Panel de estructura escolar" description="Gestiona usuarios, estudiantes, docentes, apoderados, cursos, secciones, asignaturas y relaciones académicas." />
@@ -747,7 +785,7 @@ export function AdminPage({ user }: { user: User }) {
             return <button key={item.id} className={tab === item.id ? 'active' : ''} onClick={() => setTab(item.id)}><Icon size={18} />{item.label}</button>;
           })}
           {canManage && <div className={`admin-tab-group ${academicOpen ? 'open' : ''}`}>
-            <button type="button" className={`admin-tab-parent ${isAcademicTab ? 'active' : ''}`} onClick={() => setAcademicOpen((current) => !current)}>
+            <button type="button" className="admin-tab-parent" onClick={() => setAcademicOpen((current) => !current)}>
               <span><Building2 size={18} />Gestión académica</span>
               {academicOpen ? <ChevronDown className="submenu-arrow" size={16} /> : <ChevronRight className="submenu-arrow" size={16} />}
             </button>
@@ -759,7 +797,7 @@ export function AdminPage({ user }: { user: User }) {
             </div>
           </div>}
           {canManage && <div className={`admin-tab-group ${assignmentsOpen ? 'open' : ''}`}>
-            <button type="button" className={`admin-tab-parent ${isAssignmentTab ? 'active' : ''}`} onClick={() => setAssignmentsOpen((current) => !current)}>
+            <button type="button" className="admin-tab-parent" onClick={() => setAssignmentsOpen((current) => !current)}>
               <span><Link2 size={18} />Asignaciones</span>
               {assignmentsOpen ? <ChevronDown className="submenu-arrow" size={16} /> : <ChevronRight className="submenu-arrow" size={16} />}
             </button>
@@ -773,9 +811,14 @@ export function AdminPage({ user }: { user: User }) {
         </aside>
 
         <main className="admin-panel">
-          {!usesCustomView && <div className="admin-toolbar">
-            <label className="admin-search"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar por nombre, correo, curso o estado" /></label>
-            {['users', 'students', 'teachers', 'guardians'].includes(tab) && <select value={status} onChange={(event) => setStatus(event.target.value as typeof status)}><option value="all">Todos</option><option value="active">Activos</option><option value="inactive">Inactivos</option></select>}
+          {!usesCustomView && <div className="admin-toolbar admin-filterbar">
+            <label className="admin-search"><span>Búsqueda</span><div><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={tab === 'users' ? 'Buscar por nombre, correo o rol' : tab === 'students' ? 'Buscar por nombre, correo o RUT' : tab === 'teachers' ? 'Buscar por nombre, correo o código' : tab === 'guardians' ? 'Buscar por nombre, correo, RUT o teléfono' : 'Buscar por nombre o código'} /></div></label>
+            {tab === 'users' && <label>Rol<select value={roleFilter} onChange={(event) => setRoleFilter(event.target.value)}><option value="">Todos los roles</option>{bundle.summary.options.roles.map((role) => <option key={role.id} value={role.id}>{role.label}</option>)}</select></label>}
+            {tab === 'students' && <><label>Curso<select value={studentCourseFilter} onChange={(event) => { setStudentCourseFilter(event.target.value); setStudentSectionFilter(''); }}><option value="">Todos los cursos</option>{bundle.courses.map((course) => <option key={course.id} value={course.name}>{course.name}</option>)}</select></label><label>Sección<select value={studentSectionFilter} onChange={(event) => setStudentSectionFilter(event.target.value)}><option value="">Todas las secciones</option>{bundle.sections.filter((section) => !studentCourseFilter || section.course === studentCourseFilter).map((section) => <option key={section.id} value={section.id}>{section.course} {section.name}</option>)}</select></label><label>Apoderado<select value={studentGuardianFilter} onChange={(event) => setStudentGuardianFilter(event.target.value as typeof studentGuardianFilter)}><option value="all">Todos</option><option value="with">Con apoderado</option><option value="without">Sin apoderado</option></select></label></>}
+            {tab === 'teachers' && <><label>Área<select value={teacherSpecialtyFilter} onChange={(event) => setTeacherSpecialtyFilter(event.target.value)}><option value="">Todas las áreas</option>{specialtyOptions.map((specialty) => <option key={specialty} value={specialty}>{specialty}</option>)}</select></label><label>Asignatura<select value={teacherSubjectFilter} onChange={(event) => setTeacherSubjectFilter(event.target.value)}><option value="">Todas las asignaturas</option>{bundle.subjects.map((subject) => <option key={subject.id} value={subject.id}>{subject.name}</option>)}</select></label></>}
+            {tab === 'guardians' && <label>Vínculos<select value={guardianLinksFilter} onChange={(event) => setGuardianLinksFilter(event.target.value as typeof guardianLinksFilter)}><option value="all">Todos</option><option value="with">Con estudiantes</option><option value="without">Sin estudiantes</option></select></label>}
+            {['users', 'students', 'teachers', 'guardians'].includes(tab) && <label>Estado<select value={status} onChange={(event) => setStatus(event.target.value as typeof status)}><option value="all">Todos</option><option value="active">Activos</option><option value="inactive">Inactivos</option></select></label>}
+            <button type="button" className="secondary-button" onClick={resetFilters}>Limpiar filtros</button>
             {canManage && <button className="primary-button" onClick={() => setModal({ type: tab === 'students' ? 'student' : tab === 'teachers' ? 'teacher' : tab === 'guardians' ? 'guardian' : tab === 'subjects' ? 'subject' : 'user', mode: 'create' })}><Plus size={18} />Crear</button>}
           </div>}
 

@@ -153,7 +153,7 @@
 .admin-tabs button.admin-tab-parent {
   justify-content: flex-start;
   color: #ffffff;
-  background: rgba(255, 255, 255, 0.08);
+  background: transparent;
 }
 
 .admin-tabs button.admin-tab-parent span {
@@ -168,7 +168,7 @@
 }
 
 .admin-tabs button.admin-tab-parent.active {
-  background: rgba(255, 255, 255, 0.14);
+  background: transparent;
 }
 
 .admin-panel {
@@ -185,11 +185,25 @@
 
 .admin-toolbar {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 12px;
   padding-bottom: 16px;
   border-bottom: 1px solid #d8e2ec;
   margin-bottom: 14px;
+}
+
+.admin-filterbar {
+  display: grid;
+  grid-template-columns: minmax(250px, 1.5fr) repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.admin-filterbar > label {
+  display: grid;
+  gap: 7px;
+  color: #334155;
+  font-size: 0.88rem;
+  font-weight: 800;
 }
 
 .admin-search {
@@ -209,6 +223,26 @@
   background: transparent;
   width: 100%;
   outline: none;
+}
+
+.admin-filterbar .admin-search {
+  display: grid;
+  gap: 7px;
+  align-items: stretch;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.admin-filterbar .admin-search > div {
+  min-height: 44px;
+  border: 1px solid #cbd7e4;
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .labelled-filters .admin-search {
@@ -238,6 +272,7 @@
 }
 
 .admin-toolbar select,
+.admin-filterbar select,
 .admin-form-grid input,
 .admin-form-grid select,
 .admin-form-grid textarea,
@@ -431,7 +466,7 @@
   gap: 10px;
   max-height: 520px;
   overflow: auto;
-  padding-right: 4px;
+  padding: 2px 4px 2px 2px;
 }
 
 .guardian-option-card {
@@ -445,7 +480,9 @@
   align-items: center;
   text-align: left;
   cursor: pointer;
-  transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
+  outline: 2px solid transparent;
+  outline-offset: -2px;
+  transition: border-color 150ms ease, background 150ms ease, outline-color 150ms ease;
 }
 
 .guardian-detail-modal {
@@ -531,8 +568,8 @@
 .guardian-option-card:hover,
 .guardian-option-card.selected {
   border-color: #0f766e;
+  outline-color: rgba(15, 118, 110, 0.28);
   background: #ecfdf5;
-  transform: translateY(-1px);
 }
 
 .guardian-option-card strong,
@@ -1252,11 +1289,20 @@
 
 .assignment-pager {
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
   align-items: center;
   gap: 10px;
   color: #52657a;
   font-weight: 800;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid #e2e8f0;
+  flex-wrap: wrap;
+}
+
+.assignment-pager span {
+  min-width: 120px;
+  text-align: center;
 }
 
 .assignment-student-list {
