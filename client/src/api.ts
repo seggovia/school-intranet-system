@@ -653,6 +653,11 @@ export async function updateAdminCourse(id: string, input: { name?: string; leve
   return data;
 }
 
+export async function setAdminCourseStatus(id: string, isActive: boolean) {
+  const { data } = await api.patch<AdminCourseRow>(`/admin/courses/${id}/status`, { isActive });
+  return data;
+}
+
 export async function createAdminSection(input: { name: string; courseId: string; teacherId?: string; classroomId?: string }) {
   const { data } = await api.post<AdminSectionRow>('/admin/sections', input);
   return data;
@@ -660,6 +665,11 @@ export async function createAdminSection(input: { name: string; courseId: string
 
 export async function updateAdminSection(id: string, input: { name?: string; courseId?: string; teacherId?: string; classroomId?: string }) {
   const { data } = await api.patch<AdminSectionRow>(`/admin/sections/${id}`, input);
+  return data;
+}
+
+export async function setAdminSectionStatus(id: string, isActive: boolean) {
+  const { data } = await api.patch<AdminSectionRow>(`/admin/sections/${id}/status`, { isActive });
   return data;
 }
 
@@ -675,6 +685,11 @@ export async function createAdminClassroom(input: AdminClassroomPayload) {
 
 export async function updateAdminClassroom(id: string, input: Partial<AdminClassroomPayload>) {
   const { data } = await api.patch<AdminClassroomRow>(`/admin/classrooms/${id}`, input);
+  return data;
+}
+
+export async function setAdminClassroomStatus(id: string, isActive: boolean) {
+  const { data } = await api.patch<AdminClassroomRow>(`/admin/classrooms/${id}/status`, { isActive });
   return data;
 }
 

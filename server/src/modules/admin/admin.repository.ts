@@ -49,6 +49,14 @@ export class AdminRepository {
     return prisma.user.findUnique({ where: { email } });
   }
 
+  findStudentByRut(rut: string) {
+    return prisma.student.findUnique({ where: { rut } });
+  }
+
+  findTeacherByEmployeeCode(employeeCode: string) {
+    return prisma.teacher.findUnique({ where: { employeeCode } });
+  }
+
   findUserById(id: string) {
     return prisma.user.findUnique({ where: { id }, select: userSelect });
   }
@@ -232,6 +240,10 @@ export class AdminRepository {
     return prisma.course.findMany({ include: { level: true, sections: { include: { enrollments: true } }, subjects: { include: { subject: true } } }, orderBy: { name: 'asc' } });
   }
 
+  findCourseByNameLevel(name: string, levelId: string) {
+    return prisma.course.findFirst({ where: { name, levelId } });
+  }
+
   createCourse(input: { name: string; levelId: string }) {
     return prisma.course.create({ data: input, include: { level: true, sections: { include: { enrollments: true } }, subjects: { include: { subject: true } } } });
   }
@@ -257,6 +269,10 @@ export class AdminRepository {
     return prisma.course.update({ where: { id }, data: input, include: { level: true, sections: { include: { enrollments: true } }, subjects: { include: { subject: true } } } });
   }
 
+  setCourseActive(id: string, isActive: boolean) {
+    return prisma.course.update({ where: { id }, data: { isActive }, include: { level: true, sections: { include: { enrollments: true } }, subjects: { include: { subject: true } } } });
+  }
+
   listSections() {
     return prisma.section.findMany({
       include: { course: true, classroom: true, headTeacher: { include: { user: true } }, enrollments: true, subjects: { include: { subject: true } } },
@@ -268,8 +284,16 @@ export class AdminRepository {
     return prisma.section.create({ data: input, include: { course: true, classroom: true, headTeacher: { include: { user: true } }, enrollments: true, subjects: { include: { subject: true } } } });
   }
 
+  findSectionByCourseName(courseId: string, name: string) {
+    return prisma.section.findFirst({ where: { courseId, name } });
+  }
+
   updateSection(id: string, input: Partial<{ name: string; courseId: string; teacherId: string | null; classroomId: string | null }>) {
     return prisma.section.update({ where: { id }, data: input, include: { course: true, classroom: true, headTeacher: { include: { user: true } }, enrollments: true, subjects: { include: { subject: true } } } });
+  }
+
+  setSectionActive(id: string, isActive: boolean) {
+    return prisma.section.update({ where: { id }, data: { isActive }, include: { course: true, classroom: true, headTeacher: { include: { user: true } }, enrollments: true, subjects: { include: { subject: true } } } });
   }
 
   findSection(id: string) {
@@ -300,6 +324,10 @@ export class AdminRepository {
     return prisma.classroom.update({ where: { id }, data: input, include: { sections: true, schedules: true } });
   }
 
+  setClassroomActive(id: string, isActive: boolean) {
+    return prisma.classroom.update({ where: { id }, data: { isActive }, include: { sections: true, schedules: true } });
+  }
+
   deleteClassroom(id: string) {
     return prisma.classroom.delete({ where: { id } });
   }
@@ -309,6 +337,10 @@ export class AdminRepository {
       include: { teachers: { include: { teacher: { include: { user: true } } } }, courses: { include: { course: true } }, sections: { include: { section: { include: { course: true } } } } },
       orderBy: { name: 'asc' }
     });
+  }
+
+  findSubjectByNameOrCode(input: { name?: string; code?: string }) {
+    return prisma.subject.findFirst({ where: { OR: [{ name: input.name }, { code: input.code }].filter((item) => Object.values(item)[0]) } });
   }
 
   createSubject(tx: Tx, input: { name: string; code: string }) {

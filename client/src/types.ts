@@ -519,6 +519,7 @@ export interface AdminCourseRow {
   name: string;
   levelId: string;
   level: string;
+  isActive: boolean;
   sections: number;
   students: number;
   subjects: Array<{ id: string; name: string }>;
@@ -533,6 +534,7 @@ export interface AdminSectionRow {
   teacher: string;
   classroomId?: string | null;
   classroom: string;
+  isActive: boolean;
   students: number;
   subjects: Array<{ id: string; name: string }>;
 }
@@ -542,6 +544,7 @@ export interface AdminClassroomRow {
   name: string;
   capacity: number;
   type: 'aula' | 'laboratorio' | 'biblioteca' | 'gimnasio' | 'otro';
+  isActive: boolean;
   sections: number;
   schedules: number;
 }

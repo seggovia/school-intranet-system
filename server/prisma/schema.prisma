@@ -95,10 +95,12 @@ model Course {
   id        String      @id @default(cuid())
   name      String
   levelId   String
+  isActive  Boolean     @default(true)
   level     SchoolLevel @relation(fields: [levelId], references: [id])
   sections  Section[]
   subjects  CourseSubject[]
 
+  @@unique([levelId, name])
   @@map("courses")
 }
 
@@ -108,6 +110,7 @@ model Section {
   courseId    String
   teacherId   String?
   classroomId String?
+  isActive    Boolean         @default(true)
   course      Course          @relation(fields: [courseId], references: [id])
   headTeacher Teacher?        @relation("HeadTeacherSections", fields: [teacherId], references: [id])
   classroom   Classroom?      @relation(fields: [classroomId], references: [id])
@@ -264,6 +267,7 @@ model Classroom {
   name      String          @unique
   capacity  Int
   type      String          @default("aula")
+  isActive  Boolean         @default(true)
   sections  Section[]
   schedules ClassSchedule[]
 

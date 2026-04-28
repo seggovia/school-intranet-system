@@ -132,6 +132,7 @@ function serializeCourse(course: Awaited<ReturnType<AdminRepository['listCourses
     name: course.name,
     levelId: course.levelId,
     level: course.level.name,
+    isActive: course.isActive,
     sections: course.sections.length,
     students: course.sections.reduce((total, section) => total + section.enrollments.length, 0),
     subjects: course.subjects.map((item) => ({ id: item.subject.id, name: item.subject.name }))
@@ -148,6 +149,7 @@ function serializeSection(section: Awaited<ReturnType<AdminRepository['listSecti
     teacher: section.headTeacher?.user.name ?? 'Sin docente',
     classroomId: section.classroomId,
     classroom: section.classroom?.name ?? 'Sin sala',
+    isActive: section.isActive,
     students: section.enrollments.length,
     subjects: section.subjects?.map((item) => ({ id: item.subject.id, name: item.subject.name })) ?? []
   };
@@ -159,6 +161,7 @@ function serializeClassroom(classroom: Awaited<ReturnType<AdminRepository['listC
     name: classroom.name,
     capacity: classroom.capacity,
     type: classroom.type,
+    isActive: classroom.isActive,
     sections: classroom.sections.length,
     schedules: classroom.schedules.length
   };
@@ -229,6 +232,8 @@ export class AdminService {
     const role = input.role as RoleName;
     const existing = await repository.findUserByEmail(input.email);
     if (existing) throw new HttpError(409, 'Ya existe un usuario con ese correo.');
+    if (role === 'student' && input.rut && await repository.findStudentByRut(input.rut)) throw new HttpError(409, 'Ya existe un estudiante con ese RUT/identificador.');
+    if (role === 'teacher' && input.rut && await repository.findTeacherByEmployeeCode(input.rut)) throw new HttpError(409, 'Ya existe un profesor con ese RUT/identificador.');
 
     const roles = await repository.findRoles([role]);
     if (roles.length !== 1) throw new HttpError(400, 'El rol indicado no existe.');
@@ -316,6 +321,10 @@ export class AdminService {
     const student = await repository.findStudent(id);
     if (!student) throw new HttpError(404, 'Estudiante no encontrado.');
     await this.ensureEmailAvailable(input.email, student.userId);
+    if (input.rut) {
+      const existing = await repository.findStudentByRut(input.rut);
+      if (existing && existing.id !== id) throw new HttpError(409, 'Ya existe un estudiante con ese RUT/identificador.');
+    }
     await repository.transaction(async (tx) => {
       await repository.updateUser(tx, student.userId, {
         name: input.name ? fullName(input) : undefined,
@@ -361,6 +370,10 @@ export class AdminService {
     const teacher = await repository.findTeacher(id);
     if (!teacher) throw new HttpError(404, 'Profesor no encontrado.');
     await this.ensureEmailAvailable(input.email, teacher.userId);
+    if (input.rut) {
+      const existing = await repository.findTeacherByEmployeeCode(input.rut);
+      if (existing && existing.id !== id) throw new HttpError(409, 'Ya existe un profesor con ese RUT/identificador.');
+    }
     await repository.transaction(async (tx) => {
       await repository.updateUser(tx, teacher.userId, {
         name: input.name ? fullName(input) : undefined,
@@ -443,6 +456,8 @@ export class AdminService {
   }
 
   async createCourse(input: CreateCourseInput) {
+    const existing = await repository.findCourseByNameLevel(input.name, input.levelId);
+    if (existing) throw new HttpError(409, `Ya existe un curso ${input.name} para ese nivel.`);
     return serializeCourse(await repository.transaction((tx) => repository.createCourseWithSections(tx, {
       name: input.name,
       levelId: input.levelId,
@@ -451,7 +466,22 @@ export class AdminService {
   }
 
   async updateCourse(id: string, input: UpdateCourseInput) {
+    if (input.name || input.levelId) {
+      const current = (await repository.listCourses()).find((item) => item.id === id);
+      if (!current) throw new HttpError(404, 'Curso no encontrado.');
+      const name = input.name ?? current.name;
+      const levelId = input.levelId ?? current.levelId;
+      const existing = await repository.findCourseByNameLevel(name, levelId);
+      if (existing && existing.id !== id) throw new HttpError(409, `Ya existe un curso ${name} para ese nivel.`);
+    }
     return serializeCourse(await repository.updateCourse(id, input));
+  }
+
+  async setCourseStatus(id: string, input: StatusInput) {
+    const current = (await repository.listCourses()).find((item) => item.id === id);
+    if (!current) throw new HttpError(404, 'Curso no encontrado.');
+    if (!input.isActive && current.sections.some((section) => section.enrollments.length > 0)) throw new HttpError(400, 'No se puede desactivar un curso con estudiantes activos en sus secciones.');
+    return serializeCourse(await repository.setCourseActive(id, input.isActive));
   }
 
   async sections() {
@@ -459,11 +489,28 @@ export class AdminService {
   }
 
   async createSection(input: CreateSectionInput) {
+    const existing = await repository.findSectionByCourseName(input.courseId, input.name);
+    if (existing) throw new HttpError(409, `Ya existe una sección ${input.name} para ese curso.`);
     return serializeSection(await repository.createSection(input));
   }
 
   async updateSection(id: string, input: UpdateSectionInput) {
+    if (input.name || input.courseId) {
+      const current = await repository.findSection(id);
+      if (!current) throw new HttpError(404, 'Seccion no encontrada.');
+      const name = input.name ?? current.name;
+      const courseId = input.courseId ?? current.courseId;
+      const existing = await repository.findSectionByCourseName(courseId, name);
+      if (existing && existing.id !== id) throw new HttpError(409, `Ya existe una sección ${name} para ese curso.`);
+    }
     return serializeSection(await repository.updateSection(id, { ...input, teacherId: input.teacherId ?? undefined, classroomId: input.classroomId ?? undefined }));
+  }
+
+  async setSectionStatus(id: string, input: StatusInput) {
+    const section = await repository.findSection(id);
+    if (!section) throw new HttpError(404, 'Seccion no encontrada.');
+    if (!input.isActive && section.enrollments.length) throw new HttpError(400, 'No se puede desactivar una seccion con estudiantes asignados.');
+    return serializeSection(await repository.setSectionActive(id, input.isActive));
   }
 
   async deleteSection(id: string) {
@@ -495,6 +542,13 @@ export class AdminService {
     return serializeClassroom(await repository.updateClassroom(id, input));
   }
 
+  async setClassroomStatus(id: string, input: StatusInput) {
+    const classroom = await repository.findClassroom(id);
+    if (!classroom) throw new HttpError(404, 'Sala no encontrada.');
+    if (!input.isActive && (classroom.sections.length || classroom.schedules.length)) throw new HttpError(400, 'No se puede desactivar una sala en uso.');
+    return serializeClassroom(await repository.setClassroomActive(id, input.isActive));
+  }
+
   async deleteClassroom(id: string) {
     const classroom = await repository.findClassroom(id);
     if (!classroom) throw new HttpError(404, 'Sala no encontrada.');
@@ -508,6 +562,8 @@ export class AdminService {
   }
 
   async createSubject(input: CreateSubjectInput) {
+    const existing = await repository.findSubjectByNameOrCode({ name: input.name, code: input.code });
+    if (existing) throw new HttpError(409, 'Ya existe una asignatura con ese nombre o código.');
     const created = await repository.transaction(async (tx) => {
       const subject = await repository.createSubject(tx, { name: input.name, code: input.code });
       await repository.linkSubject(tx, { subjectId: subject.id, courseIds: input.courseIds ?? [], sectionIds: input.sectionIds ?? [], teacherIds: input.teacherIds ?? [] });
@@ -517,6 +573,10 @@ export class AdminService {
   }
 
   async updateSubject(id: string, input: UpdateSubjectInput) {
+    if (input.name || input.code) {
+      const existing = await repository.findSubjectByNameOrCode({ name: input.name, code: input.code });
+      if (existing && existing.id !== id) throw new HttpError(409, 'Ya existe una asignatura con ese nombre o código.');
+    }
     await repository.transaction(async (tx) => {
       await repository.updateSubject(tx, id, { name: input.name, code: input.code });
       await repository.linkSubject(tx, { subjectId: id, courseIds: input.courseIds ?? [], sectionIds: input.sectionIds ?? [], teacherIds: input.teacherIds ?? [] });

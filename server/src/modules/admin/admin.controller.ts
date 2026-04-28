@@ -104,6 +104,10 @@ export class AdminController {
     return service.updateCourse(String(req.params.id), req.body).then((data) => res.json(data));
   }
 
+  setCourseStatus(req: Request, res: Response) {
+    return service.setCourseStatus(String(req.params.id), req.body).then((data) => res.json(data));
+  }
+
   sections(_req: Request, res: Response) {
     return service.sections().then((data) => res.json(data));
   }
@@ -114,6 +118,10 @@ export class AdminController {
 
   updateSection(req: Request, res: Response) {
     return service.updateSection(String(req.params.id), req.body).then((data) => res.json(data));
+  }
+
+  setSectionStatus(req: Request, res: Response) {
+    return service.setSectionStatus(String(req.params.id), req.body).then((data) => res.json(data));
   }
 
   deleteSection(req: Request, res: Response) {
@@ -130,6 +138,10 @@ export class AdminController {
 
   updateClassroom(req: Request, res: Response) {
     return service.updateClassroom(String(req.params.id), req.body).then((data) => res.json(data));
+  }
+
+  setClassroomStatus(req: Request, res: Response) {
+    return service.setClassroomStatus(String(req.params.id), req.body).then((data) => res.json(data));
   }
 
   deleteClassroom(req: Request, res: Response) {

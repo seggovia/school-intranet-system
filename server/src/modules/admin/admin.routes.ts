@@ -64,15 +64,18 @@ adminRoutes.post('/guardians/:id/students', managers, validateParams(idParamSche
 adminRoutes.get('/courses', managers, asyncHandler(controller.courses.bind(controller)));
 adminRoutes.post('/courses', managers, validateBody(createCourseSchema), asyncHandler(controller.createCourse.bind(controller)));
 adminRoutes.patch('/courses/:id', managers, validateParams(idParamSchema), validateBody(updateCourseSchema), asyncHandler(controller.updateCourse.bind(controller)));
+adminRoutes.patch('/courses/:id/status', managers, validateParams(idParamSchema), validateBody(statusSchema), asyncHandler(controller.setCourseStatus.bind(controller)));
 
 adminRoutes.get('/sections', academicReaders, asyncHandler(controller.sections.bind(controller)));
 adminRoutes.post('/sections', managers, validateBody(createSectionSchema), asyncHandler(controller.createSection.bind(controller)));
 adminRoutes.patch('/sections/:id', managers, validateParams(idParamSchema), validateBody(updateSectionSchema), asyncHandler(controller.updateSection.bind(controller)));
+adminRoutes.patch('/sections/:id/status', managers, validateParams(idParamSchema), validateBody(statusSchema), asyncHandler(controller.setSectionStatus.bind(controller)));
 adminRoutes.delete('/sections/:id', managers, validateParams(idParamSchema), asyncHandler(controller.deleteSection.bind(controller)));
 
 adminRoutes.get('/classrooms', managers, asyncHandler(controller.classrooms.bind(controller)));
 adminRoutes.post('/classrooms', managers, validateBody(createClassroomSchema), asyncHandler(controller.createClassroom.bind(controller)));
 adminRoutes.patch('/classrooms/:id', managers, validateParams(idParamSchema), validateBody(updateClassroomSchema), asyncHandler(controller.updateClassroom.bind(controller)));
+adminRoutes.patch('/classrooms/:id/status', managers, validateParams(idParamSchema), validateBody(statusSchema), asyncHandler(controller.setClassroomStatus.bind(controller)));
 adminRoutes.delete('/classrooms/:id', managers, validateParams(idParamSchema), asyncHandler(controller.deleteClassroom.bind(controller)));
 
 adminRoutes.get('/subjects', managers, asyncHandler(controller.subjects.bind(controller)));

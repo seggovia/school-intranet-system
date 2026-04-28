@@ -134,6 +134,22 @@
   font-size: 0.93rem;
 }
 
+.admin-submenu {
+  display: grid;
+  gap: 4px;
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: max-height 180ms ease, opacity 160ms ease, transform 160ms ease;
+}
+
+.admin-tab-group.open .admin-submenu {
+  max-height: 280px;
+  opacity: 1;
+  transform: translateY(0);
+}
+
 .admin-tabs button.admin-tab-parent {
   justify-content: flex-start;
   color: #ffffff;
@@ -346,11 +362,39 @@
 
 .section-row {
   display: grid;
-  grid-template-columns: 1fr 1.4fr 1fr 0.8fr auto;
+  grid-template-columns: 1fr 1.4fr 1fr 0.8fr auto auto;
   gap: 12px;
   align-items: center;
   padding: 12px;
   border-top: 1px solid #edf2f7;
+}
+
+.section-list.standalone {
+  border: 1px solid #d8e2ec;
+  border-radius: 8px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.academic-row-header {
+  grid-template-columns: minmax(180px, 1fr) auto auto auto auto;
+}
+
+.grid-filters {
+  display: grid;
+  grid-template-columns: minmax(260px, 1.3fr) repeat(4, minmax(150px, 1fr));
+  align-items: end;
+}
+
+.guardian-selected-card {
+  border: 1px solid #d8e2ec;
+  border-radius: 8px;
+  background: #f8fafc;
+  padding: 14px;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
 .admin-empty.compact {
@@ -1088,10 +1132,29 @@
 }
 
 .admin-notice {
+  position: fixed;
+  right: 22px;
+  top: 110px;
+  z-index: 80;
+  min-width: min(360px, calc(100vw - 44px));
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.18);
   border-radius: 8px;
   padding: 12px 14px;
   font-weight: 800;
   cursor: pointer;
+  animation: toast-in 180ms ease-out;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-notice button {
+  border: 0;
+  background: transparent;
+  color: currentColor;
+  cursor: pointer;
+  display: inline-flex;
 }
 
 .admin-notice.success {
@@ -1102,6 +1165,11 @@
 .admin-notice.error {
   background: #fee2e2;
   color: #991b1b;
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(18px); }
+  to { opacity: 1; transform: translateX(0); }
 }
 
 .admin-assignment-grid {

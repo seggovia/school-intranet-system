@@ -20,6 +20,9 @@ import {
   removeAdminTeacherAssignment,
   resetAdminUserPassword,
   setAdminGuardianStatus,
+  setAdminClassroomStatus,
+  setAdminCourseStatus,
+  setAdminSectionStatus,
   setAdminStudentStatus,
   setAdminTeacherStatus,
   setAdminUserStatus,
@@ -37,7 +40,7 @@ import {
 import { PageHeader } from '../components/PageHeader';
 import type { AdminBundle, AdminClassroomRow, AdminCourseRow, AdminGuardianRow, AdminOption, AdminSectionRow, AdminStudentRow, AdminSubjectRow, AdminTeacherRow, AdminUserRow, Role, User } from '../types';
 
-type AdminTab = 'users' | 'students' | 'teachers' | 'guardians' | 'courses' | 'subjects' | 'assignments-teachers' | 'assignments-students' | 'assignments-guardians' | 'assignments-subjects';
+type AdminTab = 'users' | 'students' | 'teachers' | 'guardians' | 'subjects' | 'academic-courses' | 'academic-sections' | 'academic-classrooms' | 'assignments-teachers' | 'assignments-students' | 'assignments-guardians' | 'assignments-subjects';
 type ModalState =
   | { type: 'user'; mode: 'create' | 'edit'; row?: AdminUserRow }
   | { type: 'student'; mode: 'create' | 'edit'; row?: AdminStudentRow }
@@ -54,8 +57,13 @@ const tabs: Array<{ id: AdminTab; label: string; icon: typeof Users }> = [
   { id: 'students', label: 'Estudiantes', icon: GraduationCap },
   { id: 'teachers', label: 'Profesores', icon: BookOpen },
   { id: 'guardians', label: 'Apoderados', icon: UserRound },
-  { id: 'courses', label: 'Cursos y secciones', icon: Building2 },
   { id: 'subjects', label: 'Asignaturas', icon: ClipboardList }
+];
+
+const academicTabs: Array<{ id: AdminTab; label: string; icon: typeof Users }> = [
+  { id: 'academic-courses', label: 'Cursos', icon: Building2 },
+  { id: 'academic-sections', label: 'Secciones', icon: GraduationCap },
+  { id: 'academic-classrooms', label: 'Salas', icon: ClipboardList }
 ];
 
 const assignmentTabs: Array<{ id: AdminTab; label: string; icon: typeof Users }> = [
@@ -337,7 +345,6 @@ function EntityModal({ modal, options, students, onClose, onSaved, setConfirm }:
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>(
     modal.type === 'guardian' ? modal.row?.students?.map((item) => item.id) ?? [] : []
   );
-  const [courseSections, setCourseSections] = useState<Array<{ id: string; name: string; teacherId: string; classroomId: string }>>([]);
   const [saving, setSaving] = useState(false);
   const hasFieldErrors = Object.keys(fieldErrors).length > 0;
 
@@ -411,17 +418,7 @@ function EntityModal({ modal, options, students, onClose, onSaved, setConfirm }:
       if (modal.type === 'teacher') modal.mode === 'create' ? await createAdminTeacher(cleanedUser) : await updateAdminTeacher(modal.row!.id, cleanedUser);
       if (modal.type === 'guardian') modal.mode === 'create' ? await createAdminGuardian(cleanedUser) : await updateAdminGuardian(modal.row!.id, cleanedUser);
       if (modal.type === 'course') {
-        const sections = courseSections.map((section) => ({
-          name: section.name.trim(),
-          teacherId: section.teacherId || undefined,
-          classroomId: section.classroomId || undefined
-        })).filter((section) => section.name);
-        const duplicate = sections.find((section, index) => sections.findIndex((item) => item.name.toLowerCase() === section.name.toLowerCase()) !== index);
-        if (duplicate) {
-          setFormError('La sección no puede repetirse dentro del curso.');
-          return;
-        }
-        const payload = { name: String(fd.get('name') ?? ''), levelId: String(fd.get('levelId') ?? ''), sections: modal.mode === 'create' ? sections : undefined };
+        const payload = { name: String(fd.get('name') ?? ''), levelId: String(fd.get('levelId') ?? '') };
         modal.mode === 'create' ? await createAdminCourse(payload) : await updateAdminCourse(modal.row!.id, payload);
       }
       if (modal.type === 'section') {
@@ -439,6 +436,10 @@ function EntityModal({ modal, options, students, onClose, onSaved, setConfirm }:
       const userModal = ['user', 'student', 'teacher', 'guardian'].includes(modal.type);
       if (userModal && modal.mode === 'create') onSaved(`Usuario creado correctamente${cleanedUser.password ? '' : '. Contraseña: demo1234'}`);
       else if (userModal) onSaved('Usuario actualizado correctamente');
+      else if (modal.type === 'course') onSaved(modal.mode === 'create' ? 'Curso creado correctamente.' : 'Curso actualizado correctamente.');
+      else if (modal.type === 'section') onSaved(modal.mode === 'create' ? 'Sección creada correctamente.' : 'Sección actualizada correctamente.');
+      else if (modal.type === 'classroom') onSaved(modal.mode === 'create' ? 'Sala creada correctamente.' : 'Sala actualizada correctamente.');
+      else if (modal.type === 'subject') onSaved(modal.mode === 'create' ? 'Asignatura creada correctamente.' : 'Asignatura actualizada correctamente.');
       else onSaved('Cambios guardados correctamente.');
       } catch (err) {
         const message = (err as { response?: { data?: { message?: string } } }).response?.data?.message;
@@ -478,21 +479,7 @@ function EntityModal({ modal, options, students, onClose, onSaved, setConfirm }:
             <>
               <label>Curso<input name="name" defaultValue={modal.row?.name} required placeholder="Ej: 1 Medio" /></label>
               <SelectField label="Nivel" name="levelId" options={options.levels} defaultValue={modal.row?.levelId} placeholder="Selecciona un nivel" required />
-              {modal.mode === 'create' && (
-                <fieldset className="admin-form-section full-span course-section-editor">
-                  <legend>Secciones iniciales</legend>
-                  <p className="field-help">Opcional. Puedes crear paralelos como A, B o C y asignar profesor jefe o sala desde el inicio.</p>
-                  {courseSections.map((section, index) => (
-                    <div className="course-section-row" key={section.id}>
-                      <label>Sección<input value={section.name} onChange={(event) => setCourseSections((items) => items.map((item) => item.id === section.id ? { ...item, name: event.target.value } : item))} placeholder="A" /></label>
-                      <SelectField label="Profesor jefe" name={`sectionTeacher-${index}`} options={options.teachers} defaultValue={section.teacherId} onChange={(value) => setCourseSections((items) => items.map((item) => item.id === section.id ? { ...item, teacherId: value } : item))} />
-                      <SelectField label="Sala" name={`sectionClassroom-${index}`} options={options.classrooms} defaultValue={section.classroomId} onChange={(value) => setCourseSections((items) => items.map((item) => item.id === section.id ? { ...item, classroomId: value } : item))} />
-                      <button type="button" className="danger-button icon-only" onClick={() => setCourseSections((items) => items.filter((item) => item.id !== section.id))}><X size={16} /></button>
-                    </div>
-                  ))}
-                  <button type="button" className="secondary-button fit-button" onClick={() => setCourseSections((items) => [...items, { id: crypto.randomUUID(), name: '', teacherId: '', classroomId: '' }])}><Plus size={16} />Agregar sección</button>
-                </fieldset>
-              )}
+              {modal.mode === 'edit' && <p className="field-help full-span">Las secciones asociadas se gestionan desde Gestión académica &gt; Secciones.</p>}
             </>
           )}
           {modal.type === 'section' && <><label>Sección<input name="name" defaultValue={modal.row?.name} required placeholder="Ej: A" /></label><SelectField label="Curso" name="courseId" options={options.courses} defaultValue={modal.row?.courseId} placeholder="Selecciona un curso" required /><SelectField label="Profesor jefe" name="teacherId" options={options.teachers} defaultValue={modal.row?.teacherId} placeholder="Sin profesor jefe" /><SelectField label="Sala" name="classroomId" options={options.classrooms} defaultValue={modal.row?.classroomId} placeholder="Sin sala" />{modal.row?.students ? <p className="field-help full-span">Esta sección tiene {modal.row.students} estudiantes. Si cambias el curso, revisa que la matrícula siga correspondiendo.</p> : null}</>}
@@ -627,6 +614,41 @@ function CoursesSectionsPage({ bundle, canManage, setModal, setConfirm, onSaved 
   );
 }
 
+function AcademicCoursesPage({ bundle, canManage, setModal, setConfirm, onSaved }: { bundle: AdminBundle; canManage: boolean; setModal: (modal: ModalState) => void; setConfirm: (confirm: ConfirmState | null) => void; onSaved: (message: string) => void }) {
+  const [query, setQuery] = useState('');
+  const rows = bundle.courses.filter((course) => textIncludes(course, query));
+  const toggle = (course: AdminCourseRow) => confirmAction(setConfirm, {
+    title: `${course.isActive ? 'Desactivar' : 'Activar'} curso`,
+    message: course.isActive && course.sections ? `El curso ${course.name} tiene secciones asociadas. Si hay estudiantes activos, el backend bloqueará la acción.` : `Confirma que quieres ${course.isActive ? 'desactivar' : 'activar'} ${course.name}.`,
+    danger: course.isActive,
+    action: async () => { await setAdminCourseStatus(course.id, !course.isActive); onSaved(course.isActive ? 'Curso desactivado correctamente.' : 'Curso activado correctamente.'); }
+  });
+  return <div className="course-admin-view"><header className="assignment-header"><div><h2>Cursos</h2><p>Lista cursos, nivel, secciones y matrícula total.</p></div>{canManage && <button className="primary-button" onClick={() => setModal({ type: 'course', mode: 'create' })}><Plus size={17} />Crear curso</button>}</header><div className="assignment-filters labelled-filters"><label className="admin-search"><span>Buscar curso</span><div><Search size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Nombre o nivel" /></div></label></div><div className="course-card-list">{rows.map((course) => <article key={course.id} className="course-card"><div className="course-card-header academic-row-header"><div><strong>{course.name}</strong><small>{course.level}</small></div><span>{course.sections} secciones</span><span>{course.students} estudiantes</span><StatusBadge active={course.isActive} />{canManage && <div className="admin-row-actions"><button onClick={() => setModal({ type: 'course', mode: 'edit', row: course })}><Edit3 size={15} />Editar</button><button className={course.isActive ? 'danger-button' : 'secondary-button'} onClick={() => toggle(course)}>{course.isActive ? 'Desactivar' : 'Activar'}</button></div>}</div></article>)}</div>{!rows.length && <div className="admin-empty"><Search size={22} /><strong>Sin cursos</strong><span>No se encontraron cursos con esos filtros.</span></div>}</div>;
+}
+
+function AcademicSectionsPage({ bundle, canManage, setModal, setConfirm, onSaved }: { bundle: AdminBundle; canManage: boolean; setModal: (modal: ModalState) => void; setConfirm: (confirm: ConfirmState | null) => void; onSaved: (message: string) => void }) {
+  const [query, setQuery] = useState('');
+  const [courseId, setCourseId] = useState('');
+  const [levelId, setLevelId] = useState('');
+  const [classroomId, setClassroomId] = useState('');
+  const [teacherId, setTeacherId] = useState('');
+  const rows = bundle.sections.filter((section) => {
+    const course = bundle.courses.find((item) => item.id === section.courseId);
+    return textIncludes(section, query) && (!courseId || section.courseId === courseId) && (!levelId || course?.levelId === levelId) && (!classroomId || section.classroomId === classroomId) && (!teacherId || section.teacherId === teacherId);
+  });
+  const toggle = (section: AdminSectionRow) => confirmAction(setConfirm, { title: `${section.isActive ? 'Desactivar' : 'Activar'} sección`, message: section.isActive && section.students ? `La sección ${section.course} ${section.name} tiene ${section.students} estudiantes. El backend bloqueará la acción si corresponde.` : `Confirma que quieres ${section.isActive ? 'desactivar' : 'activar'} la sección ${section.course} ${section.name}.`, danger: section.isActive, action: async () => { await setAdminSectionStatus(section.id, !section.isActive); onSaved(section.isActive ? 'Sección desactivada correctamente.' : 'Sección activada correctamente.'); } });
+  const remove = (section: AdminSectionRow) => confirmAction(setConfirm, { title: 'Eliminar sección', message: section.students ? `La sección ${section.course} ${section.name} tiene ${section.students} estudiantes. Debes quitar esos estudiantes antes de eliminarla.` : `Confirma que quieres eliminar la sección ${section.course} ${section.name}.`, danger: true, action: async () => { await deleteAdminSection(section.id); onSaved('Sección eliminada correctamente.'); } });
+  return <div className="course-admin-view"><header className="assignment-header"><div><h2>Secciones</h2><p>Gestiona curso, profesor jefe, sala y cantidad de estudiantes.</p></div>{canManage && <button className="primary-button" onClick={() => setModal({ type: 'section', mode: 'create' })}><Plus size={17} />Crear sección</button>}</header><div className="assignment-filters labelled-filters grid-filters"><label className="admin-search"><span>Búsqueda</span><div><Search size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Sección, curso, sala o profesor" /></div></label><SelectField label="Curso" name="filterCourse" options={bundle.summary.options.courses} defaultValue={courseId} placeholder="Todos los cursos" onChange={setCourseId} /><SelectField label="Nivel" name="filterLevel" options={bundle.summary.options.levels} defaultValue={levelId} placeholder="Todos los niveles" onChange={setLevelId} /><SelectField label="Sala" name="filterRoom" options={bundle.summary.options.classrooms} defaultValue={classroomId} placeholder="Todas las salas" onChange={setClassroomId} /><SelectField label="Profesor jefe" name="filterTeacher" options={bundle.summary.options.teachers} defaultValue={teacherId} placeholder="Todos los profesores" onChange={setTeacherId} /></div><div className="section-list standalone">{rows.map((section) => <div key={section.id} className="section-row"><span><strong>{section.course} {section.name}</strong><small>Sección</small></span><span><strong>{section.teacher}</strong><small>Profesor jefe</small></span><span><strong>{section.classroom}</strong><small>Sala</small></span><span><strong>{section.students}</strong><small>Estudiantes</small></span><StatusBadge active={section.isActive} />{canManage && <div className="admin-row-actions"><button onClick={() => setModal({ type: 'section', mode: 'edit', row: section })}><Edit3 size={15} />Editar</button><button className={section.isActive ? 'danger-button' : 'secondary-button'} onClick={() => toggle(section)}>{section.isActive ? 'Desactivar' : 'Activar'}</button><button className="danger-button" onClick={() => remove(section)}><Trash2 size={15} />Eliminar</button></div>}</div>)}</div>{!rows.length && <div className="admin-empty"><Search size={22} /><strong>Sin secciones</strong><span>No se encontraron secciones con esos filtros.</span></div>}</div>;
+}
+
+function AcademicClassroomsPage({ bundle, canManage, setModal, setConfirm, onSaved }: { bundle: AdminBundle; canManage: boolean; setModal: (modal: ModalState) => void; setConfirm: (confirm: ConfirmState | null) => void; onSaved: (message: string) => void }) {
+  const [query, setQuery] = useState('');
+  const rows = bundle.classrooms.filter((classroom) => textIncludes(classroom, query));
+  const toggle = (classroom: AdminClassroomRow) => confirmAction(setConfirm, { title: `${classroom.isActive ? 'Desactivar' : 'Activar'} sala`, message: classroom.isActive && (classroom.sections || classroom.schedules) ? `La sala ${classroom.name} está en uso. El backend bloqueará la acción si corresponde.` : `Confirma que quieres ${classroom.isActive ? 'desactivar' : 'activar'} ${classroom.name}.`, danger: classroom.isActive, action: async () => { await setAdminClassroomStatus(classroom.id, !classroom.isActive); onSaved(classroom.isActive ? 'Sala desactivada correctamente.' : 'Sala activada correctamente.'); } });
+  const remove = (classroom: AdminClassroomRow) => confirmAction(setConfirm, { title: 'Eliminar sala', message: classroom.sections || classroom.schedules ? `La sala ${classroom.name} está en uso. Debes quitarla de secciones u horarios antes de eliminarla.` : `Confirma que quieres eliminar la sala ${classroom.name}.`, danger: true, action: async () => { await deleteAdminClassroom(classroom.id); onSaved('Sala eliminada correctamente.'); } });
+  return <div className="course-admin-view"><header className="assignment-header"><div><h2>Salas</h2><p>Administra espacios físicos, capacidad y tipo.</p></div>{canManage && <button className="primary-button" onClick={() => setModal({ type: 'classroom', mode: 'create' })}><Plus size={17} />Crear sala</button>}</header><div className="assignment-filters labelled-filters"><label className="admin-search"><span>Buscar sala</span><div><Search size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Nombre, tipo o capacidad" /></div></label></div><div className="classroom-grid">{rows.map((classroom) => <article key={classroom.id} className="classroom-card"><div><strong>{classroom.name}</strong><small>{classroom.type}</small></div><span>{classroom.capacity} cupos</span><span>{classroom.sections} secciones</span><StatusBadge active={classroom.isActive} />{canManage && <div className="admin-row-actions"><button onClick={() => setModal({ type: 'classroom', mode: 'edit', row: classroom })}><Edit3 size={15} />Editar</button><button className={classroom.isActive ? 'danger-button' : 'secondary-button'} onClick={() => toggle(classroom)}>{classroom.isActive ? 'Desactivar' : 'Activar'}</button><button className="danger-button" onClick={() => remove(classroom)}><Trash2 size={15} />Eliminar</button></div>}</article>)}</div>{!rows.length && <div className="admin-empty"><Search size={22} /><strong>Sin salas</strong><span>No se encontraron salas con esos filtros.</span></div>}</div>;
+}
+
 export function AdminPage({ user }: { user: User }) {
   const [bundle, setBundle] = useState<AdminBundle | null>(null);
   const [tab, setTab] = useState<AdminTab>('users');
@@ -634,6 +656,7 @@ export function AdminPage({ user }: { user: User }) {
   const [status, setStatus] = useState<'all' | 'active' | 'inactive'>('all');
   const [modal, setModal] = useState<ModalState | null>(null);
   const [confirm, setConfirm] = useState<ConfirmState | null>(null);
+  const [academicOpen, setAcademicOpen] = useState(true);
   const [assignmentsOpen, setAssignmentsOpen] = useState(true);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -645,6 +668,11 @@ export function AdminPage({ user }: { user: User }) {
   }
 
   useEffect(() => { refresh().catch(() => setError('No se pudo cargar el panel administrativo.')); }, []);
+  useEffect(() => {
+    if (!notice && !error) return;
+    const timer = window.setTimeout(() => { setNotice(null); setError(null); }, 4200);
+    return () => window.clearTimeout(timer);
+  }, [notice, error]);
 
   function done(message: string) {
     setModal(null);
@@ -652,12 +680,13 @@ export function AdminPage({ user }: { user: User }) {
     refresh().catch(() => setError('No se pudo actualizar la informacion.'));
   }
 
-  const visibleTabs = useMemo(() => (canInspect && !canManage ? tabs.filter((item) => ['students', 'courses'].includes(item.id)) : tabs), [canInspect, canManage]);
+  const visibleTabs = useMemo(() => (canInspect && !canManage ? tabs.filter((item) => ['students'].includes(item.id)) : tabs), [canInspect, canManage]);
   const isAssignmentTab = tab.startsWith('assignments-');
-  const usesCustomView = isAssignmentTab || tab === 'courses';
+  const isAcademicTab = tab.startsWith('academic-');
+  const usesCustomView = isAssignmentTab || isAcademicTab;
   const filtered = useMemo(() => {
     if (!bundle) return [];
-    const source = tab === 'users' ? bundle.users : tab === 'students' ? bundle.students : tab === 'teachers' ? bundle.teachers : tab === 'guardians' ? bundle.guardians : tab === 'courses' ? [...bundle.courses, ...bundle.sections] : tab === 'subjects' ? bundle.subjects : [];
+    const source = tab === 'users' ? bundle.users : tab === 'students' ? bundle.students : tab === 'teachers' ? bundle.teachers : tab === 'guardians' ? bundle.guardians : tab === 'subjects' ? bundle.subjects : [];
     return source.filter((row: unknown) => textIncludes(row, query)).filter((row: unknown) => {
       if (status === 'all' || !('isActive' in (row as object))) return true;
       return status === 'active' ? (row as { isActive?: boolean }).isActive : !(row as { isActive?: boolean }).isActive;
@@ -690,8 +719,8 @@ export function AdminPage({ user }: { user: User }) {
   return (
     <div className="page-stack admin-page">
       <PageHeader eyebrow="Administración" title="Panel de estructura escolar" description="Gestiona usuarios, estudiantes, docentes, apoderados, cursos, secciones, asignaturas y relaciones académicas." />
-      {notice && <div className="admin-notice success" onClick={() => setNotice(null)}>{notice}</div>}
-      {error && <div className="admin-notice error" onClick={() => setError(null)}>{error}</div>}
+      {notice && <div className="admin-notice success" onClick={() => setNotice(null)}><span>{notice}</span><button type="button" aria-label="Cerrar"><X size={16} /></button></div>}
+      {error && <div className="admin-notice error" onClick={() => setError(null)}><span>{error}</span><button type="button" aria-label="Cerrar"><X size={16} /></button></div>}
 
       <section className="admin-summary-grid">
         {summaryCards.map(([label, value, Icon]) => <article key={label} className="admin-summary-card"><Icon size={20} /><span>{label}</span><strong>{value}</strong></article>)}
@@ -703,15 +732,29 @@ export function AdminPage({ user }: { user: User }) {
             const Icon = item.icon;
             return <button key={item.id} className={tab === item.id ? 'active' : ''} onClick={() => setTab(item.id)}><Icon size={18} />{item.label}</button>;
           })}
-          {canManage && <div className="admin-tab-group">
+          {canManage && <div className={`admin-tab-group ${academicOpen ? 'open' : ''}`}>
+            <button type="button" className={`admin-tab-parent ${isAcademicTab ? 'active' : ''}`} onClick={() => setAcademicOpen((current) => !current)}>
+              <span><Building2 size={18} />Gestión académica</span>
+              {academicOpen ? <ChevronDown className="submenu-arrow" size={16} /> : <ChevronRight className="submenu-arrow" size={16} />}
+            </button>
+            <div className="admin-submenu">
+              {academicTabs.map((item) => {
+                const Icon = item.icon;
+                return <button key={item.id} className={tab === item.id ? 'active nested' : 'nested'} onClick={() => setTab(item.id)}><Icon size={16} />{item.label}</button>;
+              })}
+            </div>
+          </div>}
+          {canManage && <div className={`admin-tab-group ${assignmentsOpen ? 'open' : ''}`}>
             <button type="button" className={`admin-tab-parent ${isAssignmentTab ? 'active' : ''}`} onClick={() => setAssignmentsOpen((current) => !current)}>
               <span><Link2 size={18} />Asignaciones</span>
               {assignmentsOpen ? <ChevronDown className="submenu-arrow" size={16} /> : <ChevronRight className="submenu-arrow" size={16} />}
             </button>
-            {assignmentsOpen && assignmentTabs.map((item) => {
-              const Icon = item.icon;
-              return <button key={item.id} className={tab === item.id ? 'active nested' : 'nested'} onClick={() => setTab(item.id)}><Icon size={16} />{item.label}</button>;
-            })}
+            <div className="admin-submenu">
+              {assignmentTabs.map((item) => {
+                const Icon = item.icon;
+                return <button key={item.id} className={tab === item.id ? 'active nested' : 'nested'} onClick={() => setTab(item.id)}><Icon size={16} />{item.label}</button>;
+              })}
+            </div>
           </div>}
         </aside>
 
@@ -730,7 +773,9 @@ export function AdminPage({ user }: { user: User }) {
 
           {tab === 'guardians' && <AdminTable rows={filtered as AdminGuardianRow[]} render={(row) => <><div><strong>{row.name}</strong><small>{row.email}</small></div><span>{row.phone || 'Sin teléfono'}</span><span>{row.students.map((item) => item.name).join(', ') || 'Sin estudiantes'}</span><StatusBadge active={row.isActive} /><div className="admin-row-actions">{canManage && <><button onClick={() => setModal({ type: 'guardian', mode: 'edit', row })}><Edit3 size={16} />Editar</button><button onClick={() => statusAction('apoderado', row.name, row.isActive, () => setAdminGuardianStatus(row.id, !row.isActive))}>{row.isActive ? 'Desactivar' : 'Activar'}</button></>}</div></>} />}
 
-          {tab === 'courses' && <CoursesSectionsPage bundle={bundle} canManage={canManage} setModal={setModal} setConfirm={setConfirm} onSaved={done} />}
+          {tab === 'academic-courses' && <AcademicCoursesPage bundle={bundle} canManage={canManage} setModal={setModal} setConfirm={setConfirm} onSaved={done} />}
+          {tab === 'academic-sections' && <AcademicSectionsPage bundle={bundle} canManage={canManage} setModal={setModal} setConfirm={setConfirm} onSaved={done} />}
+          {tab === 'academic-classrooms' && <AcademicClassroomsPage bundle={bundle} canManage={canManage} setModal={setModal} setConfirm={setConfirm} onSaved={done} />}
 
           {tab === 'subjects' && <AdminTable rows={filtered as AdminSubjectRow[]} render={(row) => <><div><strong>{row.name}</strong><small>{row.code}</small></div><span>{row.teachers.map((item) => item.name).join(', ') || 'Sin profesor'}</span><span>{row.sections.map((item) => `${item.course} ${item.name}`).join(', ') || 'Sin sección'}</span><div className="admin-row-actions">{canManage && <button onClick={() => setModal({ type: 'subject', mode: 'edit', row })}><Edit3 size={16} />Editar</button>}</div></>} />}
 
@@ -856,10 +901,10 @@ function AssignmentsStudentsPage({ bundle, onSaved, setConfirm }: { bundle: Admi
 
 function AssignmentsGuardiansPage({ bundle, onSaved, setConfirm }: { bundle: AdminBundle; onSaved: (message: string) => void; setConfirm: (confirm: ConfirmState | null) => void }) {
   const [query, setQuery] = useState('');
-  const [guardianId, setGuardianId] = useState(bundle.guardians[0]?.id ?? '');
+  const [guardianId, setGuardianId] = useState('');
   const [pickerOpen, setPickerOpen] = useState(false);
   const guardians = bundle.guardians.filter((guardian) => assignmentMatch([guardian.name, guardian.email, guardian.phone], query));
-  const guardian = bundle.guardians.find((item) => item.id === guardianId) ?? guardians[0];
+  const guardian = bundle.guardians.find((item) => item.id === guardianId);
   async function save(ids: string[]) {
     if (!guardian) return;
     confirmAction(setConfirm, {
@@ -868,7 +913,7 @@ function AssignmentsGuardiansPage({ bundle, onSaved, setConfirm }: { bundle: Adm
       action: async () => {
         await linkAdminGuardianStudents(guardian.id, { studentIds: ids, relationship: 'Apoderado' });
         setPickerOpen(false);
-        onSaved('Estudiantes vinculados al apoderado.');
+        onSaved('Estudiante vinculado correctamente.');
       }
     });
   }
@@ -885,7 +930,7 @@ function AssignmentsGuardiansPage({ bundle, onSaved, setConfirm }: { bundle: Adm
       }
     });
   }
-  return <div className="assignment-page"><header className="assignment-header"><div><h2>Apoderado → estudiantes</h2><p>Primero selecciona el apoderado. Luego usa “Agregar estudiantes” para abrir el selector con checkbox y confirmar los vínculos.</p></div>{guardian && <button className="primary-button" onClick={() => setPickerOpen(true)}><Plus size={17} />Agregar estudiantes</button>}</header><div className="assignment-filters"><label className="admin-search"><Search size={17} /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar apoderado por nombre, correo o RUT" /></label><select value={guardian?.id ?? ''} onChange={(e) => setGuardianId(e.target.value)}>{guardians.map((item) => <option key={item.id} value={item.id}>{item.name} · {item.email}</option>)}</select></div>{guardian ? <div className="assignment-table"><div className="assignment-row head"><span>Estudiante</span><span>Relación</span><span>Acciones</span></div>{guardian.students.map((student) => <div key={student.id} className="assignment-row guardian"><span>{student.name}</span><span>{student.relationship}</span><span><button className="danger-button" onClick={() => unlink(student.id)}>Desvincular</button></span></div>)}</div> : <div className="admin-empty"><Search size={20} /><strong>Sin apoderados</strong><span>No se encontraron apoderados con esos filtros.</span></div>}{guardian && !guardian.students.length && <div className="admin-empty"><Users size={20} /><strong>Sin estudiantes vinculados</strong><span>Agrega estudiantes para este apoderado.</span></div>}{pickerOpen && guardian && <StudentPickerModal students={bundle.students} selectedIds={guardian.students.map((item) => item.id)} onCancel={() => setPickerOpen(false)} onConfirm={save} />}</div>;
+  return <div className="assignment-page"><header className="assignment-header"><div><h2>Apoderado → estudiantes</h2><p>Selecciona un apoderado antes de administrar sus estudiantes vinculados.</p></div><button className="primary-button" disabled={!guardian} onClick={() => setPickerOpen(true)}><Plus size={17} />Agregar estudiantes</button></header><div className="assignment-filters guardian-assignment-filters"><label className="admin-search"><Search size={17} /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar apoderado por nombre, correo o RUT" /></label><select value={guardianId} onChange={(e) => setGuardianId(e.target.value)}><option value="">Selecciona un apoderado</option>{guardians.map((item) => <option key={item.id} value={item.id}>{item.name} · {item.email}</option>)}</select></div>{guardian ? <><article className="guardian-selected-card"><strong>{guardian.name}</strong><span>{guardian.email}</span><span>{guardian.phone || 'Sin teléfono'}</span></article><div className="assignment-table"><div className="assignment-row head"><span>Estudiante</span><span>Relación</span><span>Acciones</span></div>{guardian.students.map((student) => <div key={student.id} className="assignment-row guardian"><span>{student.name}</span><span>{student.relationship}</span><span><button className="danger-button" onClick={() => unlink(student.id)}>Desvincular</button></span></div>)}</div></> : <div className="admin-empty"><Users size={20} /><strong>Selecciona un apoderado</strong><span>Selecciona un apoderado para vincular estudiantes.</span></div>}{guardian && !guardian.students.length && <div className="admin-empty"><Users size={20} /><strong>Sin estudiantes vinculados</strong><span>Agrega estudiantes para este apoderado.</span></div>}{pickerOpen && guardian && <StudentPickerModal students={bundle.students} selectedIds={guardian.students.map((item) => item.id)} onCancel={() => setPickerOpen(false)} onConfirm={save} />}</div>;
 }
 
 function AssignmentsSubjectsPage({ bundle, onSaved, setConfirm }: { bundle: AdminBundle; onSaved: (message: string) => void; setConfirm: (confirm: ConfirmState | null) => void }) {
