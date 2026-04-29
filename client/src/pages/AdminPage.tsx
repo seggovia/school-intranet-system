@@ -521,6 +521,7 @@ function EntityModal({ modal, options, students, onClose, onSaved, setConfirm }:
 
 function ConfirmDialog({ confirm, onClose }: { confirm: ConfirmState; onClose: () => void }) {
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
   useEffect(() => {
     function handleKey(event: KeyboardEvent) {
       if (event.key === 'Escape' && !busy) onClose();
@@ -534,7 +535,8 @@ function ConfirmDialog({ confirm, onClose }: { confirm: ConfirmState; onClose: (
         <AlertTriangle />
         <h2>{confirm.title}</h2>
         <p>{confirm.message}</p>
-        <div><button className="secondary-button" onClick={onClose}>Cancelar</button><button className={confirm.danger ? 'danger-button' : 'primary-button'} disabled={busy} onClick={async () => { setBusy(true); await confirm.action(); onClose(); }}>Confirmar</button></div>
+        {error && <p className="admin-modal-error">{error}</p>}
+        <div><button className="secondary-button" onClick={onClose}>Cancelar</button><button className={confirm.danger ? 'danger-button' : 'primary-button'} disabled={busy} onClick={async () => { try { setBusy(true); setError(''); await confirm.action(); onClose(); } catch (err) { const message = (err as { response?: { data?: { message?: string } }; message?: string }).response?.data?.message ?? (err as Error).message; setError(message || 'No se pudo completar la acción.'); setBusy(false); } }}>Confirmar</button></div>
       </section>
     </div>
   );
@@ -1038,14 +1040,23 @@ function AssignmentsStudentsPage({ bundle, onSaved, setConfirm }: { bundle: Admi
   const filtered = bundle.students.filter((student) => assignmentMatch([student.name, student.email, student.rut], query) && (!course || student.course === course) && (!section || student.sectionId === section));
   const total = Math.max(1, Math.ceil(filtered.length / 10));
   const visible = filtered.slice((page - 1) * 10, page * 10);
+  const selectedAvailable = selected.filter((id) => bundle.students.find((student) => student.id === id && !student.sectionId));
+  const assignedLabel = (student: AdminStudentRow) => `${student.course} ${student.section}`.trim();
+  function explainAssigned(student: AdminStudentRow) {
+    setConfirm({
+      title: 'Estudiante ya asignado',
+      message: `${student.name} ya está asignado a ${assignedLabel(student)}. Quita la sección actual antes de asignarlo a otra.`,
+      action: async () => undefined
+    });
+  }
   async function assign() {
-    if (!targetSection || !selected.length) return;
+    if (!targetSection || !selectedAvailable.length) return;
     const section = bundle.sections.find((item) => item.id === targetSection);
     confirmAction(setConfirm, {
       title: 'Asignar estudiantes',
-      message: `Confirma que quieres asignar ${selected.length} estudiante(s) a ${section ? `${section.course} ${section.name}` : 'la sección seleccionada'}.`,
+      message: `Confirma que quieres asignar ${selectedAvailable.length} estudiante(s) a ${section ? `${section.course} ${section.name}` : 'la sección seleccionada'}.`,
       action: async () => {
-        await Promise.all(selected.map((id) => assignAdminStudentSection(id, targetSection)));
+        await Promise.all(selectedAvailable.map((id) => assignAdminStudentSection(id, targetSection)));
         setSelected([]);
         onSaved('Estudiantes asignados a sección.');
       }
@@ -1064,7 +1075,10 @@ function AssignmentsStudentsPage({ bundle, onSaved, setConfirm }: { bundle: Admi
       }
     });
   }
-  return <div className="assignment-page"><header className="assignment-header"><div><h2>Asignación de estudiantes</h2><p>Selecciona estudiantes y muévelos a una sección.</p></div></header><div className="assignment-filters"><select value={course} onChange={(e) => { setCourse(e.target.value); setSection(''); }}><option value="">Todos los cursos</option>{bundle.courses.map((item) => <option key={item.id} value={item.name}>{item.name}</option>)}</select><select value={section} onChange={(e) => setSection(e.target.value)}><option value="">Todas las secciones</option>{bundle.sections.filter((item) => !course || item.course === course).map((item) => <option key={item.id} value={item.id}>{item.course} {item.name}</option>)}</select><label className="admin-search"><Search size={17} /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar por nombre, correo o RUT" /></label></div><div className="assignment-bulkbar"><select value={targetSection} onChange={(e) => setTargetSection(e.target.value)}><option value="">Selecciona sección destino</option>{bundle.sections.map((item) => <option key={item.id} value={item.id}>{item.course} {item.name}</option>)}</select><button className="primary-button" disabled={!selected.length || !targetSection} onClick={assign}>Asignar a sección</button><button className="secondary-button" disabled={!selected.length} onClick={clear}>Quitar de sección</button><span>{selected.length} seleccionados</span></div><div className="student-picker-list assignment-student-list">{visible.map((student) => <label key={student.id} className="student-picker-row"><input type="checkbox" checked={selected.includes(student.id)} onChange={() => setSelected((current) => current.includes(student.id) ? current.filter((id) => id !== student.id) : [...current, student.id])} /><span><strong>{student.name}</strong><small>{student.email}</small><small>RUT / identificador: {student.rut}</small><small>{student.course} · {student.section}</small></span></label>)}</div>{!filtered.length && <div className="admin-empty"><Search size={20} /><strong>Sin estudiantes</strong><span>No se encontraron estudiantes con esos filtros.</span></div>}<Pager page={page} total={total} onPage={setPage} /></div>;
+  return <div className="assignment-page"><header className="assignment-header"><div><h2>Asignación de estudiantes</h2><p>Selecciona solo estudiantes sin sección. Los estudiantes ya asignados quedan bloqueados para evitar conflictos.</p></div></header><div className="assignment-filters"><select value={course} onChange={(e) => { setCourse(e.target.value); setSection(''); }}><option value="">Todos los cursos</option>{bundle.courses.map((item) => <option key={item.id} value={item.name}>{item.name}</option>)}</select><select value={section} onChange={(e) => setSection(e.target.value)}><option value="">Todas las secciones</option>{bundle.sections.filter((item) => !course || item.course === course).map((item) => <option key={item.id} value={item.id}>{item.course} {item.name}</option>)}</select><label className="admin-search"><Search size={17} /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar por nombre, correo o RUT" /></label></div><div className="assignment-bulkbar"><select value={targetSection} onChange={(e) => setTargetSection(e.target.value)}><option value="">Selecciona sección destino</option>{bundle.sections.map((item) => <option key={item.id} value={item.id}>{item.course} {item.name}</option>)}</select><button className="primary-button" disabled={!selectedAvailable.length || !targetSection} onClick={assign}>Asignar a sección</button><button className="secondary-button" disabled={!selected.length} onClick={clear}>Quitar de sección</button><span>{selectedAvailable.length} disponibles seleccionados</span></div><div className="student-picker-list assignment-student-list">{visible.map((student) => {
+    const assigned = Boolean(student.sectionId);
+    return <label key={student.id} className={`student-picker-row ${assigned ? 'disabled assigned' : ''}`} onClick={(event) => { if (assigned) { event.preventDefault(); explainAssigned(student); } }}><input type="checkbox" disabled={assigned} checked={selected.includes(student.id)} onChange={() => setSelected((current) => current.includes(student.id) ? current.filter((id) => id !== student.id) : [...current, student.id])} /><span><strong>{student.name}</strong><small>{student.email}</small><small>RUT / identificador: {student.rut}</small><small>{assigned ? `Asignado a ${assignedLabel(student)}` : 'Sin sección asignada'}</small></span></label>;
+  })}</div>{!filtered.length && <div className="admin-empty"><Search size={20} /><strong>Sin estudiantes</strong><span>No se encontraron estudiantes con esos filtros.</span></div>}<Pager page={page} total={total} onPage={setPage} /></div>;
 }
 
 function AssignmentsGuardiansPage({ bundle, onSaved, setConfirm }: { bundle: AdminBundle; onSaved: (message: string) => void; setConfirm: (confirm: ConfirmState | null) => void }) {

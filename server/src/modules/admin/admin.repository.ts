@@ -145,6 +145,13 @@ export class AdminRepository {
     return prisma.student.findUnique({ where: { id }, include: { user: true } });
   }
 
+  findActiveStudentEnrollment(input: { studentId: string; year: number }) {
+    return prisma.enrollment.findFirst({
+      where: { studentId: input.studentId, year: input.year, status: 'activo' },
+      include: { section: { include: { course: true } } }
+    });
+  }
+
   updateStudent(tx: Tx, id: string, input: Partial<{ rut: string; birthDate: Date }>) {
     return tx.student.update({ where: { id }, data: input, include: { user: true } });
   }
@@ -158,11 +165,15 @@ export class AdminRepository {
   }
 
   moveStudentToSection(tx: Tx, input: { studentId: string; sectionId: string; year: number }) {
-    return tx.enrollment.findFirst({ where: { studentId: input.studentId, year: input.year } }).then((current) => {
+    return tx.enrollment.findFirst({ where: { studentId: input.studentId, year: input.year, status: 'activo' } }).then((current) => {
       if (current) {
         return tx.enrollment.update({ where: { id: current.id }, data: { sectionId: input.sectionId, status: 'activo' } });
       }
-      return tx.enrollment.create({ data: { ...input, status: 'activo' } });
+      return tx.enrollment.upsert({
+        where: { studentId_sectionId_year: { studentId: input.studentId, sectionId: input.sectionId, year: input.year } },
+        update: { status: 'activo' },
+        create: { ...input, status: 'activo' }
+      });
     });
   }
 

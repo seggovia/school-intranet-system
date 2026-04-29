@@ -1201,6 +1201,16 @@
   background: #ffffff;
 }
 
+.student-picker-row.disabled {
+  cursor: not-allowed;
+  opacity: 0.74;
+  background: #f8fafc;
+}
+
+.student-picker-row.assigned {
+  border-color: #cbd5e1;
+}
+
 .student-picker-row input {
   width: 18px;
   height: 18px;
@@ -1214,6 +1224,11 @@
 .student-picker-row small {
   color: #64748b;
   margin-top: 3px;
+}
+
+.student-picker-row.assigned small:last-child {
+  color: #1d4ed8;
+  font-weight: 900;
 }
 
 .student-picker-modal footer {

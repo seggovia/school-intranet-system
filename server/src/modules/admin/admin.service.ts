@@ -328,6 +328,12 @@ export class AdminService {
       const existing = await repository.findStudentByRut(input.rut);
       if (existing && existing.id !== id) throw new HttpError(409, 'Ya existe un estudiante con ese RUT/identificador.');
     }
+    if (input.sectionId) {
+      const activeEnrollment = await repository.findActiveStudentEnrollment({ studentId: id, year: currentYear() });
+      if (activeEnrollment && activeEnrollment.sectionId !== input.sectionId) {
+        throw new HttpError(409, `El estudiante ya está asignado a ${activeEnrollment.section.course.name} ${activeEnrollment.section.name}. Quita la sección actual antes de asignarlo a otra.`);
+      }
+    }
     await repository.transaction(async (tx) => {
       await repository.updateUser(tx, student.userId, {
         name: input.name ? fullName(input) : undefined,
@@ -350,6 +356,11 @@ export class AdminService {
   async assignStudentSection(id: string, input: SectionAssignInput) {
     const student = await repository.findStudent(id);
     if (!student) throw new HttpError(404, 'Estudiante no encontrado.');
+    const activeEnrollment = await repository.findActiveStudentEnrollment({ studentId: id, year: currentYear() });
+    if (activeEnrollment?.sectionId === input.sectionId) return (await this.students()).find((item) => item.id === id);
+    if (activeEnrollment) {
+      throw new HttpError(409, `El estudiante ya está asignado a ${activeEnrollment.section.course.name} ${activeEnrollment.section.name}. Quita la sección actual antes de asignarlo a otra.`);
+    }
     await repository.transaction((tx) => repository.moveStudentToSection(tx, { studentId: id, sectionId: input.sectionId, year: currentYear() }));
     return (await this.students()).find((item) => item.id === id);
   }
