@@ -1,4 +1,3 @@
-import nodemailer from 'nodemailer';
 import { env } from '../../config/env.js';
 
 type PasswordResetEmail = {
@@ -14,10 +13,13 @@ function smtpConfigured() {
 export class EmailService {
   async sendPasswordReset(input: PasswordResetEmail) {
     if (!smtpConfigured()) {
-      if (env.NODE_ENV !== 'production') console.info(`[password-reset] ${input.to}: ${input.resetUrl}`);
+      if (env.NODE_ENV !== 'production') {
+        console.info(`[password-reset] ${input.to}: ${input.resetUrl}`);
+      }
       return { sent: false };
     }
 
+    const nodemailer = await import('nodemailer');
     const transporter = nodemailer.createTransport({
       host: env.SMTP_HOST,
       port: env.SMTP_PORT,
