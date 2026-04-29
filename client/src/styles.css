@@ -448,6 +448,98 @@
   align-items: end;
 }
 
+.course-filters {
+  grid-template-columns: minmax(220px, 1.4fr) repeat(3, minmax(150px, 1fr)) auto;
+}
+
+.course-level-list {
+  display: grid;
+  gap: 14px;
+}
+
+.course-level-group {
+  border: 1px solid #d8e2ec;
+  border-radius: 8px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.course-level-toggle {
+  width: 100%;
+  border: 0;
+  background: #f8fafc;
+  color: #172033;
+  min-height: 52px;
+  padding: 12px 14px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  text-align: left;
+  cursor: pointer;
+}
+
+.course-level-toggle span {
+  font-weight: 900;
+}
+
+.course-level-toggle small {
+  color: #64748b;
+  font-weight: 900;
+}
+
+.course-level-content {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+  animation: academic-group-in 160ms ease-out;
+}
+
+@keyframes academic-group-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.course-table {
+  display: grid;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.course-table-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 1.1fr) minmax(150px, 1fr) minmax(120px, 0.8fr) minmax(120px, 0.8fr) auto minmax(170px, auto);
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border-top: 1px solid #edf2f7;
+}
+
+.course-table-row.head {
+  border-top: 0;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.course-table-row strong,
+.course-table-row small {
+  display: block;
+}
+
+.course-table-row small {
+  color: #64748b;
+}
+
 .guardian-selected-card {
   border: 1px solid #d8e2ec;
   border-radius: 8px;
@@ -1562,6 +1654,7 @@
 
   .assignment-filters,
   .responsible-filters,
+  .course-filters,
   .assignment-bulkbar,
   .assignment-inline-form,
   .assignment-row,
@@ -1569,6 +1662,7 @@
   .assignment-row.subject,
   .responsible-summary,
   .classroom-filters,
+  .course-table-row,
   .classroom-row {
     grid-template-columns: 1fr;
   }

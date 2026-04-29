@@ -654,17 +654,95 @@ function CoursesSectionsPage({ bundle, canManage, setModal, setConfirm, onSaved 
   );
 }
 
+type CourseLevelGroup = 'basic' | 'middle';
+
+function courseLevelGroup(course: AdminCourseRow): CourseLevelGroup {
+  const text = `${course.name} ${course.level}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  return text.includes('medio') || text.includes('media') ? 'middle' : 'basic';
+}
+
+function courseSchoolOrder(course: AdminCourseRow) {
+  const match = course.name.match(/\d+/);
+  const grade = match ? Number(match[0]) : 99;
+  return (courseLevelGroup(course) === 'basic' ? 0 : 100) + grade;
+}
+
+function CourseGroup({ title, rows, open, onToggle, canManage, onEdit, onToggleStatus }: { title: string; rows: AdminCourseRow[]; open: boolean; onToggle: () => void; canManage: boolean; onEdit: (course: AdminCourseRow) => void; onToggleStatus: (course: AdminCourseRow) => void }) {
+  const { page, total, setPage, visible } = usePagedRows(rows, 10);
+  return (
+    <section className={`course-level-group ${open ? 'open' : ''}`}>
+      <button type="button" className="course-level-toggle" onClick={onToggle} aria-expanded={open}>
+        {open ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+        <span>{title}</span>
+        <small>{rows.length} cursos</small>
+      </button>
+      {open && (
+        <div className="course-level-content">
+          <div className="course-table">
+            <div className="course-table-row head"><span>Curso</span><span>Nivel</span><span>Secciones</span><span>Estudiantes</span><span>Estado</span><span>Acciones</span></div>
+            {visible.map((course) => (
+              <article key={course.id} className="course-table-row">
+                <span><strong>{course.name}</strong><small>Curso</small></span>
+                <span><strong>{course.level}</strong><small>Nivel</small></span>
+                <span>{course.sections} secciones</span>
+                <span>{course.students} estudiantes</span>
+                <StatusBadge active={course.isActive} />
+                {canManage && <div className="admin-row-actions"><button onClick={() => onEdit(course)}><Edit3 size={15} />Editar</button><button className={course.isActive ? 'danger-button' : 'secondary-button'} onClick={() => onToggleStatus(course)}>{course.isActive ? 'Desactivar' : 'Activar'}</button></div>}
+              </article>
+            ))}
+          </div>
+          {!rows.length && <div className="admin-empty compact"><Search size={18} /><strong>Sin cursos</strong><span>No hay cursos en este grupo con los filtros actuales.</span></div>}
+          <Pager page={page} total={total} onPage={setPage} />
+        </div>
+      )}
+    </section>
+  );
+}
+
 function AcademicCoursesPage({ bundle, canManage, setModal, setConfirm, onSaved }: { bundle: AdminBundle; canManage: boolean; setModal: (modal: ModalState) => void; setConfirm: (confirm: ConfirmState | null) => void; onSaved: (message: string) => void }) {
   const [query, setQuery] = useState('');
-  const rows = bundle.courses.filter((course) => textIncludes(course, query));
-  const { page, total, setPage, visible } = usePagedRows(rows, 10);
+  const [levelFilter, setLevelFilter] = useState<'all' | CourseLevelGroup>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [sectionsFilter, setSectionsFilter] = useState<'all' | 'with' | 'without'>('all');
+  const [openGroups, setOpenGroups] = useState<Record<CourseLevelGroup, boolean>>({ basic: true, middle: true });
+  const rows = bundle.courses
+    .filter((course) => textIncludes([course.name], query))
+    .filter((course) => levelFilter === 'all' || courseLevelGroup(course) === levelFilter)
+    .filter((course) => statusFilter === 'all' || (statusFilter === 'active' ? course.isActive : !course.isActive))
+    .filter((course) => sectionsFilter === 'all' || (sectionsFilter === 'with' ? course.sections > 0 : course.sections === 0))
+    .sort((a, b) => courseSchoolOrder(a) - courseSchoolOrder(b) || a.name.localeCompare(b.name, 'es'));
+  const basicRows = rows.filter((course) => courseLevelGroup(course) === 'basic');
+  const middleRows = rows.filter((course) => courseLevelGroup(course) === 'middle');
+  const hasFilters = Boolean(query || levelFilter !== 'all' || statusFilter !== 'all' || sectionsFilter !== 'all');
+  const resetFilters = () => {
+    setQuery('');
+    setLevelFilter('all');
+    setStatusFilter('all');
+    setSectionsFilter('all');
+  };
   const toggle = (course: AdminCourseRow) => confirmAction(setConfirm, {
     title: `${course.isActive ? 'Desactivar' : 'Activar'} curso`,
     message: course.isActive && course.sections ? `El curso ${course.name} tiene secciones asociadas. Si hay estudiantes activos, el backend bloqueará la acción.` : `Confirma que quieres ${course.isActive ? 'desactivar' : 'activar'} ${course.name}.`,
     danger: course.isActive,
     action: async () => { await setAdminCourseStatus(course.id, !course.isActive); onSaved(course.isActive ? 'Curso desactivado correctamente.' : 'Curso activado correctamente.'); }
   });
-  return <div className="course-admin-view"><header className="assignment-header"><div><h2>Cursos</h2><p>Lista cursos, nivel, secciones y matrícula total.</p></div>{canManage && <button className="primary-button" onClick={() => setModal({ type: 'course', mode: 'create' })}><Plus size={17} />Crear curso</button>}</header><div className="assignment-filters labelled-filters"><label className="admin-search"><span>Buscar curso</span><div><Search size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Nombre o nivel" /></div></label></div><div className="course-card-list"><div className="course-card-header academic-row-header admin-table-header"><span>Curso</span><span>Secciones</span><span>Estudiantes</span><span>Estado</span><span>Acciones</span></div>{visible.map((course) => <article key={course.id} className="course-card"><div className="course-card-header academic-row-header"><div><strong>{course.name}</strong><small>{course.level}</small></div><span>{course.sections} secciones</span><span>{course.students} estudiantes</span><StatusBadge active={course.isActive} />{canManage && <div className="admin-row-actions"><button onClick={() => setModal({ type: 'course', mode: 'edit', row: course })}><Edit3 size={15} />Editar</button><button className={course.isActive ? 'danger-button' : 'secondary-button'} onClick={() => toggle(course)}>{course.isActive ? 'Desactivar' : 'Activar'}</button></div>}</div></article>)}</div>{!rows.length && <div className="admin-empty"><Search size={22} /><strong>Sin cursos</strong><span>No se encontraron cursos con esos filtros.</span></div>}<Pager page={page} total={total} onPage={setPage} /></div>;
+  return (
+    <div className="course-admin-view">
+      <header className="assignment-header"><div><h2>Cursos</h2><p>Lista cursos por orden escolar, nivel, secciones y matrícula total.</p></div>{canManage && <button className="primary-button" onClick={() => setModal({ type: 'course', mode: 'create' })}><Plus size={17} />Crear curso</button>}</header>
+      <div className="assignment-filters labelled-filters course-filters">
+        <label className="admin-search"><span>Buscar curso</span><div><Search size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Nombre del curso" /></div></label>
+        <label>Nivel<select value={levelFilter} onChange={(event) => setLevelFilter(event.target.value as typeof levelFilter)}><option value="all">Todos</option><option value="basic">Básica</option><option value="middle">Media</option></select></label>
+        <label>Estado<select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}><option value="all">Todos</option><option value="active">Activo</option><option value="inactive">Inactivo</option></select></label>
+        <label>Secciones<select value={sectionsFilter} onChange={(event) => setSectionsFilter(event.target.value as typeof sectionsFilter)}><option value="all">Todos</option><option value="with">Con secciones</option><option value="without">Sin secciones</option></select></label>
+        <button type="button" className="secondary-button" onClick={resetFilters} disabled={!hasFilters}>Limpiar filtros</button>
+      </div>
+      <div className="course-level-list">
+        <CourseGroup title="Educación Básica" rows={basicRows} open={openGroups.basic} onToggle={() => setOpenGroups((current) => ({ ...current, basic: !current.basic }))} canManage={canManage} onEdit={(course) => setModal({ type: 'course', mode: 'edit', row: course })} onToggleStatus={toggle} />
+        <CourseGroup title="Educación Media" rows={middleRows} open={openGroups.middle} onToggle={() => setOpenGroups((current) => ({ ...current, middle: !current.middle }))} canManage={canManage} onEdit={(course) => setModal({ type: 'course', mode: 'edit', row: course })} onToggleStatus={toggle} />
+      </div>
+      {!rows.length && <div className="admin-empty"><Search size={22} /><strong>Sin cursos</strong><span>No se encontraron cursos con esos filtros.</span></div>}
+    </div>
+  );
 }
 
 function AcademicSectionsPage({ bundle, canManage, setModal, setConfirm, onSaved }: { bundle: AdminBundle; canManage: boolean; setModal: (modal: ModalState) => void; setConfirm: (confirm: ConfirmState | null) => void; onSaved: (message: string) => void }) {
