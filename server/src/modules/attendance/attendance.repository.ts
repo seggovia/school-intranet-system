@@ -1,15 +1,17 @@
 import { prisma } from '../../config/db.js';
+import type { Prisma } from '@prisma/client';
 
-const sectionInclude = {
+export const sectionInclude = {
   course: true,
+  classroom: true,
   subjects: { include: { subject: true } },
-  schedules: { include: { subject: true, teacher: { include: { user: true } } } },
+  schedules: { include: { subject: true, classroom: true, teacher: { include: { user: true } } }, orderBy: [{ weekday: 'asc' }, { startsAt: 'asc' }] },
   enrollments: {
     where: { status: 'activo' },
     include: { student: { include: { user: true } } },
     orderBy: { student: { user: { name: 'asc' } } }
   }
-} as const;
+} satisfies Prisma.SectionInclude;
 
 export class AttendanceRepository {
   listAllContext() {
@@ -38,14 +40,11 @@ export class AttendanceRepository {
   }
 
   findTeacherAssignment(userId: string, sectionId: string, subjectId: string) {
-    return prisma.section.findFirst({
+    return prisma.classSchedule.findFirst({
       where: {
-        id: sectionId,
-        subjects: { some: { subjectId } },
-        OR: [
-          { schedules: { some: { subjectId, teacher: { userId } } } },
-          { headTeacher: { userId, subjects: { some: { subjectId } } } }
-        ]
+        sectionId,
+        subjectId,
+        teacher: { userId }
       }
     });
   }

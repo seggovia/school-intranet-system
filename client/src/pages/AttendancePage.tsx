@@ -1,19 +1,43 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, Clock, Save, Search, Users, XCircle } from 'lucide-react';
+import { FormEvent, ReactNode, useEffect, useMemo, useState } from 'react';
+import { AlertTriangle, BookOpen, CalendarDays, CheckCircle2, Clock, MapPin, Save, Search, Users, XCircle } from 'lucide-react';
 import { loadAttendanceContext, loadAttendanceGuardian, loadAttendanceMe, loadAttendanceRecords, loadAttendanceSummary, saveAttendanceBulk } from '../api';
 import { PageHeader } from '../components/PageHeader';
 import { EmptyState, LoadingState } from '../components/States';
-import type { AttendanceContext, AttendanceHistoryItem, AttendanceRecordsResponse, AttendanceRosterRecord, AttendanceRosterStatus, AttendanceStatus, AttendanceSummary, User } from '../types';
+import type { AttendanceContext, AttendanceHistoryItem, AttendanceRecordsResponse, AttendanceRosterRecord, AttendanceRosterStatus, AttendanceScheduleItem, AttendanceStatus, AttendanceSummary, User } from '../types';
 
 const statusOptions: Array<{ value: AttendanceRosterStatus; label: string }> = [
   { value: 'presente', label: 'Presente' },
   { value: 'ausente', label: 'Ausente' },
-  { value: 'atrasado', label: 'Atrasado' },
-  { value: 'justificado', label: 'Justificado' }
+  { value: 'justificado', label: 'Justificado' },
+  { value: 'atrasado', label: 'Tarde' }
 ];
+
+const statusFilters: Array<{ value: AttendanceRosterStatus | 'todos'; label: string }> = [
+  { value: 'todos', label: 'Todos' },
+  ...statusOptions,
+  { value: 'sin_registrar', label: 'Sin marcar' }
+];
+
+const weekdayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+
+type ConfirmState = { title: string; message: ReactNode; action: () => void | Promise<void>; danger?: boolean };
 
 function today() {
   return new Date().toISOString().slice(0, 10);
+}
+
+function weekdayFromDate(date: string) {
+  if (!date) return -1;
+  return new Date(`${date}T00:00:00Z`).getUTCDay();
+}
+
+function formatDate(date: string) {
+  if (!date) return '';
+  return new Intl.DateTimeFormat('es-CL', { dateStyle: 'long', timeZone: 'UTC' }).format(new Date(`${date}T00:00:00Z`));
+}
+
+function scheduleLabel(schedule: AttendanceScheduleItem) {
+  return `${schedule.weekdayName} ${schedule.startsAt}-${schedule.endsAt}`;
 }
 
 function summaryFromRows(rows: AttendanceRosterRecord[]) {
@@ -26,22 +50,42 @@ function summaryFromRows(rows: AttendanceRosterRecord[]) {
   };
 }
 
+function rowSignature(row: AttendanceRosterRecord) {
+  return `${row.status}|${row.note || ''}`;
+}
+
 function SummaryCards({ values }: { values: Partial<AttendanceSummary> & { sin_registrar?: number } }) {
   const cards = [
     ['Presentes', values.presente ?? 0, CheckCircle2],
     ['Ausentes', values.ausente ?? 0, XCircle],
-    ['Atrasados', values.atrasado ?? 0, Clock],
+    ['Tarde', values.atrasado ?? 0, Clock],
     ['Justificados', values.justificado ?? 0, Users],
-    ['Sin registrar', values.sin_registrar ?? 0, Search]
+    ['Sin marcar', values.sin_registrar ?? 0, Search]
   ] as const;
   return <section className="attendance-summary-cards">{cards.map(([label, value, Icon]) => <article key={label}><Icon size={19} /><span>{label}</span><strong>{value}</strong></article>)}</section>;
+}
+
+function ConfirmModal({ confirm, onClose }: { confirm: ConfirmState; onClose: () => void }) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <div className="admin-modal-backdrop" role="dialog" aria-modal="true">
+      <section className="admin-confirm">
+        {confirm.danger ? <AlertTriangle /> : <CheckCircle2 />}
+        <div>
+          <h2>{confirm.title}</h2>
+          <p>{confirm.message}</p>
+        </div>
+        <div><button className="secondary-button" onClick={onClose}>Cancelar</button><button className={confirm.danger ? 'danger-button' : 'primary-button'} disabled={busy} onClick={async () => { setBusy(true); await confirm.action(); onClose(); }}>Confirmar</button></div>
+      </section>
+    </div>
+  );
 }
 
 function HistoryTable({ rows }: { rows: AttendanceHistoryItem[] }) {
   if (!rows.length) return <EmptyState title="Sin historial de asistencia" />;
   return (
     <div className="attendance-history-table">
-      {rows.map((row) => <article key={row.id}><span>{row.date}</span><strong>{row.subject}</strong><span>{row.section}</span><span className={`attendance-badge ${row.status}`}>{row.status}</span><small>{row.note || '-'}</small></article>)}
+      {rows.map((row) => <article key={row.id}><span>{row.date}</span><strong>{row.subject}</strong><span>{row.section}</span><span className={`attendance-badge ${row.status}`}>{row.status === 'atrasado' ? 'tarde' : row.status}</span><small>{row.note || '-'}</small></article>)}
     </div>
   );
 }
@@ -59,36 +103,137 @@ function ManageAttendance({ user }: { user: User }) {
   const [subjectId, setSubjectId] = useState('');
   const [date, setDate] = useState(today());
   const [records, setRecords] = useState<AttendanceRecordsResponse | null>(null);
+  const [baseline, setBaseline] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
+  const [rosterLoading, setRosterLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState('');
+  const [error, setError] = useState('');
   const [summary, setSummary] = useState<{ sections: Array<{ name: string; summary: AttendanceSummary }> } | null>(null);
+  const [confirm, setConfirm] = useState<ConfirmState | null>(null);
+  const [studentQuery, setStudentQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<AttendanceRosterStatus | 'todos'>('todos');
+  const isTeacher = user.primaryRole === 'teacher';
   const futureDate = date > today();
+  const selectedWeekday = weekdayFromDate(date);
   const section = context?.sections.find((item) => item.id === sectionId);
   const subjects = section?.subjects ?? [];
+  const subject = subjects.find((item) => item.id === subjectId);
+  const weeklySchedules = subject?.schedules ?? [];
+  const schedulesForDay = weeklySchedules.filter((schedule) => schedule.weekday === selectedWeekday);
+  const hasClassToday = schedulesForDay.length > 0;
   const counts = summaryFromRows(records?.students ?? []);
+  const pendingChanges = useMemo(() => records?.students.filter((row) => baseline[row.studentId] !== rowSignature(row)).length ?? 0, [baseline, records]);
+  const filteredStudents = useMemo(() => {
+    const query = studentQuery.trim().toLowerCase();
+    return (records?.students ?? []).filter((student) => {
+      const matchesQuery = !query || [student.name, student.email, student.rut].some((value) => (value ?? '').toLowerCase().includes(query));
+      const matchesStatus = statusFilter === 'todos' || student.status === statusFilter;
+      return matchesQuery && matchesStatus;
+    });
+  }, [records, statusFilter, studentQuery]);
 
   useEffect(() => {
     Promise.all([loadAttendanceContext(), ['admin', 'director', 'inspector'].includes(user.primaryRole) ? loadAttendanceSummary() : Promise.resolve(null)])
       .then(([nextContext, adminSummary]) => {
         setContext(nextContext);
         setSummary(adminSummary);
-        setSectionId(nextContext.sections[0]?.id ?? '');
-        setSubjectId(nextContext.sections[0]?.subjects[0]?.id ?? '');
+        if (!isTeacher) {
+          setSectionId(nextContext.sections[0]?.id ?? '');
+          setSubjectId(nextContext.sections[0]?.subjects[0]?.id ?? '');
+        }
       })
       .finally(() => setLoading(false));
-  }, [user.primaryRole]);
+  }, [isTeacher, user.primaryRole]);
 
   useEffect(() => {
-    const nextSection = context?.sections.find((item) => item.id === sectionId);
-    setSubjectId(nextSection?.subjects[0]?.id ?? '');
-    setRecords(null);
-  }, [context, sectionId]);
+    if (!notice && !error) return;
+    const timer = window.setTimeout(() => { setNotice(''); setError(''); }, 4500);
+    return () => window.clearTimeout(timer);
+  }, [error, notice]);
+
+  function runWithUnsaved(action: () => void) {
+    if (!pendingChanges) {
+      action();
+      return;
+    }
+    setConfirm({
+      title: 'Cambios sin guardar',
+      message: 'Tienes cambios sin guardar. ¿Deseas salir sin guardar?',
+      danger: true,
+      action
+    });
+  }
+
+  function selectAssignment(nextSectionId: string, nextSubjectId: string) {
+    runWithUnsaved(() => {
+      setSectionId(nextSectionId);
+      setSubjectId(nextSubjectId);
+      setRecords(null);
+      setBaseline({});
+      setStudentQuery('');
+      setStatusFilter('todos');
+      setError('');
+    });
+  }
+
+  function changeSection(nextSectionId: string) {
+    runWithUnsaved(() => {
+      const nextSection = context?.sections.find((item) => item.id === nextSectionId);
+      setSectionId(nextSectionId);
+      setSubjectId(nextSection?.subjects[0]?.id ?? '');
+      setRecords(null);
+      setBaseline({});
+      setError('');
+    });
+  }
+
+  function changeSubject(nextSubjectId: string) {
+    runWithUnsaved(() => {
+      setSubjectId(nextSubjectId);
+      setRecords(null);
+      setBaseline({});
+      setError('');
+    });
+  }
+
+  function changeDate(nextDate: string) {
+    runWithUnsaved(() => {
+      setDate(nextDate);
+      setRecords(null);
+      setBaseline({});
+      setError('');
+    });
+  }
 
   async function load(event?: FormEvent) {
     event?.preventDefault();
-    if (!sectionId || !subjectId || futureDate) return;
-    setRecords(await loadAttendanceRecords({ sectionId, subjectId, date }));
+    setError('');
+    if (!sectionId || !subjectId || !date) {
+      setError('Selecciona sección, asignatura y fecha.');
+      return;
+    }
+    if (futureDate) {
+      setError('No se puede registrar asistencia futura.');
+      return;
+    }
+    if (!hasClassToday) {
+      setRecords(null);
+      setBaseline({});
+      setError('No hay clase programada para esta asignatura en la fecha seleccionada.');
+      return;
+    }
+    try {
+      setRosterLoading(true);
+      const next = await loadAttendanceRecords({ sectionId, subjectId, date });
+      setRecords(next);
+      setBaseline(Object.fromEntries(next.students.map((student) => [student.studentId, rowSignature(student)])));
+    } catch (err) {
+      const message = (err as { response?: { data?: { message?: string } } }).response?.data?.message;
+      setError(message ?? 'No se pudo cargar la asistencia.');
+    } finally {
+      setRosterLoading(false);
+    }
   }
 
   function updateStudent(studentId: string, patch: Partial<AttendanceRosterRecord>) {
@@ -100,12 +245,25 @@ function ManageAttendance({ user }: { user: User }) {
   }
 
   async function save() {
-    if (!records || futureDate || !window.confirm('Confirmar guardado de asistencia?')) return;
-    setSaving(true);
-    await saveAttendanceBulk({ sectionId, subjectId, date, records: records.students.filter((row) => row.status !== 'sin_registrar').map((row) => ({ studentId: row.studentId, status: row.status as AttendanceStatus, note: row.note || undefined })) });
-    setNotice('Asistencia guardada correctamente');
-    await load();
-    setSaving(false);
+    if (!records || futureDate || !pendingChanges) return;
+    setConfirm({
+      title: 'Guardar asistencia',
+      message: `¿Guardar asistencia de ${records.subject?.name ?? 'la asignatura'} para ${records.section.name} el día ${formatDate(records.date)}?`,
+      action: async () => {
+        setSaving(true);
+        setError('');
+        try {
+          await saveAttendanceBulk({ sectionId, subjectId, date, records: records.students.filter((row) => row.status !== 'sin_registrar').map((row) => ({ studentId: row.studentId, status: row.status as AttendanceStatus, note: row.note || undefined })) });
+          setNotice('Asistencia guardada correctamente.');
+          await load();
+        } catch (err) {
+          const message = (err as { response?: { data?: { message?: string } } }).response?.data?.message;
+          setError(message ?? 'No se pudo guardar la asistencia.');
+        } finally {
+          setSaving(false);
+        }
+      }
+    });
   }
 
   if (loading) return <LoadingState label="Cargando asistencia..." />;
@@ -113,24 +271,98 @@ function ManageAttendance({ user }: { user: User }) {
 
   return (
     <div className="page-stack attendance-page">
-      <PageHeader eyebrow="Asistencia" title="Asistencia" description="Registro diario por seccion, asignatura y estudiante." />
+      <PageHeader eyebrow="Asistencia" title={isTeacher ? 'Mis cursos / asignaturas' : 'Asistencia'} description={isTeacher ? 'Selecciona una asignatura asignada para tomar asistencia.' : 'Registro diario por sección, asignatura y estudiante.'} />
       {notice && <div className="admin-notice success" onClick={() => setNotice('')}>{notice}</div>}
-      <SummaryCards values={counts} />
-      <form className="panel attendance-filters" onSubmit={load}>
-        <label>Seccion<select value={sectionId} onChange={(event) => setSectionId(event.target.value)}>{context.sections.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
-        <label>Asignatura<select value={subjectId} onChange={(event) => setSubjectId(event.target.value)}>{subjects.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
-        <label>Fecha<input type="date" value={date} onChange={(event) => setDate(event.target.value)} /></label>
-        <button className="primary-button" disabled={futureDate || !subjectId}>Cargar asistencia</button>
-      </form>
-      {futureDate && <div className="alert">No se puede registrar asistencia futura.</div>}
-      {records ? (
-        <section className="panel attendance-roster">
-          <div className="attendance-actions"><button className="secondary-button" onClick={() => markAll('presente')}>Marcar todos presentes</button><button className="secondary-button" onClick={() => markAll('ausente')}>Marcar todos ausentes</button><button className="secondary-button" onClick={() => markAll('sin_registrar')}>Limpiar selección</button><button className="primary-button" onClick={save} disabled={saving || futureDate}><Save size={17} />{saving ? 'Guardando...' : 'Guardar asistencia'}</button></div>
-          {records.students.map((student) => <article key={student.studentId} className={student.registered ? 'updated' : ''}><div><strong>{student.name}</strong><small>{student.email}</small></div><div className="segmented">{statusOptions.map((option) => <button key={option.value} type="button" className={student.status === option.value ? 'active' : ''} onClick={() => updateStudent(student.studentId, { status: option.value })}>{option.label}</button>)}</div><input value={student.note} onChange={(event) => updateStudent(student.studentId, { note: event.target.value })} placeholder="Nota opcional" />{student.registered && <span className="attendance-updated">Actualizado</span>}</article>)}
-        </section>
-      ) : <EmptyState title="Carga una asistencia" description="Selecciona seccion, asignatura y fecha para ver el roster." />}
-      {summary && <section className="panel"><h3>Resumen por seccion de hoy</h3><div className="attendance-history-table">{summary.sections.map((item) => <article key={item.name}><strong>{item.name}</strong><span>{item.summary.percentage}% asistencia</span><span>{item.summary.ausente} ausentes</span><span>{item.summary.atrasado} atrasos</span></article>)}</div></section>}
+      {error && <div className="alert" onClick={() => setError('')}>{error}</div>}
+      {isTeacher && <TeacherAssignments context={context} selected={`${sectionId}:${subjectId}`} onSelect={selectAssignment} />}
+      {(!isTeacher || sectionId) && (
+        <>
+          <SummaryCards values={counts} />
+          <section className="panel attendance-class-panel">
+            <div className="attendance-class-heading">
+              <div>
+                <span>{section?.name ?? 'Sección'}</span>
+                <h2>{subject?.name ?? 'Asignatura'}</h2>
+              </div>
+              <div className="attendance-class-meta">
+                <span><CalendarDays size={15} />{date ? `${weekdayNames[selectedWeekday] ?? ''}, ${formatDate(date)}` : 'Sin fecha'}</span>
+                <span><MapPin size={15} />{section?.classroom?.name ?? schedulesForDay[0]?.classroom?.name ?? 'Sin sala'}</span>
+              </div>
+            </div>
+            <form className="attendance-filters" onSubmit={load}>
+              {!isTeacher && <label>Sección<select value={sectionId} onChange={(event) => changeSection(event.target.value)}>{context.sections.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>}
+              {!isTeacher && <label>Asignatura<select value={subjectId} onChange={(event) => changeSubject(event.target.value)}>{subjects.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>}
+              <label>Fecha<input type="date" value={date} max={today()} onChange={(event) => changeDate(event.target.value)} /></label>
+              <button className="primary-button" disabled={futureDate || !subjectId || !date || !hasClassToday || rosterLoading}>{rosterLoading ? 'Cargando...' : 'Cargar asistencia'}</button>
+            </form>
+            <WeekSchedule schedules={weeklySchedules} selectedWeekday={selectedWeekday} />
+            {!futureDate && !hasClassToday && <div className="attendance-warning"><AlertTriangle size={17} />No hay clase programada para esta asignatura en la fecha seleccionada.</div>}
+          </section>
+          {records ? (
+            <section className="panel attendance-roster">
+              <div className="attendance-toolbar">
+                <label className="admin-search"><Search size={17} /><input value={studentQuery} onChange={(event) => setStudentQuery(event.target.value)} placeholder="Buscar por nombre, correo o RUT" /></label>
+                <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as AttendanceRosterStatus | 'todos')}>{statusFilters.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select>
+              </div>
+              <div className="attendance-actions"><button className="secondary-button" onClick={() => markAll('presente')}>Marcar todos presentes</button><button className="secondary-button" onClick={() => markAll('ausente')}>Marcar todos ausentes</button><button className="secondary-button" onClick={() => markAll('sin_registrar')}>Limpiar selección</button><span>{pendingChanges} cambios pendientes</span><button className="primary-button" onClick={save} disabled={saving || futureDate || !pendingChanges}><Save size={17} />{saving ? 'Guardando...' : 'Guardar asistencia del día'}</button></div>
+              <div className="attendance-student-list">
+                {filteredStudents.map((student) => <AttendanceStudentRow key={student.studentId} student={student} onChange={(status) => updateStudent(student.studentId, { status })} onNote={(note) => updateStudent(student.studentId, { note })} />)}
+              </div>
+              {!filteredStudents.length && <EmptyState title="Sin estudiantes" description="No hay estudiantes con esos filtros." />}
+            </section>
+          ) : <EmptyState title="Carga una asistencia" description="Selecciona un día con clase para ver el listado de estudiantes." />}
+          {summary && <section className="panel"><h3>Resumen por sección de hoy</h3><div className="attendance-history-table">{summary.sections.map((item) => <article key={item.name}><strong>{item.name}</strong><span>{item.summary.percentage}% asistencia</span><span>{item.summary.ausente} ausentes</span><span>{item.summary.atrasado} atrasos</span></article>)}</div></section>}
+        </>
+      )}
+      {confirm && <ConfirmModal confirm={confirm} onClose={() => setConfirm(null)} />}
     </div>
+  );
+}
+
+function TeacherAssignments({ context, selected, onSelect }: { context: AttendanceContext; selected: string; onSelect: (sectionId: string, subjectId: string) => void }) {
+  const cards = context.sections.flatMap((section) => section.subjects.map((subject) => ({ section, subject })));
+  if (!cards.length) return <EmptyState title="Sin cursos asignados" description="No hay cursos/asignaturas con horario asignado a tu usuario." />;
+  return (
+    <section className="attendance-course-grid">
+      {cards.map(({ section, subject }) => {
+        const active = selected === `${section.id}:${subject.id}`;
+        return (
+          <article key={`${section.id}-${subject.id}`} className={`attendance-course-card ${active ? 'active' : ''}`}>
+            <div><span>{section.name}</span><h2>{subject.name}</h2></div>
+            <p><MapPin size={15} />{section.classroom?.name ?? subject.schedules?.[0]?.classroom?.name ?? 'Sin sala'}</p>
+            <div className="attendance-card-schedules">{(subject.schedules ?? []).map((schedule) => <small key={schedule.id}>{scheduleLabel(schedule)}</small>)}</div>
+            <button className="primary-button" onClick={() => onSelect(section.id, subject.id)}>Tomar asistencia</button>
+          </article>
+        );
+      })}
+    </section>
+  );
+}
+
+function WeekSchedule({ schedules, selectedWeekday }: { schedules: AttendanceScheduleItem[]; selectedWeekday: number }) {
+  const byWeekday = new Map(schedules.map((schedule) => [schedule.weekday, schedule]));
+  return (
+    <div className="attendance-week-strip">
+      {[1, 2, 3, 4, 5, 6, 0].map((weekday) => {
+        const schedule = byWeekday.get(weekday);
+        return <button key={weekday} type="button" disabled={!schedule} className={`${schedule ? 'has-class' : ''} ${weekday === selectedWeekday ? 'selected' : ''}`}><strong>{weekdayNames[weekday]}</strong><span>{schedule ? `${schedule.startsAt}-${schedule.endsAt}` : 'Sin clase'}</span></button>;
+      })}
+    </div>
+  );
+}
+
+function AttendanceStudentRow({ student, onChange, onNote }: { student: AttendanceRosterRecord; onChange: (status: AttendanceRosterStatus) => void; onNote: (note: string) => void }) {
+  return (
+    <article className={`attendance-student-card ${student.registered ? 'updated' : ''}`}>
+      <div className="attendance-student-info">
+        <strong>{student.name}</strong>
+        <small>{student.email}</small>
+        <small>RUT / identificador: {student.rut || 'Sin registro'}</small>
+      </div>
+      <div className="attendance-status-pills">{statusOptions.map((option) => <button key={option.value} type="button" className={`status-pill ${option.value} ${student.status === option.value ? 'active' : ''}`} onClick={() => onChange(option.value)}>{option.label}</button>)}</div>
+      <input value={student.note} onChange={(event) => onNote(event.target.value)} placeholder="Nota opcional" />
+      {student.registered && <span className="attendance-updated">Editando registro existente</span>}
+    </article>
   );
 }
 

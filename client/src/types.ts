@@ -83,8 +83,25 @@ export interface AttendanceRecord {
 export type AttendanceStatus = 'presente' | 'ausente' | 'atrasado' | 'justificado';
 export type AttendanceRosterStatus = AttendanceStatus | 'sin_registrar';
 
+export interface AttendanceScheduleItem {
+  id: string;
+  weekday: number;
+  weekdayName: string;
+  startsAt: string;
+  endsAt: string;
+  classroom?: { id: string; name: string } | null;
+  teacher?: string | null;
+}
+
 export interface AttendanceContext {
-  sections: Array<{ id: string; name: string; subjects: Array<{ id: string; name: string; code: string }> }>;
+  sections: Array<{
+    id: string;
+    name: string;
+    course?: string;
+    section?: string;
+    classroom?: { id: string; name: string } | null;
+    subjects: Array<{ id: string; name: string; code: string; schedules?: AttendanceScheduleItem[] }>;
+  }>;
 }
 
 export interface AttendanceRosterRecord {
@@ -92,6 +109,7 @@ export interface AttendanceRosterRecord {
   enrollmentId: string;
   name: string;
   email: string;
+  rut?: string;
   status: AttendanceRosterStatus;
   note: string;
   registered: boolean;
@@ -102,6 +120,11 @@ export interface AttendanceRecordsResponse {
   section: { id: string; name: string };
   subject: { id: string; name: string } | null;
   date: string;
+  weekday?: number;
+  weekdayName?: string;
+  validClassDay?: boolean;
+  weeklySchedules?: AttendanceScheduleItem[];
+  schedulesForDay?: AttendanceScheduleItem[];
   students: AttendanceRosterRecord[];
 }
 
