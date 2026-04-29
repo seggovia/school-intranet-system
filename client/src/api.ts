@@ -4,6 +4,7 @@ import type {
   AdminClassroomRow,
   AdminCourseRow,
   AdminGuardianRow,
+  AdminScheduleRow,
   AdminSectionRow,
   AdminStudentRow,
   AdminSubjectRow,
@@ -542,9 +543,10 @@ export async function loadAdminSummary() {
 export type AdminCourseSectionInput = { name: string; teacherId?: string; classroomId?: string };
 export type AdminCoursePayload = { name: string; levelId: string; sections?: AdminCourseSectionInput[] };
 export type AdminClassroomPayload = { name: string; capacity: number; type?: AdminClassroomRow['type']; floor?: number };
+export type AdminSchedulePayload = { teacherId: string; sectionId: string; subjectId: string; classroomId: string; weekday: number; startsAt: string; endsAt: string };
 
 export async function loadAdminBundle(): Promise<AdminBundle> {
-  const [summary, users, students, teachers, guardians, courses, sections, classrooms, subjects] = await Promise.all([
+  const [summary, users, students, teachers, guardians, courses, sections, classrooms, schedules, subjects] = await Promise.all([
     loadAdminSummary(),
     api.get<AdminUserRow[]>('/admin/users').then((res) => res.data),
     api.get<AdminStudentRow[]>('/admin/students').then((res) => res.data),
@@ -553,9 +555,10 @@ export async function loadAdminBundle(): Promise<AdminBundle> {
     api.get<AdminCourseRow[]>('/admin/courses').then((res) => res.data),
     api.get<AdminSectionRow[]>('/admin/sections').then((res) => res.data),
     api.get<AdminClassroomRow[]>('/admin/classrooms').then((res) => res.data),
+    api.get<AdminScheduleRow[]>('/admin/schedules').then((res) => res.data),
     api.get<AdminSubjectRow[]>('/admin/subjects').then((res) => res.data)
   ]);
-  return { summary, users, students, teachers, guardians, courses, sections, classrooms, subjects };
+  return { summary, users, students, teachers, guardians, courses, sections, classrooms, schedules, subjects };
 }
 
 export async function createAdminUser(input: AdminUserPayload) {
@@ -695,6 +698,26 @@ export async function setAdminClassroomStatus(id: string, isActive: boolean) {
 
 export async function deleteAdminClassroom(id: string) {
   const { data } = await api.delete(`/admin/classrooms/${id}`);
+  return data;
+}
+
+export async function createAdminSchedule(input: AdminSchedulePayload) {
+  const { data } = await api.post<AdminScheduleRow>('/admin/schedules', input);
+  return data;
+}
+
+export async function updateAdminSchedule(id: string, input: Partial<AdminSchedulePayload>) {
+  const { data } = await api.patch<AdminScheduleRow>(`/admin/schedules/${id}`, input);
+  return data;
+}
+
+export async function setAdminScheduleStatus(id: string, isActive: boolean) {
+  const { data } = await api.patch<AdminScheduleRow>(`/admin/schedules/${id}/status`, { isActive });
+  return data;
+}
+
+export async function deleteAdminSchedule(id: string) {
+  const { data } = await api.delete<{ ok: true }>(`/admin/schedules/${id}`);
   return data;
 }
 

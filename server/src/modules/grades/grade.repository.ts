@@ -9,7 +9,7 @@ const gradeInclude = {
 const sectionContextInclude = {
   course: true,
   subjects: { include: { subject: true } },
-  schedules: { include: { subject: true, teacher: { include: { user: true } } } },
+  schedules: { where: { isActive: true }, include: { subject: true, teacher: { include: { user: true } } } },
   enrollments: {
     where: { status: 'activo' },
     include: { student: { include: { user: true } } },
@@ -64,7 +64,7 @@ export class GradeRepository {
     return prisma.section.findMany({
       where: {
         OR: [
-          { schedules: { some: { teacher: { userId } } } },
+          { schedules: { some: { teacher: { userId }, isActive: true } } },
           { headTeacher: { userId } }
         ]
       },
@@ -87,7 +87,7 @@ export class GradeRepository {
         id: sectionId,
         subjects: { some: { subjectId } },
         OR: [
-          { schedules: { some: { subjectId, teacher: { userId } } } },
+          { schedules: { some: { subjectId, teacher: { userId }, isActive: true } } },
           { headTeacher: { userId, subjects: { some: { subjectId } } } }
         ]
       }

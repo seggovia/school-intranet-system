@@ -5,7 +5,7 @@ export const sectionInclude = {
   course: true,
   classroom: true,
   subjects: { include: { subject: true } },
-  schedules: { include: { subject: true, classroom: true, teacher: { include: { user: true } } }, orderBy: [{ weekday: 'asc' }, { startsAt: 'asc' }] },
+  schedules: { where: { isActive: true }, include: { subject: true, classroom: true, teacher: { include: { user: true } } }, orderBy: [{ weekday: 'asc' }, { startsAt: 'asc' }] },
   enrollments: {
     where: { status: 'activo' },
     include: { student: { include: { user: true } } },
@@ -22,7 +22,7 @@ export class AttendanceRepository {
     return prisma.section.findMany({
       where: {
         OR: [
-          { schedules: { some: { teacher: { userId } } } },
+          { schedules: { some: { teacher: { userId }, isActive: true } } },
           { headTeacher: { userId } }
         ]
       },
@@ -44,6 +44,7 @@ export class AttendanceRepository {
       where: {
         sectionId,
         subjectId,
+        isActive: true,
         teacher: { userId }
       }
     });

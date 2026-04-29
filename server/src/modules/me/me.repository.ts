@@ -21,7 +21,7 @@ export class MeRepository {
         classroom: true,
         headTeacher: { include: { user: true } },
         subjects: { include: { subject: { include: { assessments: { include: { grades: true } } } } } },
-        schedules: { include: { subject: true, classroom: true, teacher: { include: { user: true } } } },
+        schedules: { where: { isActive: true }, include: { subject: true, classroom: true, teacher: { include: { user: true } } } },
         enrollments: { include: { student: { include: { user: true, grades: { include: { assessment: { include: { subject: true } } } }, attendance: true } } } }
       },
       orderBy: [{ course: { name: 'asc' } }, { name: 'asc' }]
@@ -36,7 +36,7 @@ export class MeRepository {
         classroom: true,
         headTeacher: { include: { user: true } },
         subjects: { include: { subject: { include: { assessments: { include: { grades: true } } } } } },
-        schedules: { include: { subject: true, classroom: true, teacher: { include: { user: true } } } },
+        schedules: { where: { isActive: true }, include: { subject: true, classroom: true, teacher: { include: { user: true } } } },
         enrollments: { where: { student: { userId } }, include: { student: { include: { user: true, grades: { include: { assessment: { include: { subject: true } } } }, attendance: true } } } }
       }
     });
@@ -50,7 +50,7 @@ export class MeRepository {
         classroom: true,
         headTeacher: { include: { user: true } },
         subjects: { include: { subject: { include: { assessments: { include: { grades: true } } } } } },
-        schedules: { include: { subject: true, classroom: true, teacher: { include: { user: true } } } },
+        schedules: { where: { isActive: true }, include: { subject: true, classroom: true, teacher: { include: { user: true } } } },
         enrollments: {
           where: { student: { guardians: { some: { guardian: { userId } } } } },
           include: { student: { include: { user: true, grades: { include: { assessment: { include: { subject: true } } } }, attendance: true } } }
@@ -66,7 +66,7 @@ export class MeRepository {
         classroom: true,
         headTeacher: { include: { user: true } },
         subjects: { include: { subject: { include: { assessments: { include: { grades: true } } } } } },
-        schedules: { include: { subject: true, classroom: true, teacher: { include: { user: true } } } },
+        schedules: { where: { isActive: true }, include: { subject: true, classroom: true, teacher: { include: { user: true } } } },
         enrollments: { include: { student: { include: { user: true, grades: { include: { assessment: { include: { subject: true } } } }, attendance: true } } } }
       },
       orderBy: [{ course: { name: 'asc' } }, { name: 'asc' }]

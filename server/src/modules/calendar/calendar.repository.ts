@@ -11,6 +11,7 @@ export class CalendarRepository {
 
   listSchedules() {
     return prisma.classSchedule.findMany({
+      where: { isActive: true },
       include: { section: { include: { course: true } }, subject: true, teacher: { include: { user: true } }, classroom: true },
       orderBy: [{ weekday: 'asc' }, { startsAt: 'asc' }]
     });

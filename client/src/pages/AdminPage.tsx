@@ -8,12 +8,14 @@ import {
   createAdminClassroom,
   createAdminCourse,
   createAdminGuardian,
+  createAdminSchedule,
   createAdminSection,
   createAdminStudent,
   createAdminSubject,
   createAdminTeacher,
   createAdminUser,
   deleteAdminClassroom,
+  deleteAdminSchedule,
   deleteAdminSection,
   linkAdminGuardianStudents,
   loadAdminBundle,
@@ -23,24 +25,27 @@ import {
   setAdminClassroomStatus,
   setAdminCourseStatus,
   setAdminSectionStatus,
+  setAdminScheduleStatus,
   setAdminStudentStatus,
   setAdminTeacherStatus,
   setAdminUserStatus,
   updateAdminClassroom,
   updateAdminCourse,
   updateAdminGuardian,
+  updateAdminSchedule,
   updateAdminSection,
   updateAdminStudent,
   updateAdminSubject,
   updateAdminTeacher,
   updateAdminUser,
   unlinkAdminGuardianStudent,
+  type AdminSchedulePayload,
   type AdminUserPayload
 } from '../api';
 import { PageHeader } from '../components/PageHeader';
-import type { AdminBundle, AdminClassroomRow, AdminCourseRow, AdminGuardianRow, AdminOption, AdminSectionRow, AdminStudentRow, AdminSubjectRow, AdminTeacherRow, AdminUserRow, Role, User } from '../types';
+import type { AdminBundle, AdminClassroomRow, AdminCourseRow, AdminGuardianRow, AdminOption, AdminScheduleRow, AdminSectionRow, AdminStudentRow, AdminSubjectRow, AdminTeacherRow, AdminUserRow, Role, User } from '../types';
 
-type AdminTab = 'users' | 'students' | 'teachers' | 'guardians' | 'subjects' | 'academic-courses' | 'academic-sections' | 'academic-classrooms' | 'assignments-teachers' | 'assignments-students' | 'assignments-guardians' | 'assignments-subjects';
+type AdminTab = 'users' | 'students' | 'teachers' | 'guardians' | 'subjects' | 'academic-courses' | 'academic-sections' | 'academic-classrooms' | 'academic-schedules' | 'assignments-teachers' | 'assignments-students' | 'assignments-guardians' | 'assignments-subjects';
 type ModalState =
   | { type: 'user'; mode: 'create' | 'edit'; row?: AdminUserRow }
   | { type: 'student'; mode: 'create' | 'edit'; row?: AdminStudentRow }
@@ -63,7 +68,18 @@ const tabs: Array<{ id: AdminTab; label: string; icon: typeof Users }> = [
 const academicTabs: Array<{ id: AdminTab; label: string; icon: typeof Users }> = [
   { id: 'academic-courses', label: 'Cursos', icon: Building2 },
   { id: 'academic-sections', label: 'Secciones', icon: GraduationCap },
-  { id: 'academic-classrooms', label: 'Salas', icon: ClipboardList }
+  { id: 'academic-classrooms', label: 'Salas', icon: ClipboardList },
+  { id: 'academic-schedules', label: 'Horarios', icon: ClipboardList }
+];
+
+const weekdayOptions = [
+  { id: '1', label: 'Lunes' },
+  { id: '2', label: 'Martes' },
+  { id: '3', label: 'Miercoles' },
+  { id: '4', label: 'Jueves' },
+  { id: '5', label: 'Viernes' },
+  { id: '6', label: 'Sabado' },
+  { id: '0', label: 'Domingo' }
 ];
 
 const assignmentTabs: Array<{ id: AdminTab; label: string; icon: typeof Users }> = [
@@ -776,6 +792,135 @@ function AcademicClassroomsPage({ bundle, canManage, setModal, setConfirm, onSav
   const remove = (classroom: AdminClassroomRow) => confirmAction(setConfirm, { title: 'Eliminar sala', message: classroom.sections || classroom.schedules ? `La sala ${classroom.name} está en uso. Debes quitarla de secciones u horarios antes de eliminarla.` : `Confirma que quieres eliminar la sala ${classroom.name}.`, danger: true, action: async () => { await deleteAdminClassroom(classroom.id); onSaved('Sala eliminada correctamente.'); } });
   return <div className="course-admin-view"><header className="assignment-header"><div><h2>Salas</h2><p>Administra espacios físicos, piso, capacidad y tipo.</p></div>{canManage && <button className="primary-button" onClick={() => setModal({ type: 'classroom', mode: 'create' })}><Plus size={17} />Crear sala</button>}</header><div className="assignment-filters labelled-filters classroom-filters"><label className="admin-search"><span>Buscar sala</span><div><Search size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Nombre, tipo o capacidad" /></div></label><label>Tipo<select value={type} onChange={(event) => setType(event.target.value)}><option value="">Todos los tipos</option><option value="aula">Aula</option><option value="laboratorio">Laboratorio</option><option value="biblioteca">Biblioteca</option><option value="gimnasio">Gimnasio</option><option value="otro">Otro</option></select></label><label>Piso<select value={floor} onChange={(event) => setFloor(event.target.value)}><option value="">Todos los pisos</option>{floorOptions.map((item) => <option key={item} value={item}>Piso {item}</option>)}</select></label><label>Estado<select value={status} onChange={(event) => setStatus(event.target.value as typeof status)}><option value="all">Todos</option><option value="active">Activas</option><option value="inactive">Inactivas</option></select></label><label>Capacidad mínima<input type="number" min="1" value={minCapacity} onChange={(event) => setMinCapacity(event.target.value)} placeholder="Ej: 30" /></label></div><div className="classroom-table"><div className="classroom-row head"><span>Sala</span><span>Tipo</span><span>Piso</span><span>Capacidad</span><span>Secciones asociadas</span><span>Estado</span><span>Acciones</span></div>{visible.map((classroom) => <div key={classroom.id} className="classroom-row"><span><strong>{classroom.name}</strong><small>{classroom.schedules} horarios</small></span><span>{classroom.type}</span><span>Piso {classroom.floor}</span><span>{classroom.capacity} cupos</span><span>{classroom.sections}</span><StatusBadge active={classroom.isActive} />{canManage && <div className="admin-row-actions"><button onClick={() => setModal({ type: 'classroom', mode: 'edit', row: classroom })}><Edit3 size={15} />Editar</button><button className={classroom.isActive ? 'danger-button' : 'secondary-button'} onClick={() => toggle(classroom)}>{classroom.isActive ? 'Desactivar' : 'Activar'}</button><button className="danger-button" onClick={() => remove(classroom)}><Trash2 size={15} />Eliminar</button></div>}</div>)}</div>{!rows.length && <div className="admin-empty"><Search size={22} /><strong>Sin salas</strong><span>No se encontraron salas con esos filtros.</span></div>}<Pager page={page} total={total} onPage={setPage} /></div>;
 }
+
+function ScheduleModal({ row, bundle, onClose, onSaved }: { row?: AdminScheduleRow; bundle: AdminBundle; onClose: () => void; onSaved: (message: string) => void }) {
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const title = row ? 'Editar horario' : 'Crear horario';
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError('');
+    const fd = new FormData(event.currentTarget);
+    const payload: AdminSchedulePayload = {
+      teacherId: String(fd.get('teacherId') ?? ''),
+      sectionId: String(fd.get('sectionId') ?? ''),
+      subjectId: String(fd.get('subjectId') ?? ''),
+      classroomId: String(fd.get('classroomId') ?? ''),
+      weekday: Number(fd.get('weekday') ?? -1),
+      startsAt: String(fd.get('startsAt') ?? ''),
+      endsAt: String(fd.get('endsAt') ?? '')
+    };
+    if (!payload.teacherId) return setError('Selecciona un profesor.');
+    if (!payload.sectionId) return setError('Selecciona un curso/sección.');
+    if (!payload.subjectId) return setError('Selecciona una asignatura.');
+    if (!payload.classroomId) return setError('Selecciona una sala.');
+    if (Number.isNaN(payload.weekday) || payload.weekday < 0) return setError('Selecciona un día.');
+    if (!payload.startsAt || !payload.endsAt || payload.startsAt >= payload.endsAt) return setError('La hora de inicio debe ser menor que la hora de término.');
+    try {
+      setSaving(true);
+      row ? await updateAdminSchedule(row.id, payload) : await createAdminSchedule(payload);
+      onSaved(row ? 'Horario actualizado correctamente.' : 'Horario creado correctamente.');
+    } catch (err) {
+      const message = (err as { response?: { data?: { message?: string } } }).response?.data?.message;
+      setError(message ?? 'No se pudo guardar el horario.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function requestClose() {
+    if (!dirty) onClose();
+    else onClose();
+  }
+
+  return (
+    <div className="admin-modal-backdrop" role="dialog" aria-modal="true" onMouseDown={(event) => { if (event.target === event.currentTarget) requestClose(); }}>
+      <form className="admin-modal schedule-modal" onSubmit={submit} onInput={() => { setDirty(true); setError(''); }}>
+        <header><div><span>Gestión académica</span><h2>{title}</h2></div><button type="button" onClick={requestClose}>x</button></header>
+        <div className="admin-form-grid">
+          <SelectField label="Profesor" name="teacherId" options={bundle.summary.options.teachers} defaultValue={row?.teacherId} placeholder="Selecciona un profesor" required />
+          <SelectField label="Curso/sección" name="sectionId" options={bundle.summary.options.sections} defaultValue={row?.sectionId} placeholder="Selecciona una sección" required />
+          <SelectField label="Asignatura" name="subjectId" options={bundle.summary.options.subjects} defaultValue={row?.subjectId} placeholder="Selecciona una asignatura" required />
+          <SelectField label="Sala" name="classroomId" options={bundle.summary.options.classrooms} defaultValue={row?.classroomId} placeholder="Selecciona una sala" required />
+          <SelectField label="Día" name="weekday" options={weekdayOptions} defaultValue={row ? String(row.weekday) : undefined} placeholder="Selecciona un día" required />
+          <label>Hora inicio<input name="startsAt" type="time" defaultValue={row?.startsAt ?? ''} required /></label>
+          <label>Hora término<input name="endsAt" type="time" defaultValue={row?.endsAt ?? ''} required /></label>
+        </div>
+        {error && <p className="admin-modal-error">{error}</p>}
+        <footer><button type="button" className="secondary-button" onClick={requestClose}>Cancelar</button><button className="primary-button" disabled={saving}>{saving ? 'Guardando...' : 'Guardar horario'}</button></footer>
+      </form>
+    </div>
+  );
+}
+
+function AcademicSchedulesPage({ bundle, canManage, onSaved, setConfirm }: { bundle: AdminBundle; canManage: boolean; onSaved: (message: string) => void; setConfirm: (confirm: ConfirmState | null) => void }) {
+  const [query, setQuery] = useState('');
+  const [sectionId, setSectionId] = useState('');
+  const [teacherId, setTeacherId] = useState('');
+  const [subjectId, setSubjectId] = useState('');
+  const [classroomId, setClassroomId] = useState('');
+  const [weekday, setWeekday] = useState('');
+  const [status, setStatus] = useState<'all' | 'active' | 'inactive'>('all');
+  const [editing, setEditing] = useState<AdminScheduleRow | null>(null);
+  const [creating, setCreating] = useState(false);
+  const rows = bundle.schedules.filter((schedule) =>
+    textIncludes([schedule.weekdayName, schedule.startsAt, schedule.endsAt, schedule.course, schedule.section, schedule.subject, schedule.teacher, schedule.classroom, schedule.isActive ? 'activo' : 'inactivo'], query) &&
+    (!sectionId || schedule.sectionId === sectionId) &&
+    (!teacherId || schedule.teacherId === teacherId) &&
+    (!subjectId || schedule.subjectId === subjectId) &&
+    (!classroomId || schedule.classroomId === classroomId) &&
+    (!weekday || String(schedule.weekday) === weekday) &&
+    (status === 'all' || (status === 'active' ? schedule.isActive : !schedule.isActive))
+  );
+  const { page, total, setPage, visible } = usePagedRows(rows, 10);
+  const hasFilters = Boolean(query || sectionId || teacherId || subjectId || classroomId || weekday || status !== 'all');
+  const resetFilters = () => {
+    setQuery('');
+    setSectionId('');
+    setTeacherId('');
+    setSubjectId('');
+    setClassroomId('');
+    setWeekday('');
+    setStatus('all');
+  };
+  const toggle = (schedule: AdminScheduleRow) => confirmAction(setConfirm, {
+    title: `${schedule.isActive ? 'Desactivar' : 'Activar'} horario`,
+    message: `Confirma que quieres ${schedule.isActive ? 'desactivar' : 'activar'} ${schedule.subject} de ${schedule.weekdayName} ${schedule.startsAt}-${schedule.endsAt}.`,
+    danger: schedule.isActive,
+    action: async () => { await setAdminScheduleStatus(schedule.id, !schedule.isActive); onSaved(schedule.isActive ? 'Horario desactivado correctamente.' : 'Horario activado correctamente.'); }
+  });
+  const remove = (schedule: AdminScheduleRow) => confirmAction(setConfirm, {
+    title: 'Eliminar horario',
+    message: `Confirma que quieres eliminar ${schedule.subject} de ${schedule.weekdayName} ${schedule.startsAt}-${schedule.endsAt}.`,
+    danger: true,
+    action: async () => { await deleteAdminSchedule(schedule.id); onSaved('Horario eliminado correctamente.'); }
+  });
+
+  return (
+    <div className="course-admin-view">
+      <header className="assignment-header"><div><h2>Horarios</h2><p>Administra clases por profesor, sección, asignatura, sala, día y bloque horario.</p></div>{canManage && <button className="primary-button" onClick={() => setCreating(true)}><Plus size={17} />Crear horario</button>}</header>
+      <div className="assignment-filters labelled-filters schedule-filters">
+        <label className="admin-search"><span>Búsqueda</span><div><Search size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar por curso, profesor, asignatura o sala" /></div></label>
+        <label>Curso/sección<select value={sectionId} onChange={(event) => setSectionId(event.target.value)}><option value="">Todos</option>{bundle.sections.map((section) => <option key={section.id} value={section.id}>{section.course} {section.name}</option>)}</select></label>
+        <label>Profesor<select value={teacherId} onChange={(event) => setTeacherId(event.target.value)}><option value="">Todos</option>{bundle.teachers.map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}</select></label>
+        <label>Asignatura<select value={subjectId} onChange={(event) => setSubjectId(event.target.value)}><option value="">Todas</option>{bundle.subjects.map((subject) => <option key={subject.id} value={subject.id}>{subject.name}</option>)}</select></label>
+        <label>Sala<select value={classroomId} onChange={(event) => setClassroomId(event.target.value)}><option value="">Todas</option>{bundle.classrooms.map((classroom) => <option key={classroom.id} value={classroom.id}>{classroom.name}</option>)}</select></label>
+        <label>Día<select value={weekday} onChange={(event) => setWeekday(event.target.value)}><option value="">Todos</option>{weekdayOptions.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
+        <label>Estado<select value={status} onChange={(event) => setStatus(event.target.value as typeof status)}><option value="all">Todos</option><option value="active">Activos</option><option value="inactive">Inactivos</option></select></label>
+        <button type="button" className="secondary-button" onClick={resetFilters} disabled={!hasFilters}>Limpiar filtros</button>
+      </div>
+      <div className="schedule-table">
+        <div className="schedule-row head"><span>Día</span><span>Hora</span><span>Curso/sección</span><span>Asignatura</span><span>Profesor</span><span>Sala</span><span>Estado</span><span>Acciones</span></div>
+        {visible.map((schedule) => <div key={schedule.id} className="schedule-row"><span><strong>{schedule.weekdayName}</strong></span><span>{schedule.startsAt} - {schedule.endsAt}</span><span>{schedule.course} {schedule.section}</span><span>{schedule.subject}</span><span>{schedule.teacher}</span><span>{schedule.classroom}</span><StatusBadge active={schedule.isActive} />{canManage && <div className="admin-row-actions"><button onClick={() => setEditing(schedule)}><Edit3 size={15} />Editar</button><button className={schedule.isActive ? 'danger-button' : 'secondary-button'} onClick={() => toggle(schedule)}>{schedule.isActive ? 'Desactivar' : 'Activar'}</button><button className="danger-button" onClick={() => remove(schedule)}><Trash2 size={15} />Eliminar</button></div>}</div>)}
+      </div>
+      {!rows.length && <div className="admin-empty"><Search size={22} /><strong>Sin horarios</strong><span>No se encontraron horarios con esos filtros.</span></div>}
+      <Pager page={page} total={total} onPage={setPage} />
+      {(creating || editing) && <ScheduleModal row={editing ?? undefined} bundle={bundle} onClose={() => { setCreating(false); setEditing(null); }} onSaved={(message) => { setCreating(false); setEditing(null); onSaved(message); }} />}
+    </div>
+  );
+}
 export function AdminPage({ user }: { user: User }) {
   const [bundle, setBundle] = useState<AdminBundle | null>(null);
   const [tab, setTab] = useState<AdminTab>('users');
@@ -946,6 +1091,7 @@ export function AdminPage({ user }: { user: User }) {
           {tab === 'academic-courses' && <AcademicCoursesPage bundle={bundle} canManage={canManage} setModal={setModal} setConfirm={setConfirm} onSaved={done} />}
           {tab === 'academic-sections' && <AcademicSectionsPage bundle={bundle} canManage={canManage} setModal={setModal} setConfirm={setConfirm} onSaved={done} />}
           {tab === 'academic-classrooms' && <AcademicClassroomsPage bundle={bundle} canManage={canManage} setModal={setModal} setConfirm={setConfirm} onSaved={done} />}
+          {tab === 'academic-schedules' && <AcademicSchedulesPage bundle={bundle} canManage={canManage} onSaved={done} setConfirm={setConfirm} />}
 
           {tab === 'subjects' && <AdminTable headers={['Asignatura', 'Profesores', 'Secciones', 'Acciones']} rows={filtered as AdminSubjectRow[]} render={(row) => <><div><strong>{row.name}</strong><small>{row.code}</small></div><span>{row.teachers.map((item) => item.name).join(', ') || 'Sin profesor'}</span><span>{row.sections.map((item) => `${item.course} ${item.name}`).join(', ') || 'Sin sección'}</span><div className="admin-row-actions">{canManage && <button onClick={() => setModal({ type: 'subject', mode: 'edit', row })}><Edit3 size={16} />Editar</button>}</div></>} />}
 

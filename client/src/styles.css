@@ -324,6 +324,65 @@
   min-width: 0;
 }
 
+.schedule-filters {
+  grid-template-columns: minmax(240px, 1.5fr) repeat(auto-fit, minmax(136px, 1fr));
+}
+
+.schedule-filters label {
+  display: grid;
+  gap: 7px;
+  color: #334155;
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.schedule-filters select {
+  min-height: 42px;
+  border: 1px solid #cbd7e4;
+  border-radius: 7px;
+  padding: 9px 10px;
+  background: #fff;
+}
+
+.schedule-filters label,
+.schedule-filters select {
+  min-width: 0;
+}
+
+.schedule-table {
+  display: grid;
+  gap: 9px;
+}
+
+.schedule-row {
+  display: grid;
+  grid-template-columns: minmax(82px, 0.8fr) minmax(92px, 0.8fr) minmax(128px, 1fr) minmax(126px, 1fr) minmax(132px, 1fr) minmax(88px, 0.8fr) minmax(84px, 0.7fr) minmax(210px, 1.4fr);
+  gap: 10px;
+  align-items: center;
+  padding: 13px;
+  border: 1px solid #d8e2ec;
+  border-radius: 8px;
+  background: #fbfdff;
+  min-width: 0;
+}
+
+.schedule-row.head {
+  background: #f8fafc;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.schedule-row span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.schedule-row strong {
+  display: block;
+}
+
 .admin-table-card strong,
 .admin-table-card small {
   display: block;
@@ -1638,6 +1697,14 @@
     grid-template-columns: 1fr;
   }
 
+  .schedule-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .schedule-row.head {
+    display: none;
+  }
+
   .admin-row-actions {
     justify-content: flex-start;
   }
@@ -1659,6 +1726,10 @@
   .admin-toolbar {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .schedule-row {
+    grid-template-columns: 1fr;
   }
 
   .assignment-header,

@@ -134,3 +134,24 @@ export const subjectTeacherSchema = z.object({
   teacherId: z.string().trim().min(1),
   sectionId: z.string().trim().min(1).optional()
 });
+
+const timeSchema = z.string().trim().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Hora invalida. Usa HH:mm.');
+
+const scheduleBaseSchema = z.object({
+  teacherId: z.string().trim().min(1, 'Profesor requerido'),
+  sectionId: z.string().trim().min(1, 'Seccion requerida'),
+  subjectId: z.string().trim().min(1, 'Asignatura requerida'),
+  classroomId: z.string().trim().min(1, 'Sala requerida'),
+  weekday: z.coerce.number().int().min(0, 'Dia requerido').max(6, 'Dia invalido'),
+  startsAt: timeSchema,
+  endsAt: timeSchema
+});
+
+export const createScheduleSchema = scheduleBaseSchema.refine((value) => value.startsAt < value.endsAt, {
+  path: ['endsAt'],
+  message: 'La hora de inicio debe ser menor que la hora de termino.'
+});
+
+export const updateScheduleSchema = scheduleBaseSchema.partial().refine((value) => Object.keys(value).length > 0, {
+  message: 'Debe enviar al menos un campo.'
+});

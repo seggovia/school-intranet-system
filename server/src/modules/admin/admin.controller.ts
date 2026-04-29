@@ -132,6 +132,26 @@ export class AdminController {
     return service.classrooms().then((data) => res.json(data));
   }
 
+  schedules(_req: Request, res: Response) {
+    return service.schedules().then((data) => res.json(data));
+  }
+
+  createSchedule(req: Request, res: Response) {
+    return service.createSchedule(req.body).then((data) => res.status(201).json(data));
+  }
+
+  updateSchedule(req: Request, res: Response) {
+    return service.updateSchedule(String(req.params.id), req.body).then((data) => res.json(data));
+  }
+
+  setScheduleStatus(req: Request, res: Response) {
+    return service.setScheduleStatus(String(req.params.id), req.body).then((data) => res.json(data));
+  }
+
+  deleteSchedule(req: Request, res: Response) {
+    return service.deleteSchedule(String(req.params.id)).then((data) => res.json(data));
+  }
+
   createClassroom(req: Request, res: Response) {
     return service.createClassroom(req.body).then((data) => res.status(201).json(data));
   }

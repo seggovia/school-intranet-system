@@ -368,11 +368,15 @@ model ClassSchedule {
   weekday     Int
   startsAt    String
   endsAt      String
+  isActive    Boolean   @default(true)
   section     Section   @relation(fields: [sectionId], references: [id])
   subject     Subject   @relation(fields: [subjectId], references: [id])
   teacher     Teacher   @relation(fields: [teacherId], references: [id])
   classroom   Classroom @relation(fields: [classroomId], references: [id])
 
+  @@index([teacherId, weekday, startsAt, endsAt])
+  @@index([classroomId, weekday, startsAt, endsAt])
+  @@index([sectionId, weekday, startsAt, endsAt])
   @@map("class_schedules")
 }
 
