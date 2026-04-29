@@ -470,7 +470,6 @@ export interface AdminSummary {
   courses: number;
   sections: number;
   subjects: number;
-  temporaryPassword: string;
   options: {
     roles: AdminOption[];
     levels: AdminOption[];
@@ -574,6 +573,24 @@ export interface AdminClassroomRow {
   schedules: number;
 }
 
+export interface AdminScheduleRow {
+  id: string;
+  teacherId: string;
+  teacher: string;
+  sectionId: string;
+  section: string;
+  course: string;
+  subjectId: string;
+  subject: string;
+  classroomId: string;
+  classroom: string;
+  weekday: number;
+  weekdayName: string;
+  startsAt: string;
+  endsAt: string;
+  isActive: boolean;
+}
+
 export interface AdminSubjectRow {
   id: string;
   name: string;
@@ -592,5 +609,6 @@ export interface AdminBundle {
   courses: AdminCourseRow[];
   sections: AdminSectionRow[];
   classrooms: AdminClassroomRow[];
+  schedules: AdminScheduleRow[];
   subjects: AdminSubjectRow[];
 }

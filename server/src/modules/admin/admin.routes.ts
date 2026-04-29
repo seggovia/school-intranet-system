@@ -7,6 +7,7 @@ import {
   createAdminUserSchema,
   createClassroomSchema,
   createCourseSchema,
+  createScheduleSchema,
   createSectionSchema,
   createSubjectSchema,
   guardianStudentsSchema,
@@ -21,6 +22,7 @@ import {
   updateAdminUserSchema,
   updateClassroomSchema,
   updateCourseSchema,
+  updateScheduleSchema,
   updateSectionSchema,
   updateSubjectSchema
 } from './admin.validators.js';
@@ -77,6 +79,12 @@ adminRoutes.post('/classrooms', managers, validateBody(createClassroomSchema), a
 adminRoutes.patch('/classrooms/:id', managers, validateParams(idParamSchema), validateBody(updateClassroomSchema), asyncHandler(controller.updateClassroom.bind(controller)));
 adminRoutes.patch('/classrooms/:id/status', managers, validateParams(idParamSchema), validateBody(statusSchema), asyncHandler(controller.setClassroomStatus.bind(controller)));
 adminRoutes.delete('/classrooms/:id', managers, validateParams(idParamSchema), asyncHandler(controller.deleteClassroom.bind(controller)));
+
+adminRoutes.get('/schedules', managers, asyncHandler(controller.schedules.bind(controller)));
+adminRoutes.post('/schedules', managers, validateBody(createScheduleSchema), asyncHandler(controller.createSchedule.bind(controller)));
+adminRoutes.patch('/schedules/:id', managers, validateParams(idParamSchema), validateBody(updateScheduleSchema), asyncHandler(controller.updateSchedule.bind(controller)));
+adminRoutes.patch('/schedules/:id/status', managers, validateParams(idParamSchema), validateBody(statusSchema), asyncHandler(controller.setScheduleStatus.bind(controller)));
+adminRoutes.delete('/schedules/:id', managers, validateParams(idParamSchema), asyncHandler(controller.deleteSchedule.bind(controller)));
 
 adminRoutes.get('/subjects', managers, asyncHandler(controller.subjects.bind(controller)));
 adminRoutes.post('/subjects', managers, validateBody(createSubjectSchema), asyncHandler(controller.createSubject.bind(controller)));

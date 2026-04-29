@@ -6,6 +6,7 @@ import type {
   createClassroomSchema,
   createCourseSchema,
   createSectionSchema,
+  createScheduleSchema,
   createSubjectSchema,
   guardianStudentsSchema,
   guardianStudentDeleteSchema,
@@ -18,13 +19,13 @@ import type {
   updateClassroomSchema,
   updateCourseSchema,
   updateSectionSchema,
+  updateScheduleSchema,
   updateSubjectSchema
 } from './admin.validators.js';
 import type { z } from 'zod';
 
 const repository = new AdminRepository();
 const currentYear = () => new Date().getFullYear();
-const temporaryPassword = 'demo1234';
 
 type RoleName = 'admin' | 'director' | 'teacher' | 'student' | 'guardian' | 'inspector';
 type CreateUserInput = z.infer<typeof createAdminUserSchema>;
@@ -39,6 +40,8 @@ type CreateCourseInput = z.infer<typeof createCourseSchema>;
 type UpdateCourseInput = z.infer<typeof updateCourseSchema>;
 type CreateSectionInput = z.infer<typeof createSectionSchema>;
 type UpdateSectionInput = z.infer<typeof updateSectionSchema>;
+type CreateScheduleInput = z.infer<typeof createScheduleSchema>;
+type UpdateScheduleInput = z.infer<typeof updateScheduleSchema>;
 type CreateClassroomInput = z.infer<typeof createClassroomSchema>;
 type UpdateClassroomInput = z.infer<typeof updateClassroomSchema>;
 type CreateSubjectInput = z.infer<typeof createSubjectSchema>;
@@ -169,6 +172,28 @@ function serializeClassroom(classroom: Awaited<ReturnType<AdminRepository['listC
   };
 }
 
+const weekdayNames = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'];
+
+function serializeSchedule(schedule: Awaited<ReturnType<AdminRepository['listSchedules']>>[number]) {
+  return {
+    id: schedule.id,
+    teacherId: schedule.teacherId,
+    teacher: schedule.teacher.user.name,
+    sectionId: schedule.sectionId,
+    section: schedule.section.name,
+    course: schedule.section.course.name,
+    subjectId: schedule.subjectId,
+    subject: schedule.subject.name,
+    classroomId: schedule.classroomId,
+    classroom: schedule.classroom.name,
+    weekday: schedule.weekday,
+    weekdayName: weekdayNames[schedule.weekday] ?? `Dia ${schedule.weekday}`,
+    startsAt: schedule.startsAt,
+    endsAt: schedule.endsAt,
+    isActive: schedule.isActive
+  };
+}
+
 function serializeSubject(subject: Awaited<ReturnType<AdminRepository['listSubjects']>>[number]) {
   return {
     id: subject.id,
@@ -202,7 +227,6 @@ export class AdminService {
       courses,
       sections,
       subjects,
-      temporaryPassword,
       options: {
         roles: roles.map((role) => ({ id: role.name, label: role.label })),
         levels: levels.map((level) => ({ id: level.id, label: level.name })),
@@ -240,7 +264,8 @@ export class AdminService {
 
     const roles = await repository.findRoles([role]);
     if (roles.length !== 1) throw new HttpError(400, 'El rol indicado no existe.');
-    const passwordHash = await bcrypt.hash(input.password ?? temporaryPassword, 12);
+    if (!input.password) throw new HttpError(400, 'Contraseña requerida.');
+    const passwordHash = await bcrypt.hash(input.password, 12);
 
     const user = await repository.transaction(async (tx) => {
       const created = await repository.createUser(tx, {
@@ -277,8 +302,6 @@ export class AdminService {
 
     const roles = input.role ? await repository.findRoles([input.role]) : [];
     if (input.role && roles.length !== 1) throw new HttpError(400, 'El rol indicado no existe.');
-    const passwordHash = input.password ? await bcrypt.hash(input.password, 12) : undefined;
-
     const user = await repository.transaction(async (tx) => {
       const updatedName = input.name ? fullName(input) : undefined;
       const updated = await repository.updateUser(tx, id, {
@@ -286,7 +309,6 @@ export class AdminService {
         email: input.email,
         department: input.department,
         avatar: updatedName ? initials(updatedName) : undefined,
-        passwordHash
       });
       if (input.role) {
         await repository.replaceRoles(tx, id, roles.map((role) => role.id));
@@ -308,8 +330,8 @@ export class AdminService {
   async resetUserPassword(id: string, input?: { password?: string }) {
     const current = await repository.findUserById(id);
     if (!current) throw new HttpError(404, 'Usuario no encontrado.');
-    const password = input?.password || temporaryPassword;
-    return { user: serializeUser(await repository.resetPassword(id, await bcrypt.hash(password, 12))), temporaryPassword: password };
+    if (!input?.password) throw new HttpError(400, 'Nueva contraseña requerida.');
+    return { user: serializeUser(await repository.resetPassword(id, await bcrypt.hash(input.password, 12))) };
   }
 
   async students() {
@@ -498,7 +520,7 @@ export class AdminService {
   async setCourseStatus(id: string, input: StatusInput) {
     const current = (await repository.listCourses()).find((item) => item.id === id);
     if (!current) throw new HttpError(404, 'Curso no encontrado.');
-    if (!input.isActive && current.sections.some((section) => section.enrollments.length > 0)) throw new HttpError(400, 'No se puede desactivar un curso con estudiantes activos en sus secciones.');
+    if (!input.isActive && current.sections.some((section) => section.enrollments.length > 0)) throw new HttpError(409, 'No se puede desactivar un curso con estudiantes activos en sus secciones.');
     return serializeCourse(await repository.setCourseActive(id, input.isActive));
   }
 
@@ -527,21 +549,108 @@ export class AdminService {
   async setSectionStatus(id: string, input: StatusInput) {
     const section = await repository.findSection(id);
     if (!section) throw new HttpError(404, 'Seccion no encontrada.');
-    if (!input.isActive && section.enrollments.length) throw new HttpError(400, 'No se puede desactivar una seccion con estudiantes asignados.');
+    if (!input.isActive && section.enrollments.length) throw new HttpError(409, 'No se puede desactivar una seccion con estudiantes asignados.');
     return serializeSection(await repository.setSectionActive(id, input.isActive));
   }
 
   async deleteSection(id: string) {
     const section = await repository.findSection(id);
     if (!section) throw new HttpError(404, 'Seccion no encontrada.');
-    if (section.enrollments.length) throw new HttpError(400, 'No se puede eliminar una seccion con estudiantes asignados.');
-    if (section.subjects.length || section.schedules.length) throw new HttpError(400, 'No se puede eliminar una seccion en uso por asignaturas u horarios.');
+    if (section.enrollments.length) throw new HttpError(409, 'No se puede eliminar una seccion con estudiantes asignados.');
+    if (section.subjects.length || section.schedules.length) throw new HttpError(409, 'No se puede eliminar una seccion en uso por asignaturas u horarios.');
     await repository.deleteSection(id);
     return { ok: true };
   }
 
   async classrooms() {
     return (await repository.listClassrooms()).map(serializeClassroom);
+  }
+
+  async schedules() {
+    return (await repository.listSchedules()).map(serializeSchedule);
+  }
+
+  private async assertScheduleAvailable(input: CreateScheduleInput & { id?: string }) {
+    if (input.startsAt >= input.endsAt) throw new HttpError(400, 'La hora de inicio debe ser menor que la hora de termino.');
+    const conflicts = await repository.findScheduleConflicts(input);
+    const duplicate = conflicts.find((item) =>
+      item.teacherId === input.teacherId &&
+      item.sectionId === input.sectionId &&
+      item.subjectId === input.subjectId &&
+      item.weekday === input.weekday &&
+      item.startsAt === input.startsAt
+    );
+    if (duplicate) {
+      throw new HttpError(409, `Ya existe un horario para ${duplicate.teacher.user.name} con ${duplicate.section.course.name} ${duplicate.section.name}, ${duplicate.subject.name}, ${weekdayNames[input.weekday]} a las ${input.startsAt}.`);
+    }
+    const teacherConflict = conflicts.find((item) => item.teacherId === input.teacherId);
+    if (teacherConflict) {
+      throw new HttpError(409, `Choque de horario: el profesor ${teacherConflict.teacher.user.name} ya tiene ${teacherConflict.subject.name} con ${teacherConflict.section.course.name} ${teacherConflict.section.name} de ${teacherConflict.startsAt} a ${teacherConflict.endsAt}.`);
+    }
+    const classroomConflict = conflicts.find((item) => item.classroomId === input.classroomId);
+    if (classroomConflict) {
+      throw new HttpError(409, `Choque de horario: la sala ${classroomConflict.classroom.name} ya esta ocupada por ${classroomConflict.subject.name} de ${classroomConflict.startsAt} a ${classroomConflict.endsAt}.`);
+    }
+    const sectionConflict = conflicts.find((item) => item.sectionId === input.sectionId);
+    if (sectionConflict) {
+      throw new HttpError(409, `Choque de horario: la seccion ${sectionConflict.section.course.name} ${sectionConflict.section.name} ya tiene ${sectionConflict.subject.name} de ${sectionConflict.startsAt} a ${sectionConflict.endsAt}.`);
+    }
+  }
+
+  async createSchedule(input: CreateScheduleInput) {
+    await this.assertScheduleAvailable(input);
+    const created = await repository.transaction(async (tx) => {
+      await repository.linkScheduleRelations(tx, input);
+      return repository.createSchedule(tx, input);
+    });
+    return (await this.schedules()).find((item) => item.id === created.id);
+  }
+
+  async updateSchedule(id: string, input: UpdateScheduleInput) {
+    const current = await repository.findSchedule(id);
+    if (!current) throw new HttpError(404, 'Horario no encontrado.');
+    const next = {
+      id,
+      teacherId: input.teacherId ?? current.teacherId,
+      sectionId: input.sectionId ?? current.sectionId,
+      subjectId: input.subjectId ?? current.subjectId,
+      classroomId: input.classroomId ?? current.classroomId,
+      weekday: input.weekday ?? current.weekday,
+      startsAt: input.startsAt ?? current.startsAt,
+      endsAt: input.endsAt ?? current.endsAt
+    };
+    await this.assertScheduleAvailable(next);
+    await repository.transaction(async (tx) => {
+      await repository.linkScheduleRelations(tx, next);
+      await repository.updateSchedule(tx, id, input);
+    });
+    return (await this.schedules()).find((item) => item.id === id);
+  }
+
+  async setScheduleStatus(id: string, input: StatusInput) {
+    const schedule = await repository.findSchedule(id);
+    if (!schedule) throw new HttpError(404, 'Horario no encontrado.');
+    if (input.isActive) {
+      await this.assertScheduleAvailable({
+        id,
+        teacherId: schedule.teacherId,
+        sectionId: schedule.sectionId,
+        subjectId: schedule.subjectId,
+        classroomId: schedule.classroomId,
+        weekday: schedule.weekday,
+        startsAt: schedule.startsAt,
+        endsAt: schedule.endsAt
+      });
+    }
+    await repository.setScheduleActive(id, input.isActive);
+    return (await this.schedules()).find((item) => item.id === id);
+  }
+
+  async deleteSchedule(id: string) {
+    const schedule = await repository.findSchedule(id);
+    if (!schedule) throw new HttpError(404, 'Horario no encontrado.');
+    await repository.deleteSchedule(id);
+    return { ok: true };
   }
 
   async createClassroom(input: CreateClassroomInput) {
@@ -563,14 +672,14 @@ export class AdminService {
   async setClassroomStatus(id: string, input: StatusInput) {
     const classroom = await repository.findClassroom(id);
     if (!classroom) throw new HttpError(404, 'Sala no encontrada.');
-    if (!input.isActive && (classroom.sections.length || classroom.schedules.length)) throw new HttpError(400, 'No se puede desactivar una sala en uso.');
+    if (!input.isActive && (classroom.sections.length || classroom.schedules.length)) throw new HttpError(409, 'No se puede desactivar una sala en uso.');
     return serializeClassroom(await repository.setClassroomActive(id, input.isActive));
   }
 
   async deleteClassroom(id: string) {
     const classroom = await repository.findClassroom(id);
     if (!classroom) throw new HttpError(404, 'Sala no encontrada.');
-    if (classroom.sections.length || classroom.schedules.length) throw new HttpError(400, 'No se puede eliminar una sala en uso.');
+    if (classroom.sections.length || classroom.schedules.length) throw new HttpError(409, 'No se puede eliminar una sala en uso.');
     await repository.deleteClassroom(id);
     return { ok: true };
   }

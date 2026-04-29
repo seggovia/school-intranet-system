@@ -4,6 +4,7 @@ import type {
   AdminClassroomRow,
   AdminCourseRow,
   AdminGuardianRow,
+  AdminScheduleRow,
   AdminSectionRow,
   AdminStudentRow,
   AdminSubjectRow,
@@ -68,11 +69,16 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && raw && !original._retry) {
       original._retry = true;
       const current = JSON.parse(raw) as AuthSession;
-      const { data } = await axios.post<AuthSession>('/api/auth/refresh', { refreshToken: current.refreshToken });
-      const nextSession = { ...current, ...data };
-      localStorage.setItem(sessionStorageKey, JSON.stringify(nextSession));
-      original.headers.Authorization = `Bearer ${nextSession.accessToken}`;
-      return api(original);
+      try {
+        const { data } = await axios.post<AuthSession>('/api/auth/refresh', { refreshToken: current.refreshToken });
+        const nextSession = { ...current, ...data };
+        localStorage.setItem(sessionStorageKey, JSON.stringify(nextSession));
+        original.headers.Authorization = `Bearer ${nextSession.accessToken}`;
+        return api(original);
+      } catch {
+        localStorage.removeItem(sessionStorageKey);
+        window.dispatchEvent(new CustomEvent('school-session-expired'));
+      }
     }
     return Promise.reject(error);
   }
@@ -158,6 +164,16 @@ function normalizeSubjectDetail(input: SubjectDetailData | LegacySubjectDetail):
 
 export async function login(email: string, password: string) {
   const { data } = await api.post<AuthSession>('/auth/login', { email, password });
+  return data;
+}
+
+export async function requestPasswordReset(email: string) {
+  const { data } = await api.post<{ message: string; resetUrl?: string }>('/auth/forgot-password', { email });
+  return data;
+}
+
+export async function resetPassword(input: { token: string; password: string }) {
+  const { data } = await api.post<{ ok: true; message: string }>('/auth/reset-password', input);
   return data;
 }
 
@@ -542,9 +558,10 @@ export async function loadAdminSummary() {
 export type AdminCourseSectionInput = { name: string; teacherId?: string; classroomId?: string };
 export type AdminCoursePayload = { name: string; levelId: string; sections?: AdminCourseSectionInput[] };
 export type AdminClassroomPayload = { name: string; capacity: number; type?: AdminClassroomRow['type']; floor?: number };
+export type AdminSchedulePayload = { teacherId: string; sectionId: string; subjectId: string; classroomId: string; weekday: number; startsAt: string; endsAt: string };
 
 export async function loadAdminBundle(): Promise<AdminBundle> {
-  const [summary, users, students, teachers, guardians, courses, sections, classrooms, subjects] = await Promise.all([
+  const [summary, users, students, teachers, guardians, courses, sections, classrooms, schedules, subjects] = await Promise.all([
     loadAdminSummary(),
     api.get<AdminUserRow[]>('/admin/users').then((res) => res.data),
     api.get<AdminStudentRow[]>('/admin/students').then((res) => res.data),
@@ -553,9 +570,10 @@ export async function loadAdminBundle(): Promise<AdminBundle> {
     api.get<AdminCourseRow[]>('/admin/courses').then((res) => res.data),
     api.get<AdminSectionRow[]>('/admin/sections').then((res) => res.data),
     api.get<AdminClassroomRow[]>('/admin/classrooms').then((res) => res.data),
+    api.get<AdminScheduleRow[]>('/admin/schedules').then((res) => res.data),
     api.get<AdminSubjectRow[]>('/admin/subjects').then((res) => res.data)
   ]);
-  return { summary, users, students, teachers, guardians, courses, sections, classrooms, subjects };
+  return { summary, users, students, teachers, guardians, courses, sections, classrooms, schedules, subjects };
 }
 
 export async function createAdminUser(input: AdminUserPayload) {
@@ -574,7 +592,7 @@ export async function setAdminUserStatus(id: string, isActive: boolean) {
 }
 
 export async function resetAdminUserPassword(id: string, password?: string) {
-  const { data } = await api.patch<{ temporaryPassword: string }>(`/admin/users/${id}/reset-password`, { password });
+  const { data } = await api.patch<{ ok?: true }>(`/admin/users/${id}/reset-password`, { password });
   return data;
 }
 
@@ -695,6 +713,26 @@ export async function setAdminClassroomStatus(id: string, isActive: boolean) {
 
 export async function deleteAdminClassroom(id: string) {
   const { data } = await api.delete(`/admin/classrooms/${id}`);
+  return data;
+}
+
+export async function createAdminSchedule(input: AdminSchedulePayload) {
+  const { data } = await api.post<AdminScheduleRow>('/admin/schedules', input);
+  return data;
+}
+
+export async function updateAdminSchedule(id: string, input: Partial<AdminSchedulePayload>) {
+  const { data } = await api.patch<AdminScheduleRow>(`/admin/schedules/${id}`, input);
+  return data;
+}
+
+export async function setAdminScheduleStatus(id: string, isActive: boolean) {
+  const { data } = await api.patch<AdminScheduleRow>(`/admin/schedules/${id}/status`, { isActive });
+  return data;
+}
+
+export async function deleteAdminSchedule(id: string) {
+  const { data } = await api.delete<{ ok: true }>(`/admin/schedules/${id}`);
   return data;
 }
 

@@ -1,4 +1,5 @@
 import { FormEvent, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Eye, EyeOff, LockKeyhole, School } from 'lucide-react';
 import { login } from '../api';
 import type { AuthSession } from '../types';
@@ -62,7 +63,7 @@ export function LoginPage({ onLogin }: { onLogin: (session: AuthSession) => void
           </div>
         </div>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} noValidate>
           <label>
             Correo
             <input
@@ -100,6 +101,9 @@ export function LoginPage({ onLogin }: { onLogin: (session: AuthSession) => void
             {fieldErrors.password && <span className="field-error">{fieldErrors.password}</span>}
           </label>
           {error && <p className="form-error">{error}</p>}
+          <Link className="login-help-link" to={`/forgot-password${email.trim() ? `?email=${encodeURIComponent(email.trim())}` : ''}`}>
+            ¿Olvidaste tu contraseña?
+          </Link>
           <button className="primary-button" type="submit" disabled={loading}>
             {loading ? 'Ingresando...' : 'Ingresar'}
           </button>

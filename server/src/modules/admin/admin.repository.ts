@@ -384,4 +384,84 @@ export class AdminRepository {
     }
     return Promise.all(operations);
   }
+
+  listSchedules() {
+    return prisma.classSchedule.findMany({
+      include: {
+        section: { include: { course: true } },
+        subject: true,
+        teacher: { include: { user: true } },
+        classroom: true
+      },
+      orderBy: [{ weekday: 'asc' }, { startsAt: 'asc' }]
+    });
+  }
+
+  findSchedule(id: string) {
+    return prisma.classSchedule.findUnique({
+      where: { id },
+      include: {
+        section: { include: { course: true } },
+        subject: true,
+        teacher: { include: { user: true } },
+        classroom: true
+      }
+    });
+  }
+
+  findScheduleConflicts(input: { id?: string; teacherId: string; sectionId: string; subjectId: string; classroomId: string; weekday: number; startsAt: string; endsAt: string }) {
+    return prisma.classSchedule.findMany({
+      where: {
+        isActive: true,
+        id: input.id ? { not: input.id } : undefined,
+        weekday: input.weekday,
+        OR: [
+          { teacherId: input.teacherId },
+          { classroomId: input.classroomId },
+          { sectionId: input.sectionId },
+          { teacherId: input.teacherId, sectionId: input.sectionId, subjectId: input.subjectId, startsAt: input.startsAt }
+        ],
+        startsAt: { lt: input.endsAt },
+        endsAt: { gt: input.startsAt }
+      },
+      include: {
+        section: { include: { course: true } },
+        subject: true,
+        teacher: { include: { user: true } },
+        classroom: true
+      },
+      orderBy: [{ startsAt: 'asc' }]
+    });
+  }
+
+  createSchedule(tx: Tx, input: { teacherId: string; sectionId: string; subjectId: string; classroomId: string; weekday: number; startsAt: string; endsAt: string }) {
+    return tx.classSchedule.create({ data: input });
+  }
+
+  updateSchedule(tx: Tx, id: string, input: Partial<{ teacherId: string; sectionId: string; subjectId: string; classroomId: string; weekday: number; startsAt: string; endsAt: string }>) {
+    return tx.classSchedule.update({ where: { id }, data: input });
+  }
+
+  setScheduleActive(id: string, isActive: boolean) {
+    return prisma.classSchedule.update({ where: { id }, data: { isActive } });
+  }
+
+  deleteSchedule(id: string) {
+    return prisma.classSchedule.delete({ where: { id } });
+  }
+
+  linkScheduleRelations(tx: Tx, input: { teacherId: string; sectionId: string; subjectId: string }) {
+    return Promise.all([
+      tx.teacherSubject.upsert({
+        where: { teacherId_subjectId: { teacherId: input.teacherId, subjectId: input.subjectId } },
+        update: {},
+        create: { teacherId: input.teacherId, subjectId: input.subjectId }
+      }),
+      tx.subjectSection.upsert({
+        where: { sectionId_subjectId: { sectionId: input.sectionId, subjectId: input.subjectId } },
+        update: {},
+        create: { sectionId: input.sectionId, subjectId: input.subjectId }
+      })
+    ]);
+  }
 }

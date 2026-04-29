@@ -52,6 +52,7 @@ export class SchoolRepository {
 
   listSchedules() {
     return prisma.classSchedule.findMany({
+      where: { isActive: true },
       include: {
         section: { include: { course: true } },
         subject: true,
