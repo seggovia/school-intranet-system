@@ -1306,6 +1306,10 @@
   align-items: end;
 }
 
+.responsible-filters {
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+}
+
 .assignment-bulkbar {
   grid-template-columns: minmax(220px, 1fr) auto auto auto;
 }
@@ -1356,6 +1360,50 @@
 
 .assignment-row.subject {
   grid-template-columns: 1fr 1fr 1fr auto;
+}
+
+.responsible-modal {
+  width: min(680px, 100%);
+}
+
+.responsible-modal-body {
+  display: grid;
+  gap: 18px;
+  padding: 22px;
+}
+
+.responsible-modal-body label {
+  display: grid;
+  gap: 8px;
+  color: #34465a;
+  font-weight: 800;
+}
+
+.responsible-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.responsible-summary span {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #d8e2ec;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.responsible-summary small {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.responsible-summary strong {
+  overflow-wrap: anywhere;
 }
 
 .assignment-row strong,
@@ -1513,11 +1561,13 @@
   }
 
   .assignment-filters,
+  .responsible-filters,
   .assignment-bulkbar,
   .assignment-inline-form,
   .assignment-row,
   .assignment-row.guardian,
   .assignment-row.subject,
+  .responsible-summary,
   .classroom-filters,
   .classroom-row {
     grid-template-columns: 1fr;

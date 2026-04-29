@@ -102,7 +102,7 @@ function SelectField({ label, name, options, defaultValue, required, placeholder
       <select name={name} defaultValue={defaultValue ?? ''} required={required} className={error ? 'input-error' : undefined} onChange={(event) => onChange?.(event.target.value)}>
         <option value="">{placeholder}</option>
         {options.map((option) => (
-          <option key={option.id} value={option.id}>{option.label}{option.meta ? ` Â· ${option.meta}` : ''}</option>
+          <option key={option.id} value={option.id}>{option.label}{option.meta ? ` · ${option.meta}` : ''}</option>
         ))}
       </select>
       {help && <small className="field-help">{help}</small>}
@@ -149,7 +149,7 @@ function isRole(value: string): value is Role {
   return ['admin', 'director', 'teacher', 'student', 'guardian', 'inspector'].includes(value);
 }
 
-function PasswordInput({ name, label, value, onChange, error, help, placeholder = 'MÃ­nimo 6 caracteres' }: { name: string; label: string; value: string; onChange: (value: string) => void; error?: string; help?: string; placeholder?: string }) {
+function PasswordInput({ name, label, value, onChange, error, help, placeholder = 'Mínimo 6 caracteres' }: { name: string; label: string; value: string; onChange: (value: string) => void; error?: string; help?: string; placeholder?: string }) {
   const [visible, setVisible] = useState(false);
   return (
     <label className="password-field">
@@ -164,7 +164,7 @@ function PasswordInput({ name, label, value, onChange, error, help, placeholder 
           autoComplete="new-password"
           className={error ? 'input-error' : undefined}
         />
-        <button type="button" onClick={() => setVisible((current) => !current)} aria-label={visible ? 'Ocultar contraseÃ±a' : 'Mostrar contraseÃ±a'}>
+        <button type="button" onClick={() => setVisible((current) => !current)} aria-label={visible ? 'Ocultar contraseña' : 'Mostrar contraseña'}>
           {visible ? <EyeOff size={18} /> : <Eye size={18} />}
         </button>
       </span>
@@ -215,7 +215,7 @@ function StudentPickerModal({ students, selectedIds, onCancel, onConfirm }: { st
             </select>
           </label>
           <label>
-            SecciÃ³n
+            Sección
             <select value={section} onChange={(event) => setSection(event.target.value)}>
               <option value="">Todas las secciones</option>
               {sectionOptions.map((item) => <option key={item} value={item}>{item}</option>)}
@@ -238,7 +238,7 @@ function StudentPickerModal({ students, selectedIds, onCancel, onConfirm }: { st
                 <strong>{student.name}</strong>
                 <small>{student.email}</small>
                 <small>RUT / identificador: {student.rut || 'Sin registro'}</small>
-                <small>{student.course} Â· {student.section}</small>
+                <small>{student.course} · {student.section}</small>
               </span>
             </label>
           ))}
@@ -246,7 +246,7 @@ function StudentPickerModal({ students, selectedIds, onCancel, onConfirm }: { st
         </div>
         <footer>
           <button type="button" className="secondary-button" onClick={onCancel}>Cancelar</button>
-          <button type="button" className="primary-button" onClick={() => onConfirm(Array.from(new Set(draft)))}>Confirmar selecciÃ³n</button>
+          <button type="button" className="primary-button" onClick={() => onConfirm(Array.from(new Set(draft)))}>Confirmar selección</button>
         </footer>
       </section>
     </div>
@@ -305,19 +305,19 @@ function UserFields({
           {errors.role && <span className="field-error">{errors.role}</span>}
         </label>
       )}
-      {showPassword && <PasswordInput name="password" label="ContraseÃ±a" value={password} onChange={onPasswordChange} error={errors.password} help="Si dejas la contraseÃ±a vacÃ­a, se asignarÃ¡ demo1234." />}
-      {showPassword && password && <PasswordInput name="confirmPassword" label="Repetir contraseÃ±a" value={confirmPassword} onChange={onConfirmPasswordChange} error={errors.confirmPassword} placeholder="Repite la contraseÃ±a" />}
+      {showPassword && <PasswordInput name="password" label="Contraseña" value={password} onChange={onPasswordChange} error={errors.password} help="Si dejas la contraseña vacía, se asignará demo1234." />}
+      {showPassword && password && <PasswordInput name="confirmPassword" label="Repetir contraseña" value={confirmPassword} onChange={onConfirmPasswordChange} error={errors.confirmPassword} placeholder="Repite la contraseña" />}
       </fieldset>
       {role && (
         <fieldset className="admin-form-section">
-          <legend>Datos segÃºn rol</legend>
-          {role === 'teacher' && <label>Ãrea / especialidad<input name="department" defaultValue={(row as AdminUserRow | undefined)?.department ?? (row as AdminTeacherRow | undefined)?.specialty ?? ''} autoComplete="off" placeholder="Ej: MatemÃ¡tica" /></label>}
+          <legend>Datos según rol</legend>
+          {role === 'teacher' && <label>Área / especialidad<input name="department" defaultValue={(row as AdminUserRow | undefined)?.department ?? (row as AdminTeacherRow | undefined)?.specialty ?? ''} autoComplete="off" placeholder="Ej: Matemática" /></label>}
           {role === 'student' && <label>RUT / identificador<input name="rut" defaultValue={(row as AdminStudentRow | undefined)?.rut ?? ''} autoComplete="off" placeholder="Ej: 12.345.678-9" className={errors.rut ? 'input-error' : undefined} />{errors.rut && <span className="field-error">{errors.rut}</span>}</label>}
-          {role === 'teacher' && <label>CÃ³digo docente<input name="rut" defaultValue={(row as AdminTeacherRow | undefined)?.employeeCode ?? ''} autoComplete="off" placeholder="Opcional" className={errors.rut ? 'input-error' : undefined} />{errors.rut && <span className="field-error">{errors.rut}</span>}</label>}
+          {role === 'teacher' && <label>Código docente<input name="rut" defaultValue={(row as AdminTeacherRow | undefined)?.employeeCode ?? ''} autoComplete="off" placeholder="Opcional" className={errors.rut ? 'input-error' : undefined} />{errors.rut && <span className="field-error">{errors.rut}</span>}</label>}
           {role === 'student' && <label>Fecha nacimiento<input name="birthDate" type="date" defaultValue={(row as AdminStudentRow | undefined)?.birthDate ?? ''} autoComplete="off" /></label>}
-          {role === 'student' && <SelectField label="SecciÃ³n" name="sectionId" options={options.sections} defaultValue={(row as AdminStudentRow | undefined)?.sectionId} placeholder="Selecciona una secciÃ³n" />}
+          {role === 'student' && <SelectField label="Sección" name="sectionId" options={options.sections} defaultValue={(row as AdminStudentRow | undefined)?.sectionId} placeholder="Selecciona una sección" />}
           {role === 'guardian' && <label>RUT / identificador<input name="rut" defaultValue={(row as AdminGuardianRow | undefined)?.rut ?? ''} autoComplete="off" placeholder="Ej: 11.111.111-1" className={errors.rut ? 'input-error' : undefined} />{errors.rut && <span className="field-error">{errors.rut}</span>}</label>}
-          {role === 'guardian' && <label className="compact-field">TelÃ©fono<input name="phone" defaultValue={(row as AdminGuardianRow | undefined)?.phone ?? ''} autoComplete="off" placeholder="+56 9 1234 5678" className={errors.phone ? 'input-error' : undefined} />{errors.phone && <span className="field-error">{errors.phone}</span>}</label>}
+          {role === 'guardian' && <label className="compact-field">Teléfono<input name="phone" defaultValue={(row as AdminGuardianRow | undefined)?.phone ?? ''} autoComplete="off" placeholder="+56 9 1234 5678" className={errors.phone ? 'input-error' : undefined} />{errors.phone && <span className="field-error">{errors.phone}</span>}</label>}
           {role === 'guardian' && (
             <div className="guardian-student-field">
               <span>Estudiantes vinculados</span>
@@ -328,7 +328,7 @@ function UserFields({
               {selectedStudentIds.map((id) => <input key={id} type="hidden" name="studentIds" value={id} />)}
             </div>
           )}
-          {['admin', 'director', 'inspector'].includes(role) && <p className="field-help admin-role-note">Este rol no requiere datos acadÃ©micos adicionales.</p>}
+          {['admin', 'director', 'inspector'].includes(role) && <p className="field-help admin-role-note">Este rol no requiere datos académicos adicionales.</p>}
         </fieldset>
       )}
     </>
@@ -336,7 +336,7 @@ function UserFields({
 }
 
 function EntityModal({ modal, options, students, onClose, onSaved, setConfirm }: { modal: ModalState; options: AdminBundle['summary']['options']; students: AdminStudentRow[]; onClose: () => void; onSaved: (message: string) => void; setConfirm: (confirm: ConfirmState | null) => void }) {
-  const title = `${modal.mode === 'create' ? 'Crear' : 'Editar'} ${modal.type === 'user' ? 'usuario' : modal.type === 'student' ? 'estudiante' : modal.type === 'teacher' ? 'profesor' : modal.type === 'guardian' ? 'apoderado' : modal.type === 'course' ? 'curso' : modal.type === 'section' ? 'secciÃ³n' : modal.type === 'classroom' ? 'sala' : 'asignatura'}`;
+  const title = `${modal.mode === 'create' ? 'Crear' : 'Editar'} ${modal.type === 'user' ? 'usuario' : modal.type === 'student' ? 'estudiante' : modal.type === 'teacher' ? 'profesor' : modal.type === 'guardian' ? 'apoderado' : modal.type === 'course' ? 'curso' : modal.type === 'section' ? 'sección' : modal.type === 'classroom' ? 'sala' : 'asignatura'}`;
   const [selectedRole, setSelectedRole] = useState<Role | ''>(roleFromModal(modal));
   const [formError, setFormError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<UserFormErrors>({});
@@ -357,7 +357,7 @@ function EntityModal({ modal, options, students, onClose, onSaved, setConfirm }:
     }
     confirmAction(setConfirm, {
       title: 'Cambios sin guardar',
-      message: 'Tienes cambios sin guardar. Â¿Deseas cerrar?',
+      message: 'Tienes cambios sin guardar. ¿Deseas cerrar?',
       danger: true,
       action: async () => onClose()
     });
@@ -375,13 +375,13 @@ function EntityModal({ modal, options, students, onClose, onSaved, setConfirm }:
     const nextErrors: UserFormErrors = {};
     if (!payload.name.trim()) nextErrors.name = 'Nombre requerido';
     if (!payload.email.trim()) nextErrors.email = 'Correo requerido';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.email)) nextErrors.email = 'Correo invÃ¡lido';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.email)) nextErrors.email = 'Correo inválido';
     if (requireRole && !payload.role) nextErrors.role = 'Rol requerido';
-    if (payload.password && payload.password.length < 6) nextErrors.password = 'La contraseÃ±a debe tener al menos 6 caracteres';
-    if (payload.password && payload.password !== confirmPassword) nextErrors.confirmPassword = 'Las contraseÃ±as no coinciden';
+    if (payload.password && payload.password.length < 6) nextErrors.password = 'La contraseña debe tener al menos 6 caracteres';
+    if (payload.password && payload.password !== confirmPassword) nextErrors.confirmPassword = 'Las contraseñas no coinciden';
     if (payload.rut && (payload.rut.length < 5 || payload.rut.length > 30)) nextErrors.rut = 'Debe tener entre 5 y 30 caracteres';
-    if (payload.role === 'guardian' && payload.rut && !/^\d{1,2}\.?\d{3}\.?\d{3}-[\dkK]$/.test(payload.rut)) nextErrors.rut = 'Usa un RUT vÃ¡lido, ej: 11.111.111-1';
-    if (payload.phone && !/^(?:\+?56\s?)?(?:9\s?)?\d{4}\s?\d{4}$/.test(payload.phone.replace(/[()-]/g, '').trim())) nextErrors.phone = 'Usa un telÃ©fono chileno vÃ¡lido';
+    if (payload.role === 'guardian' && payload.rut && !/^\d{1,2}\.?\d{3}\.?\d{3}-[\dkK]$/.test(payload.rut)) nextErrors.rut = 'Usa un RUT válido, ej: 11.111.111-1';
+    if (payload.phone && !/^(?:\+?56\s?)?(?:9\s?)?\d{4}\s?\d{4}$/.test(payload.phone.replace(/[()-]/g, '').trim())) nextErrors.phone = 'Usa un teléfono chileno válido';
     setFieldErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
   }
@@ -459,10 +459,10 @@ function EntityModal({ modal, options, students, onClose, onSaved, setConfirm }:
         modal.mode === 'create' ? await createAdminSubject(payload) : await updateAdminSubject(modal.row!.id, payload);
       }
       const userModal = ['user', 'student', 'teacher', 'guardian'].includes(modal.type);
-      if (userModal && modal.mode === 'create') onSaved(`Usuario creado correctamente${cleanedUser.password ? '' : '. ContraseÃ±a: demo1234'}`);
+      if (userModal && modal.mode === 'create') onSaved(`Usuario creado correctamente${cleanedUser.password ? '' : '. Contraseña: demo1234'}`);
       else if (userModal) onSaved('Usuario actualizado correctamente');
       else if (modal.type === 'course') onSaved(modal.mode === 'create' ? 'Curso creado correctamente.' : 'Curso actualizado correctamente.');
-      else if (modal.type === 'section') onSaved(modal.mode === 'create' ? 'SecciÃ³n creada correctamente.' : 'SecciÃ³n actualizada correctamente.');
+      else if (modal.type === 'section') onSaved(modal.mode === 'create' ? 'Sección creada correctamente.' : 'Sección actualizada correctamente.');
       else if (modal.type === 'classroom') onSaved(modal.mode === 'create' ? 'Sala creada correctamente.' : 'Sala actualizada correctamente.');
       else if (modal.type === 'subject') onSaved(modal.mode === 'create' ? 'Asignatura creada correctamente.' : 'Asignatura actualizada correctamente.');
       else onSaved('Cambios guardados correctamente.');
@@ -476,8 +476,8 @@ function EntityModal({ modal, options, students, onClose, onSaved, setConfirm }:
 
     if (['course', 'section', 'classroom'].includes(modal.type)) {
       confirmAction(setConfirm, {
-        title: modal.mode === 'create' ? `Crear ${modal.type === 'course' ? 'curso' : modal.type === 'section' ? 'secciÃ³n' : 'sala'}` : `Guardar cambios de ${modal.type === 'course' ? 'curso' : modal.type === 'section' ? 'secciÃ³n' : 'sala'}`,
-        message: modal.type === 'section' && modal.mode === 'edit' ? 'Confirma el cambio. Si modificas curso, profesor jefe o sala, la secciÃ³n conservarÃ¡ sus estudiantes actuales.' : 'Confirma que quieres guardar estos cambios.',
+        title: modal.mode === 'create' ? `Crear ${modal.type === 'course' ? 'curso' : modal.type === 'section' ? 'sección' : 'sala'}` : `Guardar cambios de ${modal.type === 'course' ? 'curso' : modal.type === 'section' ? 'sección' : 'sala'}`,
+        message: modal.type === 'section' && modal.mode === 'edit' ? 'Confirma el cambio. Si modificas curso, profesor jefe o sala, la sección conservará sus estudiantes actuales.' : 'Confirma que quieres guardar estos cambios.',
         action: save
       });
       return;
@@ -492,7 +492,7 @@ function EntityModal({ modal, options, students, onClose, onSaved, setConfirm }:
         <input className="admin-autofill-decoy" type="text" name="fake-username" autoComplete="username" tabIndex={-1} aria-hidden="true" />
         <input className="admin-autofill-decoy" type="password" name="fake-password" autoComplete="current-password" tabIndex={-1} aria-hidden="true" />
         <header>
-          <div><span>AdministraciÃ³n</span><h2>{title}</h2></div>
+          <div><span>Administración</span><h2>{title}</h2></div>
           <button type="button" onClick={requestClose}>x</button>
         </header>
         <div className="admin-form-grid">
@@ -504,15 +504,15 @@ function EntityModal({ modal, options, students, onClose, onSaved, setConfirm }:
             <>
               <label>Curso<input name="name" defaultValue={modal.row?.name} required placeholder="Ej: 1 Medio" /></label>
               <SelectField label="Nivel" name="levelId" options={options.levels} defaultValue={modal.row?.levelId} placeholder="Selecciona un nivel" required />
-              {modal.mode === 'edit' && <p className="field-help full-span">Las secciones asociadas se gestionan desde GestiÃ³n acadÃ©mica &gt; Secciones.</p>}
+              {modal.mode === 'edit' && <p className="field-help full-span">Las secciones asociadas se gestionan desde Gestión académica &gt; Secciones.</p>}
             </>
           )}
-          {modal.type === 'section' && <><label>SecciÃ³n<input name="name" defaultValue={modal.row?.name} required placeholder="Ej: A" /></label><SelectField label="Curso" name="courseId" options={options.courses} defaultValue={modal.row?.courseId} placeholder="Selecciona un curso" required /><SelectField label="Profesor jefe" name="teacherId" options={options.teachers} defaultValue={modal.row?.teacherId} placeholder="Sin profesor jefe" /><SelectField label="Sala" name="classroomId" options={options.classrooms} defaultValue={modal.row?.classroomId} placeholder="Sin sala" />{modal.row?.students ? <p className="field-help full-span">Esta secciÃ³n tiene {modal.row.students} estudiantes. Si cambias el curso, revisa que la matrÃ­cula siga correspondiendo.</p> : null}</>}
+          {modal.type === 'section' && <><label>Sección<input name="name" defaultValue={modal.row?.name} required placeholder="Ej: A" /></label><SelectField label="Curso" name="courseId" options={options.courses} defaultValue={modal.row?.courseId} placeholder="Selecciona un curso" required /><SelectField label="Profesor jefe" name="teacherId" options={options.teachers} defaultValue={modal.row?.teacherId} placeholder="Sin profesor jefe" /><SelectField label="Sala" name="classroomId" options={options.classrooms} defaultValue={modal.row?.classroomId} placeholder="Sin sala" />{modal.row?.students ? <p className="field-help full-span">Esta sección tiene {modal.row.students} estudiantes. Si cambias el curso, revisa que la matrícula siga correspondiendo.</p> : null}</>}
           {modal.type === 'classroom' && <><label>Sala<input name="name" defaultValue={modal.row?.name} required placeholder="Ej: Sala 308" /></label><SelectField label="Tipo" name="type" options={[{ id: 'aula', label: 'Aula' }, { id: 'laboratorio', label: 'Laboratorio' }, { id: 'biblioteca', label: 'Biblioteca' }, { id: 'gimnasio', label: 'Gimnasio' }, { id: 'otro', label: 'Otro' }]} defaultValue={modal.row?.type ?? 'aula'} required /><label>Piso<input name="floor" type="number" min="0" max="30" defaultValue={modal.row?.floor ?? 1} required /></label><label>Capacidad<input name="capacity" type="number" min="1" defaultValue={modal.row?.capacity ?? 30} required /></label></>}
-          {modal.type === 'subject' && <><label>Asignatura<input name="name" defaultValue={modal.row?.name} required /></label><label>CÃ³digo<input name="code" defaultValue={modal.row?.code} required /></label><MultiSelectField label="Cursos" name="courseIds" options={options.courses} defaultValues={modal.row?.courses?.map((item) => item.id)} /><MultiSelectField label="Secciones" name="sectionIds" options={options.sections} defaultValues={modal.row?.sections?.map((item) => item.id)} /><MultiSelectField label="Profesores" name="teacherIds" options={options.teachers} defaultValues={modal.row?.teachers?.map((item) => item.id)} /></>}
+          {modal.type === 'subject' && <><label>Asignatura<input name="name" defaultValue={modal.row?.name} required /></label><label>Código<input name="code" defaultValue={modal.row?.code} required /></label><MultiSelectField label="Cursos" name="courseIds" options={options.courses} defaultValues={modal.row?.courses?.map((item) => item.id)} /><MultiSelectField label="Secciones" name="sectionIds" options={options.sections} defaultValues={modal.row?.sections?.map((item) => item.id)} /><MultiSelectField label="Profesores" name="teacherIds" options={options.teachers} defaultValues={modal.row?.teachers?.map((item) => item.id)} /></>}
         </div>
         {formError && <p className="admin-modal-error">{formError}</p>}
-        <footer><button type="button" className="secondary-button" onClick={requestClose}>Cancelar</button><button type="submit" className="primary-button" disabled={saving || hasFieldErrors}>{saving ? 'Guardando...' : modal.type === 'course' ? 'Guardar curso' : modal.type === 'section' ? 'Guardar secciÃ³n' : modal.type === 'classroom' ? 'Guardar sala' : modal.type === 'subject' ? 'Guardar asignatura' : 'Guardar usuario'}</button></footer>
+        <footer><button type="button" className="secondary-button" onClick={requestClose}>Cancelar</button><button type="submit" className="primary-button" disabled={saving || hasFieldErrors}>{saving ? 'Guardando...' : modal.type === 'course' ? 'Guardar curso' : modal.type === 'section' ? 'Guardar sección' : modal.type === 'classroom' ? 'Guardar sala' : modal.type === 'subject' ? 'Guardar asignatura' : 'Guardar usuario'}</button></footer>
       </form>
       {studentPickerOpen && <StudentPickerModal students={students} selectedIds={selectedStudentIds} onCancel={() => setStudentPickerOpen(false)} onConfirm={(ids) => { setSelectedStudentIds(ids); setStudentPickerOpen(false); }} />}
     </div>
@@ -542,13 +542,13 @@ function ConfirmDialog({ confirm, onClose }: { confirm: ConfirmState; onClose: (
 
 function AdminTable<T extends { id: string }>({ rows, render, empty = 'Sin registros', headers }: { rows: T[]; render: (row: T) => ReactNode; empty?: string; headers?: string[] }) {
   const { page, total, setPage, visible } = usePagedRows(rows, 10);
-  if (!rows.length) return <div className="admin-empty"><Search size={22} /><strong>{empty}</strong><span>Ajusta la bÃºsqueda o crea un nuevo registro.</span></div>;
+  if (!rows.length) return <div className="admin-empty"><Search size={22} /><strong>{empty}</strong><span>Ajusta la búsqueda o crea un nuevo registro.</span></div>;
   return <>{headers?.length ? <div className="admin-table-header">{headers.map((header) => <span key={header}>{header}</span>)}</div> : null}<div className="admin-table-list">{visible.map((row) => <article key={row.id} className="admin-table-card">{render(row)}</article>)}</div><Pager page={page} total={total} onPage={setPage} /></>;
 }
 
 function Pager({ page, total, onPage }: { page: number; total: number; onPage: (page: number) => void }) {
   if (total <= 1) return null;
-  return <div className="assignment-pager"><button className="secondary-button" disabled={page <= 1} onClick={() => onPage(page - 1)}>Anterior</button><span>PÃ¡gina {page} de {total}</span><button className="secondary-button" disabled={page >= total} onClick={() => onPage(page + 1)}>Siguiente</button></div>;
+  return <div className="assignment-pager"><button className="secondary-button" disabled={page <= 1} onClick={() => onPage(page - 1)}>Anterior</button><span>Página {page} de {total}</span><button className="secondary-button" disabled={page >= total} onClick={() => onPage(page + 1)}>Siguiente</button></div>;
 }
 
 function usePagedRows<T>(rows: T[], pageSize = 10) {
@@ -569,12 +569,12 @@ function CoursesSectionsPage({ bundle, canManage, setModal, setConfirm, onSaved 
 
   function confirmDeleteSection(section: AdminSectionRow) {
     confirmAction(setConfirm, {
-      title: 'Eliminar secciÃ³n',
-      message: section.students ? `La secciÃ³n ${section.course} ${section.name} tiene ${section.students} estudiantes. Debes quitar esos estudiantes antes de eliminarla.` : `Confirma que quieres eliminar la secciÃ³n ${section.course} ${section.name}.`,
+      title: 'Eliminar sección',
+      message: section.students ? `La sección ${section.course} ${section.name} tiene ${section.students} estudiantes. Debes quitar esos estudiantes antes de eliminarla.` : `Confirma que quieres eliminar la sección ${section.course} ${section.name}.`,
       danger: true,
       action: async () => {
         await deleteAdminSection(section.id);
-        onSaved('SecciÃ³n eliminada correctamente.');
+        onSaved('Sección eliminada correctamente.');
       }
     });
   }
@@ -582,7 +582,7 @@ function CoursesSectionsPage({ bundle, canManage, setModal, setConfirm, onSaved 
   function confirmDeleteClassroom(classroom: AdminClassroomRow) {
     confirmAction(setConfirm, {
       title: 'Eliminar sala',
-      message: classroom.sections || classroom.schedules ? `La sala ${classroom.name} estÃ¡ en uso. Debes quitarla de secciones u horarios antes de eliminarla.` : `Confirma que quieres eliminar la sala ${classroom.name}.`,
+      message: classroom.sections || classroom.schedules ? `La sala ${classroom.name} está en uso. Debes quitarla de secciones u horarios antes de eliminarla.` : `Confirma que quieres eliminar la sala ${classroom.name}.`,
       danger: true,
       action: async () => {
         await deleteAdminClassroom(classroom.id);
@@ -594,12 +594,12 @@ function CoursesSectionsPage({ bundle, canManage, setModal, setConfirm, onSaved 
   return (
     <div className="course-admin-view">
       <header className="assignment-header">
-        <div><h2>Cursos, secciones y salas</h2><p>Administra niveles, paralelos, profesores jefe y espacios fÃ­sicos.</p></div>
+        <div><h2>Cursos, secciones y salas</h2><p>Administra niveles, paralelos, profesores jefe y espacios físicos.</p></div>
         {canManage && <div className="course-actions"><button className="secondary-button" onClick={() => setModal({ type: 'classroom', mode: 'create' })}><Plus size={17} />Crear sala</button><button className="primary-button" onClick={() => setModal({ type: 'course', mode: 'create' })}><Plus size={17} />Crear curso</button></div>}
       </header>
 
       <div className="assignment-filters labelled-filters">
-        <label className="admin-search"><span>Buscar curso o secciÃ³n</span><div><Search size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Nombre, nivel, secciÃ³n, sala o profesor" /></div></label>
+        <label className="admin-search"><span>Buscar curso o sección</span><div><Search size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Nombre, nivel, sección, sala o profesor" /></div></label>
       </div>
 
       <div className="course-card-list">
@@ -621,13 +621,13 @@ function CoursesSectionsPage({ bundle, canManage, setModal, setConfirm, onSaved 
                 <div className="section-list">
                   {sections.length ? sections.map((section) => (
                     <div key={section.id} className="section-row">
-                      <span><strong>{section.name}</strong><small>SecciÃ³n</small></span>
+                      <span><strong>{section.name}</strong><small>Sección</small></span>
                       <span><strong>{section.teacher}</strong><small>Profesor jefe</small></span>
                       <span><strong>{section.classroom}</strong><small>Sala</small></span>
                       <span><strong>{section.students}</strong><small>Estudiantes</small></span>
                       {canManage && <div className="admin-row-actions"><button onClick={() => setModal({ type: 'section', mode: 'edit', row: section })}><Edit3 size={15} />Editar</button><button className="danger-button" onClick={() => confirmDeleteSection(section)}><Trash2 size={15} />Eliminar</button></div>}
                     </div>
-                  )) : <div className="admin-empty compact"><Search size={18} /><strong>Sin secciones</strong><span>Crea secciones desde el modal de curso o con una secciÃ³n nueva.</span></div>}
+                  )) : <div className="admin-empty compact"><Search size={18} /><strong>Sin secciones</strong><span>Crea secciones desde el modal de curso o con una sección nueva.</span></div>}
                 </div>
               )}
             </article>
@@ -660,7 +660,7 @@ function AcademicCoursesPage({ bundle, canManage, setModal, setConfirm, onSaved 
   const { page, total, setPage, visible } = usePagedRows(rows, 10);
   const toggle = (course: AdminCourseRow) => confirmAction(setConfirm, {
     title: `${course.isActive ? 'Desactivar' : 'Activar'} curso`,
-    message: course.isActive && course.sections ? `El curso ${course.name} tiene secciones asociadas. Si hay estudiantes activos, el backend bloquearÃ¡ la acciÃ³n.` : `Confirma que quieres ${course.isActive ? 'desactivar' : 'activar'} ${course.name}.`,
+    message: course.isActive && course.sections ? `El curso ${course.name} tiene secciones asociadas. Si hay estudiantes activos, el backend bloqueará la acción.` : `Confirma que quieres ${course.isActive ? 'desactivar' : 'activar'} ${course.name}.`,
     danger: course.isActive,
     action: async () => { await setAdminCourseStatus(course.id, !course.isActive); onSaved(course.isActive ? 'Curso desactivado correctamente.' : 'Curso activado correctamente.'); }
   });
@@ -678,8 +678,8 @@ function AcademicSectionsPage({ bundle, canManage, setModal, setConfirm, onSaved
     return textIncludes(section, query) && (!courseId || section.courseId === courseId) && (!levelId || course?.levelId === levelId) && (!classroomId || section.classroomId === classroomId) && (!teacherId || section.teacherId === teacherId);
   });
   const { page, total, setPage, visible } = usePagedRows(rows, 10);
-  const toggle = (section: AdminSectionRow) => confirmAction(setConfirm, { title: `${section.isActive ? 'Desactivar' : 'Activar'} secciÃ³n`, message: section.isActive && section.students ? `La secciÃ³n ${section.course} ${section.name} tiene ${section.students} estudiantes. El backend bloquearÃ¡ la acciÃ³n si corresponde.` : `Confirma que quieres ${section.isActive ? 'desactivar' : 'activar'} la secciÃ³n ${section.course} ${section.name}.`, danger: section.isActive, action: async () => { await setAdminSectionStatus(section.id, !section.isActive); onSaved(section.isActive ? 'SecciÃ³n desactivada correctamente.' : 'SecciÃ³n activada correctamente.'); } });
-  const remove = (section: AdminSectionRow) => confirmAction(setConfirm, { title: 'Eliminar secciÃ³n', message: section.students ? `La secciÃ³n ${section.course} ${section.name} tiene ${section.students} estudiantes. Debes quitar esos estudiantes antes de eliminarla.` : `Confirma que quieres eliminar la secciÃ³n ${section.course} ${section.name}.`, danger: true, action: async () => { await deleteAdminSection(section.id); onSaved('SecciÃ³n eliminada correctamente.'); } });
+  const toggle = (section: AdminSectionRow) => confirmAction(setConfirm, { title: `${section.isActive ? 'Desactivar' : 'Activar'} sección`, message: section.isActive && section.students ? `La sección ${section.course} ${section.name} tiene ${section.students} estudiantes. El backend bloqueará la acción si corresponde.` : `Confirma que quieres ${section.isActive ? 'desactivar' : 'activar'} la sección ${section.course} ${section.name}.`, danger: section.isActive, action: async () => { await setAdminSectionStatus(section.id, !section.isActive); onSaved(section.isActive ? 'Sección desactivada correctamente.' : 'Sección activada correctamente.'); } });
+  const remove = (section: AdminSectionRow) => confirmAction(setConfirm, { title: 'Eliminar sección', message: section.students ? `La sección ${section.course} ${section.name} tiene ${section.students} estudiantes. Debes quitar esos estudiantes antes de eliminarla.` : `Confirma que quieres eliminar la sección ${section.course} ${section.name}.`, danger: true, action: async () => { await deleteAdminSection(section.id); onSaved('Sección eliminada correctamente.'); } });
   return <div className="course-admin-view"><header className="assignment-header"><div><h2>Secciones</h2><p>Gestiona curso, profesor jefe, sala y cantidad de estudiantes.</p></div>{canManage && <button className="primary-button" onClick={() => setModal({ type: 'section', mode: 'create' })}><Plus size={17} />Crear sección</button>}</header><div className="assignment-filters labelled-filters grid-filters"><label className="admin-search"><span>Búsqueda</span><div><Search size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Sección, curso, sala o profesor" /></div></label><SelectField label="Curso" name="filterCourse" options={bundle.summary.options.courses} defaultValue={courseId} placeholder="Todos los cursos" onChange={setCourseId} /><SelectField label="Nivel" name="filterLevel" options={bundle.summary.options.levels} defaultValue={levelId} placeholder="Todos los niveles" onChange={setLevelId} /><SelectField label="Sala" name="filterRoom" options={bundle.summary.options.classrooms} defaultValue={classroomId} placeholder="Todas las salas" onChange={setClassroomId} /><SelectField label="Profesor jefe" name="filterTeacher" options={bundle.summary.options.teachers} defaultValue={teacherId} placeholder="Todos los profesores" onChange={setTeacherId} /></div><div className="section-list standalone"><div className="section-row head"><span>Sección</span><span>Profesor jefe</span><span>Sala</span><span>Estudiantes</span><span>Estado</span><span>Acciones</span></div>{visible.map((section) => <div key={section.id} className="section-row"><span><strong>{section.course} {section.name}</strong><small>Sección</small></span><span><strong>{section.teacher}</strong><small>Profesor jefe</small></span><span><strong>{section.classroom}</strong><small>Sala</small></span><span><strong>{section.students}</strong><small>Estudiantes</small></span><StatusBadge active={section.isActive} />{canManage && <div className="admin-row-actions"><button onClick={() => setModal({ type: 'section', mode: 'edit', row: section })}><Edit3 size={15} />Editar</button><button className={section.isActive ? 'danger-button' : 'secondary-button'} onClick={() => toggle(section)}>{section.isActive ? 'Desactivar' : 'Activar'}</button><button className="danger-button" onClick={() => remove(section)}><Trash2 size={15} />Eliminar</button></div>}</div>)}</div>{!rows.length && <div className="admin-empty"><Search size={22} /><strong>Sin secciones</strong><span>No se encontraron secciones con esos filtros.</span></div>}<Pager page={page} total={total} onPage={setPage} /></div>;
 }
 
@@ -766,10 +766,10 @@ export function AdminPage({ user }: { user: User }) {
   }, [bundle, guardianLinksFilter, query, roleFilter, status, studentCourseFilter, studentGuardianFilter, studentSectionFilter, tab, teacherSpecialtyFilter, teacherSubjectFilter]);
 
   if (!['admin', 'director', 'inspector'].includes(user.primaryRole)) {
-    return <div className="page-stack"><PageHeader eyebrow="AdministraciÃ³n" title="Acceso restringido" description="Tu rol no tiene acceso al CRUD administrativo." /></div>;
+    return <div className="page-stack"><PageHeader eyebrow="Administración" title="Acceso restringido" description="Tu rol no tiene acceso al CRUD administrativo." /></div>;
   }
 
-  if (!bundle) return <div className="page-stack"><PageHeader eyebrow="AdministraciÃ³n" title="Cargando panel" description="Preparando usuarios, cursos, secciones y asignaciones." /></div>;
+  if (!bundle) return <div className="page-stack"><PageHeader eyebrow="Administración" title="Cargando panel" description="Preparando usuarios, cursos, secciones y asignaciones." /></div>;
 
   const options = bundle.summary.options;
   const summaryCards = [
@@ -803,7 +803,7 @@ export function AdminPage({ user }: { user: User }) {
 
   return (
     <div className="page-stack admin-page">
-      <PageHeader eyebrow="AdministraciÃ³n" title="Panel de estructura escolar" description="Gestiona usuarios, estudiantes, docentes, apoderados, cursos, secciones, asignaturas y relaciones acadÃ©micas." />
+      <PageHeader eyebrow="Administración" title="Panel de estructura escolar" description="Gestiona usuarios, estudiantes, docentes, apoderados, cursos, secciones, asignaturas y relaciones académicas." />
       {notice && <div className="admin-notice success" onClick={() => setNotice(null)}><span>{notice}</span><button type="button" aria-label="Cerrar"><X size={16} /></button></div>}
       {error && <div className="admin-notice error" onClick={() => setError(null)}><span>{error}</span><button type="button" aria-label="Cerrar"><X size={16} /></button></div>}
 
@@ -819,7 +819,7 @@ export function AdminPage({ user }: { user: User }) {
           })}
           {canManage && <div className={`admin-tab-group ${academicOpen ? 'open' : ''}`}>
             <button type="button" className="admin-tab-parent" onClick={() => setAcademicOpen((current) => !current)}>
-              <span><Building2 size={18} />GestiÃ³n acadÃ©mica</span>
+              <span><Building2 size={18} />Gestión académica</span>
               {academicOpen ? <ChevronDown className="submenu-arrow" size={16} /> : <ChevronRight className="submenu-arrow" size={16} />}
             </button>
             <div className="admin-submenu">
@@ -845,29 +845,29 @@ export function AdminPage({ user }: { user: User }) {
 
         <main className="admin-panel">
           {!usesCustomView && <div className="admin-toolbar admin-filterbar">
-            <label className="admin-search"><span>BÃºsqueda</span><div><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={tab === 'users' ? 'Buscar por nombre, correo o rol' : tab === 'students' ? 'Buscar por nombre, correo o RUT' : tab === 'teachers' ? 'Buscar por nombre, correo o cÃ³digo' : tab === 'guardians' ? 'Buscar por nombre, correo, RUT o telÃ©fono' : 'Buscar por nombre o cÃ³digo'} /></div></label>
+            <label className="admin-search"><span>Búsqueda</span><div><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={tab === 'users' ? 'Buscar por nombre, correo o rol' : tab === 'students' ? 'Buscar por nombre, correo o RUT' : tab === 'teachers' ? 'Buscar por nombre, correo o código' : tab === 'guardians' ? 'Buscar por nombre, correo, RUT o teléfono' : 'Buscar por nombre o código'} /></div></label>
             {tab === 'users' && <label>Rol<select value={roleFilter} onChange={(event) => setRoleFilter(event.target.value)}><option value="">Todos los roles</option>{bundle.summary.options.roles.map((role) => <option key={role.id} value={role.id}>{role.label}</option>)}</select></label>}
-            {tab === 'students' && <><label>Curso<select value={studentCourseFilter} onChange={(event) => { setStudentCourseFilter(event.target.value); setStudentSectionFilter(''); }}><option value="">Todos los cursos</option>{bundle.courses.map((course) => <option key={course.id} value={course.name}>{course.name}</option>)}</select></label><label>SecciÃ³n<select value={studentSectionFilter} onChange={(event) => setStudentSectionFilter(event.target.value)}><option value="">Todas las secciones</option>{bundle.sections.filter((section) => !studentCourseFilter || section.course === studentCourseFilter).map((section) => <option key={section.id} value={section.id}>{section.course} {section.name}</option>)}</select></label><label>Apoderado<select value={studentGuardianFilter} onChange={(event) => setStudentGuardianFilter(event.target.value as typeof studentGuardianFilter)}><option value="all">Todos</option><option value="with">Con apoderado</option><option value="without">Sin apoderado</option></select></label></>}
-            {tab === 'teachers' && <><label>Ãrea<select value={teacherSpecialtyFilter} onChange={(event) => setTeacherSpecialtyFilter(event.target.value)}><option value="">Todas las Ã¡reas</option>{specialtyOptions.map((specialty) => <option key={specialty} value={specialty}>{specialty}</option>)}</select></label><label>Asignatura<select value={teacherSubjectFilter} onChange={(event) => setTeacherSubjectFilter(event.target.value)}><option value="">Todas las asignaturas</option>{bundle.subjects.map((subject) => <option key={subject.id} value={subject.id}>{subject.name}</option>)}</select></label></>}
-            {tab === 'guardians' && <label>VÃ­nculos<select value={guardianLinksFilter} onChange={(event) => setGuardianLinksFilter(event.target.value as typeof guardianLinksFilter)}><option value="all">Todos</option><option value="with">Con estudiantes</option><option value="without">Sin estudiantes</option></select></label>}
+            {tab === 'students' && <><label>Curso<select value={studentCourseFilter} onChange={(event) => { setStudentCourseFilter(event.target.value); setStudentSectionFilter(''); }}><option value="">Todos los cursos</option>{bundle.courses.map((course) => <option key={course.id} value={course.name}>{course.name}</option>)}</select></label><label>Sección<select value={studentSectionFilter} onChange={(event) => setStudentSectionFilter(event.target.value)}><option value="">Todas las secciones</option>{bundle.sections.filter((section) => !studentCourseFilter || section.course === studentCourseFilter).map((section) => <option key={section.id} value={section.id}>{section.course} {section.name}</option>)}</select></label><label>Apoderado<select value={studentGuardianFilter} onChange={(event) => setStudentGuardianFilter(event.target.value as typeof studentGuardianFilter)}><option value="all">Todos</option><option value="with">Con apoderado</option><option value="without">Sin apoderado</option></select></label></>}
+            {tab === 'teachers' && <><label>Área<select value={teacherSpecialtyFilter} onChange={(event) => setTeacherSpecialtyFilter(event.target.value)}><option value="">Todas las áreas</option>{specialtyOptions.map((specialty) => <option key={specialty} value={specialty}>{specialty}</option>)}</select></label><label>Asignatura<select value={teacherSubjectFilter} onChange={(event) => setTeacherSubjectFilter(event.target.value)}><option value="">Todas las asignaturas</option>{bundle.subjects.map((subject) => <option key={subject.id} value={subject.id}>{subject.name}</option>)}</select></label></>}
+            {tab === 'guardians' && <label>Vínculos<select value={guardianLinksFilter} onChange={(event) => setGuardianLinksFilter(event.target.value as typeof guardianLinksFilter)}><option value="all">Todos</option><option value="with">Con estudiantes</option><option value="without">Sin estudiantes</option></select></label>}
             {['users', 'students', 'teachers', 'guardians'].includes(tab) && <label>Estado<select value={status} onChange={(event) => setStatus(event.target.value as typeof status)}><option value="all">Todos</option><option value="active">Activos</option><option value="inactive">Inactivos</option></select></label>}
             <button type="button" className="secondary-button" onClick={resetFilters}>Limpiar filtros</button>
             {canManage && <button className="primary-button" onClick={() => setModal({ type: tab === 'students' ? 'student' : tab === 'teachers' ? 'teacher' : tab === 'guardians' ? 'guardian' : tab === 'subjects' ? 'subject' : 'user', mode: 'create' })}><Plus size={18} />Crear</button>}
           </div>}
 
-          {tab === 'users' && <AdminTable headers={['Usuario', 'Rol', 'Estado', 'Acciones']} rows={filtered as AdminUserRow[]} render={(row) => <><div><strong>{row.name}</strong><small>{row.email}</small></div><span>{roleLabels[row.role]}</span><StatusBadge active={row.isActive} /><div className="admin-row-actions">{canManage && <><button onClick={() => setModal({ type: 'user', mode: 'edit', row })}><Edit3 size={16} />Editar</button><button onClick={() => statusAction('usuario', row.name, row.isActive, () => setAdminUserStatus(row.id, !row.isActive))}>{row.isActive ? <ToggleRight /> : <ToggleLeft />} {row.isActive ? 'Desactivar' : 'Activar'}</button><button onClick={() => setConfirm({ title: 'Resetear contraseÃ±a', message: `Confirma el reseteo de contraseÃ±a para ${row.name}.`, action: async () => { const result = await resetAdminUserPassword(row.id); done(`ContraseÃ±a: ${result.temporaryPassword}`); } })}><KeyRound size={16} />Reset contraseÃ±a</button></>}</div></>} />}
+          {tab === 'users' && <AdminTable headers={['Usuario', 'Rol', 'Estado', 'Acciones']} rows={filtered as AdminUserRow[]} render={(row) => <><div><strong>{row.name}</strong><small>{row.email}</small></div><span>{roleLabels[row.role]}</span><StatusBadge active={row.isActive} /><div className="admin-row-actions">{canManage && <><button onClick={() => setModal({ type: 'user', mode: 'edit', row })}><Edit3 size={16} />Editar</button><button onClick={() => statusAction('usuario', row.name, row.isActive, () => setAdminUserStatus(row.id, !row.isActive))}>{row.isActive ? <ToggleRight /> : <ToggleLeft />} {row.isActive ? 'Desactivar' : 'Activar'}</button><button onClick={() => setConfirm({ title: 'Resetear contraseña', message: `Confirma el reseteo de contraseña para ${row.name}.`, action: async () => { const result = await resetAdminUserPassword(row.id); done(`Contraseña: ${result.temporaryPassword}`); } })}><KeyRound size={16} />Reset contraseña</button></>}</div></>} />}
 
-          {tab === 'students' && <AdminTable headers={['Estudiante', 'Curso / SecciÃ³n', 'Apoderado', 'Estado', 'Acciones']} rows={filtered as AdminStudentRow[]} render={(row) => <><div><strong>{row.name}</strong><small>{row.email}</small></div><span>{row.course} Â· {row.section}</span><span>{row.guardians.length ? row.guardians.map((item) => item.name).join(', ') : 'Sin apoderado'}</span><StatusBadge active={row.isActive} /><div className="admin-row-actions">{canManage && <><button onClick={() => setModal({ type: 'student', mode: 'edit', row })}><Edit3 size={16} />Editar</button><button onClick={() => statusAction('estudiante', row.name, row.isActive, () => setAdminStudentStatus(row.id, !row.isActive))}>{row.isActive ? 'Desactivar' : 'Activar'}</button></>}</div></>} />}
+          {tab === 'students' && <AdminTable headers={['Estudiante', 'Curso / Sección', 'Apoderado', 'Estado', 'Acciones']} rows={filtered as AdminStudentRow[]} render={(row) => <><div><strong>{row.name}</strong><small>{row.email}</small></div><span>{row.course} · {row.section}</span><span>{row.guardians.length ? row.guardians.map((item) => item.name).join(', ') : 'Sin apoderado'}</span><StatusBadge active={row.isActive} /><div className="admin-row-actions">{canManage && <><button onClick={() => setModal({ type: 'student', mode: 'edit', row })}><Edit3 size={16} />Editar</button><button onClick={() => statusAction('estudiante', row.name, row.isActive, () => setAdminStudentStatus(row.id, !row.isActive))}>{row.isActive ? 'Desactivar' : 'Activar'}</button></>}</div></>} />}
 
-          {tab === 'teachers' && <AdminTable headers={['Profesor', 'Ãrea', 'Asignaturas', 'Estado', 'Acciones']} rows={filtered as AdminTeacherRow[]} render={(row) => <><div><strong>{row.name}</strong><small>{row.email}</small></div><span>{row.specialty}</span><span>{row.subjects.map((item) => item.name).join(', ') || 'Sin asignaturas'}</span><StatusBadge active={row.isActive} /><div className="admin-row-actions">{canManage && <><button onClick={() => setModal({ type: 'teacher', mode: 'edit', row })}><Edit3 size={16} />Editar</button><button onClick={() => statusAction('profesor', row.name, row.isActive, () => setAdminTeacherStatus(row.id, !row.isActive))}>{row.isActive ? 'Desactivar' : 'Activar'}</button></>}</div></>} />}
+          {tab === 'teachers' && <AdminTable headers={['Profesor', 'Área', 'Asignaturas', 'Estado', 'Acciones']} rows={filtered as AdminTeacherRow[]} render={(row) => <><div><strong>{row.name}</strong><small>{row.email}</small></div><span>{row.specialty}</span><span>{row.subjects.map((item) => item.name).join(', ') || 'Sin asignaturas'}</span><StatusBadge active={row.isActive} /><div className="admin-row-actions">{canManage && <><button onClick={() => setModal({ type: 'teacher', mode: 'edit', row })}><Edit3 size={16} />Editar</button><button onClick={() => statusAction('profesor', row.name, row.isActive, () => setAdminTeacherStatus(row.id, !row.isActive))}>{row.isActive ? 'Desactivar' : 'Activar'}</button></>}</div></>} />}
 
-          {tab === 'guardians' && <AdminTable headers={['Apoderado', 'RUT', 'TelÃ©fono', 'Estudiantes', 'Estado', 'Acciones']} rows={filtered as AdminGuardianRow[]} render={(row) => <><div><strong>{row.name}</strong><small>{row.email}</small></div><span>{row.rut || 'Sin RUT'}</span><span>{row.phone || 'Sin telÃ©fono'}</span><span>{row.students.map((item) => item.name).join(', ') || 'Sin estudiantes'}</span><StatusBadge active={row.isActive} /><div className="admin-row-actions">{canManage && <><button onClick={() => setModal({ type: 'guardian', mode: 'edit', row })}><Edit3 size={16} />Editar</button><button onClick={() => statusAction('apoderado', row.name, row.isActive, () => setAdminGuardianStatus(row.id, !row.isActive))}>{row.isActive ? 'Desactivar' : 'Activar'}</button></>}</div></>} />}
+          {tab === 'guardians' && <AdminTable headers={['Apoderado', 'RUT', 'Teléfono', 'Estudiantes', 'Estado', 'Acciones']} rows={filtered as AdminGuardianRow[]} render={(row) => <><div><strong>{row.name}</strong><small>{row.email}</small></div><span>{row.rut || 'Sin RUT'}</span><span>{row.phone || 'Sin teléfono'}</span><span>{row.students.map((item) => item.name).join(', ') || 'Sin estudiantes'}</span><StatusBadge active={row.isActive} /><div className="admin-row-actions">{canManage && <><button onClick={() => setModal({ type: 'guardian', mode: 'edit', row })}><Edit3 size={16} />Editar</button><button onClick={() => statusAction('apoderado', row.name, row.isActive, () => setAdminGuardianStatus(row.id, !row.isActive))}>{row.isActive ? 'Desactivar' : 'Activar'}</button></>}</div></>} />}
 
           {tab === 'academic-courses' && <AcademicCoursesPage bundle={bundle} canManage={canManage} setModal={setModal} setConfirm={setConfirm} onSaved={done} />}
           {tab === 'academic-sections' && <AcademicSectionsPage bundle={bundle} canManage={canManage} setModal={setModal} setConfirm={setConfirm} onSaved={done} />}
           {tab === 'academic-classrooms' && <AcademicClassroomsPage bundle={bundle} canManage={canManage} setModal={setModal} setConfirm={setConfirm} onSaved={done} />}
 
-          {tab === 'subjects' && <AdminTable headers={['Asignatura', 'Profesores', 'Secciones', 'Acciones']} rows={filtered as AdminSubjectRow[]} render={(row) => <><div><strong>{row.name}</strong><small>{row.code}</small></div><span>{row.teachers.map((item) => item.name).join(', ') || 'Sin profesor'}</span><span>{row.sections.map((item) => `${item.course} ${item.name}`).join(', ') || 'Sin secciÃ³n'}</span><div className="admin-row-actions">{canManage && <button onClick={() => setModal({ type: 'subject', mode: 'edit', row })}><Edit3 size={16} />Editar</button>}</div></>} />}
+          {tab === 'subjects' && <AdminTable headers={['Asignatura', 'Profesores', 'Secciones', 'Acciones']} rows={filtered as AdminSubjectRow[]} render={(row) => <><div><strong>{row.name}</strong><small>{row.code}</small></div><span>{row.teachers.map((item) => item.name).join(', ') || 'Sin profesor'}</span><span>{row.sections.map((item) => `${item.course} ${item.name}`).join(', ') || 'Sin sección'}</span><div className="admin-row-actions">{canManage && <button onClick={() => setModal({ type: 'subject', mode: 'edit', row })}><Edit3 size={16} />Editar</button>}</div></>} />}
 
           {tab === 'assignments-teachers' && <AssignmentsTeachersPage bundle={bundle} onSaved={done} setConfirm={setConfirm} />}
           {tab === 'assignments-students' && <AssignmentsStudentsPage bundle={bundle} onSaved={done} setConfirm={setConfirm} />}
@@ -895,7 +895,7 @@ function AssignmentsTeachersPage({ bundle, onSaved, setConfirm }: { bundle: Admi
   const [page, setPage] = useState(1);
   const [open, setOpen] = useState(false);
   const rows = bundle.teachers.flatMap((teacher) => teacher.subjects.flatMap((subject) =>
-    (teacher.sections.length ? teacher.sections : [{ id: '', name: 'Sin secciÃ³n', course: 'Sin curso' }]).map((section) => ({ id: `${teacher.id}-${subject.id}-${section.id || 'none'}`, teacher, subject, section }))
+    (teacher.sections.length ? teacher.sections : [{ id: '', name: 'Sin sección', course: 'Sin curso' }]).map((section) => ({ id: `${teacher.id}-${subject.id}-${section.id || 'none'}`, teacher, subject, section }))
   )).filter((row) =>
     assignmentMatch([row.teacher.name, row.teacher.email, row.teacher.employeeCode, row.subject.name, row.section.course, row.section.name], query) &&
     (!course || row.section.course === course) &&
@@ -907,12 +907,12 @@ function AssignmentsTeachersPage({ bundle, onSaved, setConfirm }: { bundle: Admi
 
   async function remove(row: typeof rows[number]) {
     confirmAction(setConfirm, {
-      title: 'Eliminar asignaciÃ³n',
-      message: `Confirma que quieres quitar a ${row.teacher.name} de ${row.subject.name}${row.section.name !== 'Sin secciÃ³n' ? ` en ${row.section.course} ${row.section.name}` : ''}.`,
+      title: 'Eliminar asignación',
+      message: `Confirma que quieres quitar a ${row.teacher.name} de ${row.subject.name}${row.section.name !== 'Sin sección' ? ` en ${row.section.course} ${row.section.name}` : ''}.`,
       danger: true,
       action: async () => {
         await removeAdminTeacherAssignment({ teacherId: row.teacher.id, subjectId: row.subject.id, sectionId: row.section.id || undefined });
-        onSaved('AsignaciÃ³n docente eliminada.');
+        onSaved('Asignación docente eliminada.');
       }
     });
   }
@@ -921,10 +921,10 @@ function AssignmentsTeachersPage({ bundle, onSaved, setConfirm }: { bundle: Admi
     <div className="assignment-page">
       <header className="assignment-header"><div><h2>Asignaciones de profesores</h2><p>Asigna docentes a asignaturas y secciones.</p></div><button className="primary-button" onClick={() => setOpen(true)}><Plus size={17} />Asignar profesor</button></header>
       <div className="assignment-filters"><label className="admin-search"><Search size={17} /><input value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder="Buscar por profesor, correo, RUT o asignatura" /></label><select value={course} onChange={(event) => setCourse(event.target.value)}><option value="">Todos los cursos</option>{bundle.courses.map((item) => <option key={item.id} value={item.name}>{item.name}</option>)}</select><select value={sectionId} onChange={(event) => setSectionId(event.target.value)}><option value="">Todas las secciones</option>{bundle.sections.filter((item) => !course || item.course === course).map((item) => <option key={item.id} value={item.id}>{item.course} {item.name}</option>)}</select><select value={subjectId} onChange={(event) => setSubjectId(event.target.value)}><option value="">Todas las asignaturas</option>{bundle.subjects.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></div>
-      <div className="assignment-table"><div className="assignment-row head"><span>Profesor</span><span>Asignatura</span><span>Curso</span><span>SecciÃ³n</span><span>Acciones</span></div>{visible.map((row) => <div key={row.id} className="assignment-row"><span><strong>{row.teacher.name}</strong><small>{row.teacher.email}</small></span><span>{row.subject.name}</span><span>{row.section.course}</span><span>{row.section.name}</span><span><button className="secondary-button" onClick={() => setOpen(true)}><Edit3 size={15} />Editar</button><button className="danger-button" onClick={() => remove(row)}>Eliminar</button></span></div>)}</div>
+      <div className="assignment-table"><div className="assignment-row head"><span>Profesor</span><span>Asignatura</span><span>Curso</span><span>Sección</span><span>Acciones</span></div>{visible.map((row) => <div key={row.id} className="assignment-row"><span><strong>{row.teacher.name}</strong><small>{row.teacher.email}</small></span><span>{row.subject.name}</span><span>{row.section.course}</span><span>{row.section.name}</span><span><button className="secondary-button" onClick={() => setOpen(true)}><Edit3 size={15} />Editar</button><button className="danger-button" onClick={() => remove(row)}>Eliminar</button></span></div>)}</div>
       {!rows.length && <div className="admin-empty"><Search size={20} /><strong>Sin asignaciones</strong><span>No se encontraron profesores con esos filtros.</span></div>}
       <Pager page={page} total={total} onPage={setPage} />
-      {open && <TeacherAssignmentModal bundle={bundle} setConfirm={setConfirm} onClose={() => setOpen(false)} onSaved={() => { setOpen(false); onSaved('AsignaciÃ³n docente guardada.'); }} />}
+      {open && <TeacherAssignmentModal bundle={bundle} setConfirm={setConfirm} onClose={() => setOpen(false)} onSaved={() => { setOpen(false); onSaved('Asignación docente guardada.'); }} />}
     </div>
   );
 }
@@ -939,15 +939,15 @@ function TeacherAssignmentModal({ bundle, setConfirm, onClose, onSaved }: { bund
     const sectionIds = getValues(form, 'sectionIds');
     if (!teacherId || !subjectIds.length || !sectionIds.length) return;
     confirmAction(setConfirm, {
-      title: 'Guardar asignaciÃ³n docente',
-      message: `Confirma ${subjectIds.length} asignatura(s) y ${sectionIds.length} secciÃ³n(es) para el profesor seleccionado.`,
+      title: 'Guardar asignación docente',
+      message: `Confirma ${subjectIds.length} asignatura(s) y ${sectionIds.length} sección(es) para el profesor seleccionado.`,
       action: async () => {
         await assignAdminTeacher(teacherId, { subjectIds, sectionIds });
         onSaved();
       }
     });
   }
-  return <div className="admin-modal-backdrop"><form className="admin-modal assignment-modal" onSubmit={submit}><header><div><span>Asignaciones</span><h2>Asignar profesor</h2></div><button type="button" onClick={onClose}>x</button></header><div className="admin-form-grid"><SelectField label="Profesor" name="teacherId" options={bundle.summary.options.teachers} required placeholder="Selecciona un profesor" /><MultiSelectField label="Asignaturas" name="subjectIds" options={bundle.summary.options.subjects} help="Selecciona una o mÃ¡s asignaturas." /><MultiSelectField label="Secciones" name="sectionIds" options={bundle.summary.options.sections} help="Selecciona una o mÃ¡s secciones." /></div><footer><button type="button" className="secondary-button" onClick={onClose}>Cancelar</button><button className="primary-button">Guardar asignaciÃ³n</button></footer></form></div>;
+  return <div className="admin-modal-backdrop"><form className="admin-modal assignment-modal" onSubmit={submit}><header><div><span>Asignaciones</span><h2>Asignar profesor</h2></div><button type="button" onClick={onClose}>x</button></header><div className="admin-form-grid"><SelectField label="Profesor" name="teacherId" options={bundle.summary.options.teachers} required placeholder="Selecciona un profesor" /><MultiSelectField label="Asignaturas" name="subjectIds" options={bundle.summary.options.subjects} help="Selecciona una o más asignaturas." /><MultiSelectField label="Secciones" name="sectionIds" options={bundle.summary.options.sections} help="Selecciona una o más secciones." /></div><footer><button type="button" className="secondary-button" onClick={onClose}>Cancelar</button><button className="primary-button">Guardar asignación</button></footer></form></div>;
 }
 
 function AssignmentsStudentsPage({ bundle, onSaved, setConfirm }: { bundle: AdminBundle; onSaved: (message: string) => void; setConfirm: (confirm: ConfirmState | null) => void }) {
@@ -965,28 +965,28 @@ function AssignmentsStudentsPage({ bundle, onSaved, setConfirm }: { bundle: Admi
     const section = bundle.sections.find((item) => item.id === targetSection);
     confirmAction(setConfirm, {
       title: 'Asignar estudiantes',
-      message: `Confirma que quieres asignar ${selected.length} estudiante(s) a ${section ? `${section.course} ${section.name}` : 'la secciÃ³n seleccionada'}.`,
+      message: `Confirma que quieres asignar ${selected.length} estudiante(s) a ${section ? `${section.course} ${section.name}` : 'la sección seleccionada'}.`,
       action: async () => {
         await Promise.all(selected.map((id) => assignAdminStudentSection(id, targetSection)));
         setSelected([]);
-        onSaved('Estudiantes asignados a secciÃ³n.');
+        onSaved('Estudiantes asignados a sección.');
       }
     });
   }
   async function clear() {
     if (!selected.length) return;
     confirmAction(setConfirm, {
-      title: 'Quitar secciÃ³n',
-      message: `Confirma que quieres quitar la secciÃ³n a ${selected.length} estudiante(s).`,
+      title: 'Quitar sección',
+      message: `Confirma que quieres quitar la sección a ${selected.length} estudiante(s).`,
       danger: true,
       action: async () => {
         await Promise.all(selected.map(clearAdminStudentSection));
         setSelected([]);
-        onSaved('SecciÃ³n quitada correctamente.');
+        onSaved('Sección quitada correctamente.');
       }
     });
   }
-  return <div className="assignment-page"><header className="assignment-header"><div><h2>AsignaciÃ³n de estudiantes</h2><p>Selecciona estudiantes y muÃ©velos a una secciÃ³n.</p></div></header><div className="assignment-filters"><select value={course} onChange={(e) => { setCourse(e.target.value); setSection(''); }}><option value="">Todos los cursos</option>{bundle.courses.map((item) => <option key={item.id} value={item.name}>{item.name}</option>)}</select><select value={section} onChange={(e) => setSection(e.target.value)}><option value="">Todas las secciones</option>{bundle.sections.filter((item) => !course || item.course === course).map((item) => <option key={item.id} value={item.id}>{item.course} {item.name}</option>)}</select><label className="admin-search"><Search size={17} /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar por nombre, correo o RUT" /></label></div><div className="assignment-bulkbar"><select value={targetSection} onChange={(e) => setTargetSection(e.target.value)}><option value="">Selecciona secciÃ³n destino</option>{bundle.sections.map((item) => <option key={item.id} value={item.id}>{item.course} {item.name}</option>)}</select><button className="primary-button" disabled={!selected.length || !targetSection} onClick={assign}>Asignar a secciÃ³n</button><button className="secondary-button" disabled={!selected.length} onClick={clear}>Quitar de secciÃ³n</button><span>{selected.length} seleccionados</span></div><div className="student-picker-list assignment-student-list">{visible.map((student) => <label key={student.id} className="student-picker-row"><input type="checkbox" checked={selected.includes(student.id)} onChange={() => setSelected((current) => current.includes(student.id) ? current.filter((id) => id !== student.id) : [...current, student.id])} /><span><strong>{student.name}</strong><small>{student.email}</small><small>RUT / identificador: {student.rut}</small><small>{student.course} Â· {student.section}</small></span></label>)}</div>{!filtered.length && <div className="admin-empty"><Search size={20} /><strong>Sin estudiantes</strong><span>No se encontraron estudiantes con esos filtros.</span></div>}<Pager page={page} total={total} onPage={setPage} /></div>;
+  return <div className="assignment-page"><header className="assignment-header"><div><h2>Asignación de estudiantes</h2><p>Selecciona estudiantes y muévelos a una sección.</p></div></header><div className="assignment-filters"><select value={course} onChange={(e) => { setCourse(e.target.value); setSection(''); }}><option value="">Todos los cursos</option>{bundle.courses.map((item) => <option key={item.id} value={item.name}>{item.name}</option>)}</select><select value={section} onChange={(e) => setSection(e.target.value)}><option value="">Todas las secciones</option>{bundle.sections.filter((item) => !course || item.course === course).map((item) => <option key={item.id} value={item.id}>{item.course} {item.name}</option>)}</select><label className="admin-search"><Search size={17} /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar por nombre, correo o RUT" /></label></div><div className="assignment-bulkbar"><select value={targetSection} onChange={(e) => setTargetSection(e.target.value)}><option value="">Selecciona sección destino</option>{bundle.sections.map((item) => <option key={item.id} value={item.id}>{item.course} {item.name}</option>)}</select><button className="primary-button" disabled={!selected.length || !targetSection} onClick={assign}>Asignar a sección</button><button className="secondary-button" disabled={!selected.length} onClick={clear}>Quitar de sección</button><span>{selected.length} seleccionados</span></div><div className="student-picker-list assignment-student-list">{visible.map((student) => <label key={student.id} className="student-picker-row"><input type="checkbox" checked={selected.includes(student.id)} onChange={() => setSelected((current) => current.includes(student.id) ? current.filter((id) => id !== student.id) : [...current, student.id])} /><span><strong>{student.name}</strong><small>{student.email}</small><small>RUT / identificador: {student.rut}</small><small>{student.course} · {student.section}</small></span></label>)}</div>{!filtered.length && <div className="admin-empty"><Search size={20} /><strong>Sin estudiantes</strong><span>No se encontraron estudiantes con esos filtros.</span></div>}<Pager page={page} total={total} onPage={setPage} /></div>;
 }
 
 function AssignmentsGuardiansPage({ bundle, onSaved, setConfirm }: { bundle: AdminBundle; onSaved: (message: string) => void; setConfirm: (confirm: ConfirmState | null) => void }) {
@@ -1025,11 +1025,11 @@ function AssignmentsGuardiansPage({ bundle, onSaved, setConfirm }: { bundle: Adm
   return (
     <div className="assignment-page">
       <header className="assignment-header">
-        <div><h2>Apoderado â†’ estudiantes</h2><p>Busca y selecciona un apoderado desde la lista para administrar sus vÃ­nculos.</p></div>
+        <div><h2>Apoderado → estudiantes</h2><p>Busca y selecciona un apoderado desde la lista para administrar sus vínculos.</p></div>
         <button className="primary-button" disabled={!guardian} onClick={() => setPickerOpen(true)}><Plus size={17} />Agregar estudiantes</button>
       </header>
       <div className="assignment-filters guardian-assignment-filters">
-        <label className="admin-search"><Search size={17} /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar apoderado por nombre, correo, RUT o telÃ©fono" /></label>
+        <label className="admin-search"><Search size={17} /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar apoderado por nombre, correo, RUT o teléfono" /></label>
       </div>
       <div className="guardian-assignment-layout">
         <section className="guardian-list-panel">
@@ -1039,7 +1039,7 @@ function AssignmentsGuardiansPage({ bundle, onSaved, setConfirm }: { bundle: Adm
               <button type="button" key={item.id} className={`guardian-option-card ${guardianId === item.id ? 'selected' : ''}`} onClick={() => { setGuardianId(item.id); setDetailOpen(true); }}>
                 <span><strong>{item.name}</strong><small>{item.email}</small></span>
                 <span><small>RUT / identificador</small><strong>{item.rut || 'Sin registro'}</strong></span>
-                <span><small>TelÃ©fono</small><strong>{item.phone || 'Sin telÃ©fono'}</strong></span>
+                <span><small>Teléfono</small><strong>{item.phone || 'Sin teléfono'}</strong></span>
                 <span><small>Estudiantes</small><strong>{item.students.length}</strong></span>
                 <StatusBadge active={item.isActive} />
               </button>
@@ -1071,7 +1071,7 @@ function GuardianDetailModal({ guardian, students, onClose, onAdd, onUnlink }: {
         <div className="guardian-detail-summary">
           <span><small>Correo</small><strong>{guardian.email}</strong></span>
           <span><small>RUT / identificador</small><strong>{guardian.rut || 'Sin registro'}</strong></span>
-          <span><small>TelÃ©fono</small><strong>{guardian.phone || 'Sin telÃ©fono'}</strong></span>
+          <span><small>Teléfono</small><strong>{guardian.phone || 'Sin teléfono'}</strong></span>
           <StatusBadge active={guardian.isActive} />
         </div>
         <div className="guardian-detail-actions">
@@ -1084,8 +1084,8 @@ function GuardianDetailModal({ guardian, students, onClose, onAdd, onUnlink }: {
               <span><strong>{student?.name ?? name}</strong><small>{student?.email ?? 'Sin correo'}</small></span>
               <span><small>RUT</small><strong>{student?.rut || 'Sin registro'}</strong></span>
               <span><small>Curso</small><strong>{student?.course || 'Sin curso'}</strong></span>
-              <span><small>SecciÃ³n</small><strong>{student?.section || 'Sin secciÃ³n'}</strong></span>
-              <span><small>RelaciÃ³n</small><strong>{relationship}</strong></span>
+              <span><small>Sección</small><strong>{student?.section || 'Sin sección'}</strong></span>
+              <span><small>Relación</small><strong>{relationship}</strong></span>
               <button className="danger-button" onClick={() => onUnlink(id)}>Desvincular</button>
             </article>
           ))}
@@ -1096,39 +1096,113 @@ function GuardianDetailModal({ guardian, students, onClose, onAdd, onUnlink }: {
   );
 }
 
+type SubjectResponsibleRow = {
+  id: string;
+  subject: AdminSubjectRow;
+  section: AdminSubjectRow['sections'][number];
+  teacher: AdminSubjectRow['teachers'][number] | undefined;
+};
+
+function SubjectResponsibleModal({ row, teachers, setConfirm, onClose, onSaved }: { row: SubjectResponsibleRow; teachers: AdminTeacherRow[]; setConfirm: (confirm: ConfirmState | null) => void; onClose: () => void; onSaved: () => void }) {
+  const [teacherId, setTeacherId] = useState(row.teacher?.id ?? '');
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const currentTeacherId = row.teacher?.id ?? '';
+  const hasChanged = teacherId !== currentTeacherId;
+
+  function requestClose() {
+    if (!hasChanged) {
+      onClose();
+      return;
+    }
+    confirmAction(setConfirm, {
+      title: 'Cambios sin guardar',
+      message: 'Cambiaste el profesor responsable. ¿Quieres cerrar sin guardar?',
+      danger: true,
+      action: async () => onClose()
+    });
+  }
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError('');
+    if (!row.subject.id) {
+      setError('La asignatura es requerida.');
+      return;
+    }
+    if (!row.section.id) {
+      setError('El curso / sección es requerido.');
+      return;
+    }
+    if (!teacherId) {
+      setError('Selecciona un profesor responsable.');
+      return;
+    }
+    if (!hasChanged) {
+      setError('No hay cambios para guardar.');
+      return;
+    }
+    try {
+      setSaving(true);
+      await assignAdminSubjectTeacher(row.subject.id, { teacherId, sectionId: row.section.id });
+      onSaved();
+    } catch (err) {
+      const message = (err as { response?: { data?: { message?: string } } }).response?.data?.message;
+      setError(message ?? 'No se pudo actualizar el responsable.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="admin-modal-backdrop" role="dialog" aria-modal="true" onMouseDown={(event) => { if (event.target === event.currentTarget) requestClose(); }}>
+      <form className="admin-modal responsible-modal" onSubmit={submit}>
+        <header>
+          <div><span>Asignaciones</span><h2>Editar responsable</h2></div>
+          <button type="button" onClick={requestClose}>x</button>
+        </header>
+        <div className="responsible-modal-body">
+          <div className="responsible-summary">
+            <span><small>Asignatura</small><strong>{row.subject.name}</strong></span>
+            <span><small>Curso / sección</small><strong>{row.section.course} {row.section.name}</strong></span>
+            <span><small>Profesor responsable actual</small><strong>{row.teacher?.name ?? 'Sin responsable'}</strong></span>
+          </div>
+          <label>
+            Nuevo profesor responsable
+            <select value={teacherId} onChange={(event) => { setTeacherId(event.target.value); setError(''); }} required className={error && !teacherId ? 'input-error' : undefined}>
+              <option value="">Selecciona un profesor</option>
+              {teachers.map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.name}{teacher.email ? ` · ${teacher.email}` : ''}</option>)}
+            </select>
+          </label>
+          {!hasChanged && <small className="field-help">Selecciona un profesor distinto para guardar cambios.</small>}
+          {error && <p className="admin-modal-error">{error}</p>}
+        </div>
+        <footer>
+          <button type="button" className="secondary-button" onClick={requestClose}>Cancelar</button>
+          <button className="primary-button" disabled={saving || !teacherId || !hasChanged}>{saving ? 'Guardando...' : 'Guardar responsable'}</button>
+        </footer>
+      </form>
+    </div>
+  );
+}
+
 function AssignmentsSubjectsPage({ bundle, onSaved, setConfirm }: { bundle: AdminBundle; onSaved: (message: string) => void; setConfirm: (confirm: ConfirmState | null) => void }) {
   const [query, setQuery] = useState('');
   const [course, setCourse] = useState('');
   const [subjectFilter, setSubjectFilter] = useState('');
   const [teacherFilter, setTeacherFilter] = useState('');
-  const [selectedSubjectId, setSelectedSubjectId] = useState('');
-  const [selectedSectionId, setSelectedSectionId] = useState('');
-  const [selectedTeacherId, setSelectedTeacherId] = useState('');
+  const [editingRow, setEditingRow] = useState<SubjectResponsibleRow | null>(null);
   const rows = bundle.subjects.flatMap((subject) => subject.sections.map((section) => ({ id: `${subject.id}-${section.id}`, subject, section, teacher: subject.teachers[0] }))).filter((row) => assignmentMatch([row.subject.name, row.section.course, row.section.name, row.teacher?.name ?? ''], query) && (!course || row.section.course === course) && (!subjectFilter || row.subject.id === subjectFilter) && (!teacherFilter || row.teacher?.id === teacherFilter));
   const { page, total, setPage, visible } = usePagedRows(rows, 10);
-  const selectedSectionOptions = selectedSubjectId ? bundle.summary.options.sections.filter((option) => bundle.subjects.find((subject) => subject.id === selectedSubjectId)?.sections.some((section) => section.id === option.id) ?? true) : bundle.summary.options.sections;
+  const hasFilters = Boolean(course || subjectFilter || teacherFilter || query);
+  const resetFilters = () => {
+    setCourse('');
+    setSubjectFilter('');
+    setTeacherFilter('');
+    setQuery('');
+    setPage(1);
+  };
 
-  function edit(row: typeof rows[number]) {
-    setSelectedSubjectId(row.subject.id);
-    setSelectedSectionId(row.section.id);
-    setSelectedTeacherId(row.teacher?.id ?? '');
-  }
-
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!selectedSubjectId || !selectedTeacherId) return;
-    const subject = bundle.subjects.find((item) => item.id === selectedSubjectId);
-    const section = bundle.sections.find((item) => item.id === selectedSectionId);
-    const teacher = bundle.teachers.find((item) => item.id === selectedTeacherId);
-    confirmAction(setConfirm, {
-      title: 'Cambiar responsable',
-      message: `Confirma que ${teacher?.name ?? 'el profesor seleccionado'} será responsable de ${subject?.name ?? 'la asignatura'}${section ? ` en ${section.course} ${section.name}` : ''}.`,
-      action: async () => {
-        await assignAdminSubjectTeacher(selectedSubjectId, { teacherId: selectedTeacherId, sectionId: selectedSectionId || undefined });
-        onSaved('Responsable actualizado correctamente.');
-      }
-    });
-  }
-
-  return <div className="assignment-page"><header className="assignment-header"><div><h2>Responsables de asignatura</h2><p>Define el profesor responsable por asignatura y sección.</p></div></header><form className="assignment-inline-form" onSubmit={submit}><label>Asignatura<select value={selectedSubjectId} onChange={(event) => { setSelectedSubjectId(event.target.value); setSelectedSectionId(''); }} required><option value="">Selecciona una asignatura</option>{bundle.summary.options.subjects.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label><label>Curso / sección<select value={selectedSectionId} onChange={(event) => setSelectedSectionId(event.target.value)}><option value="">Todas las secciones</option>{selectedSectionOptions.map((item) => <option key={item.id} value={item.id}>{item.label}{item.meta ? ` · ${item.meta}` : ''}</option>)}</select></label><label>Profesor responsable<select value={selectedTeacherId} onChange={(event) => setSelectedTeacherId(event.target.value)} required><option value="">Selecciona un profesor</option>{bundle.summary.options.teachers.map((item) => <option key={item.id} value={item.id}>{item.label}{item.meta ? ` · ${item.meta}` : ''}</option>)}</select></label><button className="primary-button" disabled={!selectedSubjectId || !selectedTeacherId}>Guardar responsable</button></form><div className="assignment-filters"><select value={course} onChange={(e) => setCourse(e.target.value)}><option value="">Todos los cursos</option>{bundle.courses.map((item) => <option key={item.id} value={item.name}>{item.name}</option>)}</select><select value={subjectFilter} onChange={(e) => setSubjectFilter(e.target.value)}><option value="">Todas las asignaturas</option>{bundle.subjects.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select><select value={teacherFilter} onChange={(e) => setTeacherFilter(e.target.value)}><option value="">Todos los profesores</option>{bundle.teachers.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select><label className="admin-search"><Search size={17} /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar por asignatura, curso o profesor" /></label></div><div className="assignment-table"><div className="assignment-row head subject"><span>Asignatura</span><span>Curso / sección</span><span>Profesor responsable</span><span>Acciones</span></div>{visible.map((row) => <div key={row.id} className="assignment-row subject"><span>{row.subject.name}</span><span>{row.section.course} {row.section.name}</span><span>{row.teacher?.name ?? 'Sin responsable'}</span><span><button className="secondary-button" onClick={() => edit(row)}><Edit3 size={15} />Editar</button></span></div>)}</div>{!rows.length && <div className="admin-empty"><Search size={20} /><strong>Sin responsables</strong><span>No se encontraron responsables con esos filtros.</span></div>}<Pager page={page} total={total} onPage={setPage} /></div>;
+  return <div className="assignment-page"><header className="assignment-header"><div><h2>Responsables de asignatura</h2><p>Define el profesor responsable por asignatura y sección.</p></div></header><div className="assignment-filters responsible-filters"><select value={course} onChange={(e) => { setCourse(e.target.value); setPage(1); }}><option value="">Todos los cursos</option>{bundle.courses.map((item) => <option key={item.id} value={item.name}>{item.name}</option>)}</select><select value={subjectFilter} onChange={(e) => { setSubjectFilter(e.target.value); setPage(1); }}><option value="">Todas las asignaturas</option>{bundle.subjects.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select><select value={teacherFilter} onChange={(e) => { setTeacherFilter(e.target.value); setPage(1); }}><option value="">Todos los profesores</option>{bundle.teachers.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select><label className="admin-search"><Search size={17} /><input value={query} onChange={(e) => { setQuery(e.target.value); setPage(1); }} placeholder="Buscar por asignatura, curso, sección o profesor" /></label><button type="button" className="secondary-button" onClick={resetFilters} disabled={!hasFilters}>Limpiar filtros</button></div><div className="assignment-table"><div className="assignment-row head subject"><span>Asignatura</span><span>Curso / sección</span><span>Profesor responsable</span><span>Acciones</span></div>{visible.map((row) => <div key={row.id} className="assignment-row subject"><span>{row.subject.name}</span><span>{row.section.course} {row.section.name}</span><span>{row.teacher?.name ?? 'Sin responsable'}</span><span><button className="secondary-button" onClick={() => setEditingRow(row)}><Edit3 size={15} />Editar</button></span></div>)}</div>{!rows.length && <div className="admin-empty"><Search size={20} /><strong>Sin responsables</strong><span>No hay responsables que coincidan con los filtros actuales.</span></div>}<Pager page={page} total={total} onPage={setPage} />{editingRow && <SubjectResponsibleModal row={editingRow} teachers={bundle.teachers} setConfirm={setConfirm} onClose={() => setEditingRow(null)} onSaved={() => { setEditingRow(null); onSaved('Responsable actualizado correctamente.'); }} />}</div>;
 }
+
