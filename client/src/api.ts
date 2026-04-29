@@ -582,7 +582,7 @@ export async function setAdminUserStatus(id: string, isActive: boolean) {
 }
 
 export async function resetAdminUserPassword(id: string, password?: string) {
-  const { data } = await api.patch<{ temporaryPassword: string }>(`/admin/users/${id}/reset-password`, { password });
+  const { data } = await api.patch<{ ok?: true }>(`/admin/users/${id}/reset-password`, { password });
   return data;
 }
 

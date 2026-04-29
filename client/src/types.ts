@@ -470,7 +470,6 @@ export interface AdminSummary {
   courses: number;
   sections: number;
   subjects: number;
-  temporaryPassword: string;
   options: {
     roles: AdminOption[];
     levels: AdminOption[];

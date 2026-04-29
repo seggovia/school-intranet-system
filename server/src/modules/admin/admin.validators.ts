@@ -26,12 +26,42 @@ const adminUserBaseSchema = z.object({
 });
 
 export const createAdminUserSchema = adminUserBaseSchema.superRefine((value, ctx) => {
+  if (!value.lastName) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['lastName'], message: 'Apellido requerido.' });
+  if (!value.password) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['password'], message: 'Contraseña requerida.' });
+  if (value.role === 'student') {
+    if (!value.rut) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['rut'], message: 'RUT/identificador requerido.' });
+    if (!value.birthDate) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['birthDate'], message: 'Fecha de nacimiento requerida.' });
+    if (!value.sectionId) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['sectionId'], message: 'Seccion requerida.' });
+  }
+  if (value.role === 'teacher') {
+    if (!value.rut) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['rut'], message: 'Codigo docente requerido.' });
+    if (!value.department) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['department'], message: 'Area/especialidad requerida.' });
+  }
+  if (value.role === 'guardian') {
+    if (!value.rut) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['rut'], message: 'RUT/identificador requerido.' });
+    if (!value.phone) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['phone'], message: 'Telefono requerido.' });
+  }
   if (value.role === 'guardian' && value.rut && !chileanRutPattern.test(value.rut)) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['rut'], message: 'RUT/identificador invalido.' });
   }
 });
 
-export const updateAdminUserSchema = adminUserBaseSchema.partial().superRefine((value, ctx) => {
+export const updateAdminUserSchema = adminUserBaseSchema.omit({ password: true }).partial().superRefine((value, ctx) => {
+  if (value.name !== undefined && !value.name) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['name'], message: 'Nombre requerido.' });
+  if (value.lastName !== undefined && !value.lastName) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['lastName'], message: 'Apellido requerido.' });
+  if (value.role === 'student') {
+    if (value.rut !== undefined && !value.rut) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['rut'], message: 'RUT/identificador requerido.' });
+    if (value.birthDate !== undefined && !value.birthDate) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['birthDate'], message: 'Fecha de nacimiento requerida.' });
+    if (value.sectionId !== undefined && !value.sectionId) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['sectionId'], message: 'Seccion requerida.' });
+  }
+  if (value.role === 'teacher') {
+    if (value.rut !== undefined && !value.rut) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['rut'], message: 'Codigo docente requerido.' });
+    if (value.department !== undefined && !value.department) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['department'], message: 'Area/especialidad requerida.' });
+  }
+  if (value.role === 'guardian') {
+    if (value.rut !== undefined && !value.rut) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['rut'], message: 'RUT/identificador requerido.' });
+    if (value.phone !== undefined && !value.phone) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['phone'], message: 'Telefono requerido.' });
+  }
   if (value.role === 'guardian' && value.rut && !chileanRutPattern.test(value.rut)) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['rut'], message: 'RUT/identificador invalido.' });
   }
@@ -42,8 +72,8 @@ export const updateAdminUserSchema = adminUserBaseSchema.partial().superRefine((
 export const statusSchema = z.object({ isActive: z.boolean() });
 
 export const optionalResetPasswordSchema = z.object({
-  password: z.string().trim().min(6).max(80).optional()
-}).optional().default({});
+  password: z.string().trim().min(6, 'La contraseña debe tener al menos 6 caracteres.').max(80)
+});
 
 export const sectionAssignSchema = z.object({ sectionId: z.string().trim().min(1) });
 

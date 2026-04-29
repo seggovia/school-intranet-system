@@ -26,7 +26,6 @@ import type { z } from 'zod';
 
 const repository = new AdminRepository();
 const currentYear = () => new Date().getFullYear();
-const temporaryPassword = 'demo1234';
 
 type RoleName = 'admin' | 'director' | 'teacher' | 'student' | 'guardian' | 'inspector';
 type CreateUserInput = z.infer<typeof createAdminUserSchema>;
@@ -228,7 +227,6 @@ export class AdminService {
       courses,
       sections,
       subjects,
-      temporaryPassword,
       options: {
         roles: roles.map((role) => ({ id: role.name, label: role.label })),
         levels: levels.map((level) => ({ id: level.id, label: level.name })),
@@ -266,7 +264,8 @@ export class AdminService {
 
     const roles = await repository.findRoles([role]);
     if (roles.length !== 1) throw new HttpError(400, 'El rol indicado no existe.');
-    const passwordHash = await bcrypt.hash(input.password ?? temporaryPassword, 12);
+    if (!input.password) throw new HttpError(400, 'Contraseña requerida.');
+    const passwordHash = await bcrypt.hash(input.password, 12);
 
     const user = await repository.transaction(async (tx) => {
       const created = await repository.createUser(tx, {
@@ -303,8 +302,6 @@ export class AdminService {
 
     const roles = input.role ? await repository.findRoles([input.role]) : [];
     if (input.role && roles.length !== 1) throw new HttpError(400, 'El rol indicado no existe.');
-    const passwordHash = input.password ? await bcrypt.hash(input.password, 12) : undefined;
-
     const user = await repository.transaction(async (tx) => {
       const updatedName = input.name ? fullName(input) : undefined;
       const updated = await repository.updateUser(tx, id, {
@@ -312,7 +309,6 @@ export class AdminService {
         email: input.email,
         department: input.department,
         avatar: updatedName ? initials(updatedName) : undefined,
-        passwordHash
       });
       if (input.role) {
         await repository.replaceRoles(tx, id, roles.map((role) => role.id));
@@ -334,8 +330,8 @@ export class AdminService {
   async resetUserPassword(id: string, input?: { password?: string }) {
     const current = await repository.findUserById(id);
     if (!current) throw new HttpError(404, 'Usuario no encontrado.');
-    const password = input?.password || temporaryPassword;
-    return { user: serializeUser(await repository.resetPassword(id, await bcrypt.hash(password, 12))), temporaryPassword: password };
+    if (!input?.password) throw new HttpError(400, 'Nueva contraseña requerida.');
+    return { user: serializeUser(await repository.resetPassword(id, await bcrypt.hash(input.password, 12))) };
   }
 
   async students() {
