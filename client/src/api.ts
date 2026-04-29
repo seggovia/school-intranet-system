@@ -69,11 +69,16 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && raw && !original._retry) {
       original._retry = true;
       const current = JSON.parse(raw) as AuthSession;
-      const { data } = await axios.post<AuthSession>('/api/auth/refresh', { refreshToken: current.refreshToken });
-      const nextSession = { ...current, ...data };
-      localStorage.setItem(sessionStorageKey, JSON.stringify(nextSession));
-      original.headers.Authorization = `Bearer ${nextSession.accessToken}`;
-      return api(original);
+      try {
+        const { data } = await axios.post<AuthSession>('/api/auth/refresh', { refreshToken: current.refreshToken });
+        const nextSession = { ...current, ...data };
+        localStorage.setItem(sessionStorageKey, JSON.stringify(nextSession));
+        original.headers.Authorization = `Bearer ${nextSession.accessToken}`;
+        return api(original);
+      } catch {
+        localStorage.removeItem(sessionStorageKey);
+        window.dispatchEvent(new CustomEvent('school-session-expired'));
+      }
     }
     return Promise.reject(error);
   }

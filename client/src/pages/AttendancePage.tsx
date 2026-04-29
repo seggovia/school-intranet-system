@@ -1,6 +1,8 @@
 import { FormEvent, ReactNode, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, BookOpen, CalendarDays, CheckCircle2, Clock, MapPin, Save, Search, Users, XCircle } from 'lucide-react';
 import { loadAttendanceContext, loadAttendanceGuardian, loadAttendanceMe, loadAttendanceRecords, loadAttendanceSummary, saveAttendanceBulk } from '../api';
+import { normalizeApiError, type NormalizedApiError } from '../api-error';
+import { ApiErrorModal } from '../components/ApiErrorModal';
 import { PageHeader } from '../components/PageHeader';
 import { EmptyState, LoadingState } from '../components/States';
 import type { AttendanceContext, AttendanceHistoryItem, AttendanceRecordsResponse, AttendanceRosterRecord, AttendanceRosterStatus, AttendanceScheduleItem, AttendanceStatus, AttendanceSummary, User } from '../types';
@@ -65,7 +67,7 @@ function SummaryCards({ values }: { values: Partial<AttendanceSummary> & { sin_r
   return <section className="attendance-summary-cards">{cards.map(([label, value, Icon]) => <article key={label}><Icon size={19} /><span>{label}</span><strong>{value}</strong></article>)}</section>;
 }
 
-function ConfirmModal({ confirm, onClose }: { confirm: ConfirmState; onClose: () => void }) {
+function ConfirmModal({ confirm, onClose, onApiError }: { confirm: ConfirmState; onClose: () => void; onApiError: (error: unknown) => void }) {
   const [busy, setBusy] = useState(false);
   return (
     <div className="admin-modal-backdrop" role="dialog" aria-modal="true">
@@ -75,7 +77,7 @@ function ConfirmModal({ confirm, onClose }: { confirm: ConfirmState; onClose: ()
           <h2>{confirm.title}</h2>
           <p>{confirm.message}</p>
         </div>
-        <div><button className="secondary-button" onClick={onClose}>Cancelar</button><button className={confirm.danger ? 'danger-button' : 'primary-button'} disabled={busy} onClick={async () => { setBusy(true); await confirm.action(); onClose(); }}>Confirmar</button></div>
+        <div><button className="secondary-button" onClick={onClose}>Cancelar</button><button className={confirm.danger ? 'danger-button' : 'primary-button'} disabled={busy} onClick={async () => { try { setBusy(true); await confirm.action(); onClose(); } catch (err) { onClose(); onApiError(err); } finally { setBusy(false); } }}>Confirmar</button></div>
       </section>
     </div>
   );
@@ -109,6 +111,7 @@ function ManageAttendance({ user }: { user: User }) {
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
+  const [apiError, setApiError] = useState<NormalizedApiError | null>(null);
   const [summary, setSummary] = useState<{ sections: Array<{ name: string; summary: AttendanceSummary }> } | null>(null);
   const [confirm, setConfirm] = useState<ConfirmState | null>(null);
   const [studentQuery, setStudentQuery] = useState('');
@@ -165,6 +168,18 @@ function ManageAttendance({ user }: { user: User }) {
     });
   }
 
+  function showApiError(error: unknown) {
+    const normalized = normalizeApiError(error);
+    setApiError(normalized);
+    if (normalized.kind === 'unauthorized') {
+      window.setTimeout(() => window.dispatchEvent(new CustomEvent('school-session-expired')), 1200);
+    }
+  }
+
+  function showValidationModal(message: string) {
+    setApiError({ kind: 'validation', status: 400, title: 'Datos invalidos', message, fieldErrors: {} });
+  }
+
   function selectAssignment(nextSectionId: string, nextSubjectId: string) {
     runWithUnsaved(() => {
       setSectionId(nextSectionId);
@@ -214,13 +229,13 @@ function ManageAttendance({ user }: { user: User }) {
       return;
     }
     if (futureDate) {
-      setError('No se puede registrar asistencia futura.');
+      showValidationModal('No se puede registrar asistencia futura.');
       return;
     }
     if (!hasClassToday) {
       setRecords(null);
       setBaseline({});
-      setError('No hay clase programada para esta asignatura en la fecha seleccionada.');
+      showValidationModal('No hay clase programada para esta asignatura en la fecha seleccionada.');
       return;
     }
     try {
@@ -229,8 +244,7 @@ function ManageAttendance({ user }: { user: User }) {
       setRecords(next);
       setBaseline(Object.fromEntries(next.students.map((student) => [student.studentId, rowSignature(student)])));
     } catch (err) {
-      const message = (err as { response?: { data?: { message?: string } } }).response?.data?.message;
-      setError(message ?? 'No se pudo cargar la asistencia.');
+      showApiError(err);
     } finally {
       setRosterLoading(false);
     }
@@ -257,8 +271,7 @@ function ManageAttendance({ user }: { user: User }) {
           setNotice('Asistencia guardada correctamente.');
           await load();
         } catch (err) {
-          const message = (err as { response?: { data?: { message?: string } } }).response?.data?.message;
-          setError(message ?? 'No se pudo guardar la asistencia.');
+          showApiError(err);
         } finally {
           setSaving(false);
         }
@@ -314,7 +327,8 @@ function ManageAttendance({ user }: { user: User }) {
           {summary && <section className="panel"><h3>Resumen por sección de hoy</h3><div className="attendance-history-table">{summary.sections.map((item) => <article key={item.name}><strong>{item.name}</strong><span>{item.summary.percentage}% asistencia</span><span>{item.summary.ausente} ausentes</span><span>{item.summary.atrasado} atrasos</span></article>)}</div></section>}
         </>
       )}
-      {confirm && <ConfirmModal confirm={confirm} onClose={() => setConfirm(null)} />}
+      {confirm && <ConfirmModal confirm={confirm} onClose={() => setConfirm(null)} onApiError={showApiError} />}
+      {apiError && <ApiErrorModal error={apiError} onClose={() => setApiError(null)} />}
     </div>
   );
 }

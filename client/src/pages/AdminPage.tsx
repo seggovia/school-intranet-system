@@ -42,6 +42,8 @@ import {
   type AdminSchedulePayload,
   type AdminUserPayload
 } from '../api';
+import { normalizeApiError, shouldShowApiErrorModal, type NormalizedApiError } from '../api-error';
+import { ApiErrorModal } from '../components/ApiErrorModal';
 import { PageHeader } from '../components/PageHeader';
 import type { AdminBundle, AdminClassroomRow, AdminCourseRow, AdminGuardianRow, AdminOption, AdminScheduleRow, AdminSectionRow, AdminStudentRow, AdminSubjectRow, AdminTeacherRow, AdminUserRow, Role, User } from '../types';
 
@@ -351,7 +353,7 @@ function UserFields({
   );
 }
 
-function EntityModal({ modal, options, students, onClose, onSaved, setConfirm }: { modal: ModalState; options: AdminBundle['summary']['options']; students: AdminStudentRow[]; onClose: () => void; onSaved: (message: string) => void; setConfirm: (confirm: ConfirmState | null) => void }) {
+function EntityModal({ modal, options, students, onClose, onSaved, setConfirm, onApiError }: { modal: ModalState; options: AdminBundle['summary']['options']; students: AdminStudentRow[]; onClose: () => void; onSaved: (message: string) => void; setConfirm: (confirm: ConfirmState | null) => void; onApiError: (error: unknown) => void }) {
   const title = `${modal.mode === 'create' ? 'Crear' : 'Editar'} ${modal.type === 'user' ? 'usuario' : modal.type === 'student' ? 'estudiante' : modal.type === 'teacher' ? 'profesor' : modal.type === 'guardian' ? 'apoderado' : modal.type === 'course' ? 'curso' : modal.type === 'section' ? 'sección' : modal.type === 'classroom' ? 'sala' : 'asignatura'}`;
   const [selectedRole, setSelectedRole] = useState<Role | ''>(roleFromModal(modal));
   const [formError, setFormError] = useState('');
@@ -483,8 +485,13 @@ function EntityModal({ modal, options, students, onClose, onSaved, setConfirm }:
       else if (modal.type === 'subject') onSaved(modal.mode === 'create' ? 'Asignatura creada correctamente.' : 'Asignatura actualizada correctamente.');
       else onSaved('Cambios guardados correctamente.');
       } catch (err) {
-        const message = (err as { response?: { data?: { message?: string } } }).response?.data?.message;
-        setFormError(message ?? 'No se pudieron guardar los cambios.');
+        const apiError = normalizeApiError(err);
+        if (apiError.kind === 'validation') {
+          setFieldErrors((current) => ({ ...current, ...apiError.fieldErrors }));
+          setFormError(Object.keys(apiError.fieldErrors).length ? '' : apiError.message);
+        } else {
+          onApiError(apiError);
+        }
       } finally {
         setSaving(false);
       }
@@ -535,9 +542,8 @@ function EntityModal({ modal, options, students, onClose, onSaved, setConfirm }:
   );
 }
 
-function ConfirmDialog({ confirm, onClose }: { confirm: ConfirmState; onClose: () => void }) {
+function ConfirmDialog({ confirm, onClose, onApiError }: { confirm: ConfirmState; onClose: () => void; onApiError: (error: unknown) => void }) {
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
   useEffect(() => {
     function handleKey(event: KeyboardEvent) {
       if (event.key === 'Escape' && !busy) onClose();
@@ -551,8 +557,7 @@ function ConfirmDialog({ confirm, onClose }: { confirm: ConfirmState; onClose: (
         <AlertTriangle />
         <h2>{confirm.title}</h2>
         <p>{confirm.message}</p>
-        {error && <p className="admin-modal-error">{error}</p>}
-        <div><button className="secondary-button" onClick={onClose}>Cancelar</button><button className={confirm.danger ? 'danger-button' : 'primary-button'} disabled={busy} onClick={async () => { try { setBusy(true); setError(''); await confirm.action(); onClose(); } catch (err) { const message = (err as { response?: { data?: { message?: string } }; message?: string }).response?.data?.message ?? (err as Error).message; setError(message || 'No se pudo completar la acción.'); setBusy(false); } }}>Confirmar</button></div>
+        <div><button className="secondary-button" onClick={onClose}>Cancelar</button><button className={confirm.danger ? 'danger-button' : 'primary-button'} disabled={busy} onClick={async () => { try { setBusy(true); await confirm.action(); onClose(); } catch (err) { onClose(); onApiError(err); } finally { setBusy(false); } }}>Confirmar</button></div>
       </section>
     </div>
   );
@@ -793,7 +798,7 @@ function AcademicClassroomsPage({ bundle, canManage, setModal, setConfirm, onSav
   return <div className="course-admin-view"><header className="assignment-header"><div><h2>Salas</h2><p>Administra espacios físicos, piso, capacidad y tipo.</p></div>{canManage && <button className="primary-button" onClick={() => setModal({ type: 'classroom', mode: 'create' })}><Plus size={17} />Crear sala</button>}</header><div className="assignment-filters labelled-filters classroom-filters"><label className="admin-search"><span>Buscar sala</span><div><Search size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Nombre, tipo o capacidad" /></div></label><label>Tipo<select value={type} onChange={(event) => setType(event.target.value)}><option value="">Todos los tipos</option><option value="aula">Aula</option><option value="laboratorio">Laboratorio</option><option value="biblioteca">Biblioteca</option><option value="gimnasio">Gimnasio</option><option value="otro">Otro</option></select></label><label>Piso<select value={floor} onChange={(event) => setFloor(event.target.value)}><option value="">Todos los pisos</option>{floorOptions.map((item) => <option key={item} value={item}>Piso {item}</option>)}</select></label><label>Estado<select value={status} onChange={(event) => setStatus(event.target.value as typeof status)}><option value="all">Todos</option><option value="active">Activas</option><option value="inactive">Inactivas</option></select></label><label>Capacidad mínima<input type="number" min="1" value={minCapacity} onChange={(event) => setMinCapacity(event.target.value)} placeholder="Ej: 30" /></label></div><div className="classroom-table"><div className="classroom-row head"><span>Sala</span><span>Tipo</span><span>Piso</span><span>Capacidad</span><span>Secciones asociadas</span><span>Estado</span><span>Acciones</span></div>{visible.map((classroom) => <div key={classroom.id} className="classroom-row"><span><strong>{classroom.name}</strong><small>{classroom.schedules} horarios</small></span><span>{classroom.type}</span><span>Piso {classroom.floor}</span><span>{classroom.capacity} cupos</span><span>{classroom.sections}</span><StatusBadge active={classroom.isActive} />{canManage && <div className="admin-row-actions"><button onClick={() => setModal({ type: 'classroom', mode: 'edit', row: classroom })}><Edit3 size={15} />Editar</button><button className={classroom.isActive ? 'danger-button' : 'secondary-button'} onClick={() => toggle(classroom)}>{classroom.isActive ? 'Desactivar' : 'Activar'}</button><button className="danger-button" onClick={() => remove(classroom)}><Trash2 size={15} />Eliminar</button></div>}</div>)}</div>{!rows.length && <div className="admin-empty"><Search size={22} /><strong>Sin salas</strong><span>No se encontraron salas con esos filtros.</span></div>}<Pager page={page} total={total} onPage={setPage} /></div>;
 }
 
-function ScheduleModal({ row, bundle, onClose, onSaved }: { row?: AdminScheduleRow; bundle: AdminBundle; onClose: () => void; onSaved: (message: string) => void }) {
+function ScheduleModal({ row, bundle, onClose, onSaved, onApiError }: { row?: AdminScheduleRow; bundle: AdminBundle; onClose: () => void; onSaved: (message: string) => void; onApiError: (error: unknown) => void }) {
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -823,8 +828,9 @@ function ScheduleModal({ row, bundle, onClose, onSaved }: { row?: AdminScheduleR
       row ? await updateAdminSchedule(row.id, payload) : await createAdminSchedule(payload);
       onSaved(row ? 'Horario actualizado correctamente.' : 'Horario creado correctamente.');
     } catch (err) {
-      const message = (err as { response?: { data?: { message?: string } } }).response?.data?.message;
-      setError(message ?? 'No se pudo guardar el horario.');
+      const apiError = normalizeApiError(err);
+      if (apiError.kind === 'validation') setError(apiError.message);
+      else onApiError(apiError);
     } finally {
       setSaving(false);
     }
@@ -855,7 +861,7 @@ function ScheduleModal({ row, bundle, onClose, onSaved }: { row?: AdminScheduleR
   );
 }
 
-function AcademicSchedulesPage({ bundle, canManage, onSaved, setConfirm }: { bundle: AdminBundle; canManage: boolean; onSaved: (message: string) => void; setConfirm: (confirm: ConfirmState | null) => void }) {
+function AcademicSchedulesPage({ bundle, canManage, onSaved, setConfirm, onApiError }: { bundle: AdminBundle; canManage: boolean; onSaved: (message: string) => void; setConfirm: (confirm: ConfirmState | null) => void; onApiError: (error: unknown) => void }) {
   const [query, setQuery] = useState('');
   const [sectionId, setSectionId] = useState('');
   const [teacherId, setTeacherId] = useState('');
@@ -917,7 +923,7 @@ function AcademicSchedulesPage({ bundle, canManage, onSaved, setConfirm }: { bun
       </div>
       {!rows.length && <div className="admin-empty"><Search size={22} /><strong>Sin horarios</strong><span>No se encontraron horarios con esos filtros.</span></div>}
       <Pager page={page} total={total} onPage={setPage} />
-      {(creating || editing) && <ScheduleModal row={editing ?? undefined} bundle={bundle} onClose={() => { setCreating(false); setEditing(null); }} onSaved={(message) => { setCreating(false); setEditing(null); onSaved(message); }} />}
+      {(creating || editing) && <ScheduleModal row={editing ?? undefined} bundle={bundle} onClose={() => { setCreating(false); setEditing(null); }} onSaved={(message) => { setCreating(false); setEditing(null); onSaved(message); }} onApiError={onApiError} />}
     </div>
   );
 }
@@ -939,6 +945,7 @@ export function AdminPage({ user }: { user: User }) {
   const [assignmentsOpen, setAssignmentsOpen] = useState(true);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [apiError, setApiError] = useState<NormalizedApiError | null>(null);
   const canManage = ['admin', 'director'].includes(user.primaryRole);
   const canInspect = user.primaryRole === 'inspector';
 
@@ -946,7 +953,7 @@ export function AdminPage({ user }: { user: User }) {
     setBundle(await loadAdminBundle());
   }
 
-  useEffect(() => { refresh().catch(() => setError('No se pudo cargar el panel administrativo.')); }, []);
+  useEffect(() => { refresh().catch(handleApiError); }, []);
   useEffect(() => {
     if (!notice && !error) return;
     const timer = window.setTimeout(() => { setNotice(null); setError(null); }, 4200);
@@ -956,7 +963,20 @@ export function AdminPage({ user }: { user: User }) {
   function done(message: string) {
     setModal(null);
     setNotice(message);
-    refresh().catch(() => setError('No se pudo actualizar la informacion.'));
+    setApiError(null);
+    refresh().catch(handleApiError);
+  }
+
+  function handleApiError(error: unknown) {
+    const normalized = normalizeApiError(error);
+    if (normalized.kind === 'validation' && !shouldShowApiErrorModal(normalized)) {
+      setError(normalized.message);
+      return;
+    }
+    setApiError(normalized);
+    if (normalized.kind === 'unauthorized') {
+      window.setTimeout(() => window.dispatchEvent(new CustomEvent('school-session-expired')), 1200);
+    }
   }
 
   const visibleTabs = useMemo(() => (canInspect && !canManage ? tabs.filter((item) => ['students'].includes(item.id)) : tabs), [canInspect, canManage]);
@@ -1091,19 +1111,20 @@ export function AdminPage({ user }: { user: User }) {
           {tab === 'academic-courses' && <AcademicCoursesPage bundle={bundle} canManage={canManage} setModal={setModal} setConfirm={setConfirm} onSaved={done} />}
           {tab === 'academic-sections' && <AcademicSectionsPage bundle={bundle} canManage={canManage} setModal={setModal} setConfirm={setConfirm} onSaved={done} />}
           {tab === 'academic-classrooms' && <AcademicClassroomsPage bundle={bundle} canManage={canManage} setModal={setModal} setConfirm={setConfirm} onSaved={done} />}
-          {tab === 'academic-schedules' && <AcademicSchedulesPage bundle={bundle} canManage={canManage} onSaved={done} setConfirm={setConfirm} />}
+          {tab === 'academic-schedules' && <AcademicSchedulesPage bundle={bundle} canManage={canManage} onSaved={done} setConfirm={setConfirm} onApiError={handleApiError} />}
 
           {tab === 'subjects' && <AdminTable headers={['Asignatura', 'Profesores', 'Secciones', 'Acciones']} rows={filtered as AdminSubjectRow[]} render={(row) => <><div><strong>{row.name}</strong><small>{row.code}</small></div><span>{row.teachers.map((item) => item.name).join(', ') || 'Sin profesor'}</span><span>{row.sections.map((item) => `${item.course} ${item.name}`).join(', ') || 'Sin sección'}</span><div className="admin-row-actions">{canManage && <button onClick={() => setModal({ type: 'subject', mode: 'edit', row })}><Edit3 size={16} />Editar</button>}</div></>} />}
 
           {tab === 'assignments-teachers' && <AssignmentsTeachersPage bundle={bundle} onSaved={done} setConfirm={setConfirm} />}
           {tab === 'assignments-students' && <AssignmentsStudentsPage bundle={bundle} onSaved={done} setConfirm={setConfirm} />}
           {tab === 'assignments-guardians' && <AssignmentsGuardiansPage bundle={bundle} onSaved={done} setConfirm={setConfirm} />}
-          {tab === 'assignments-subjects' && <AssignmentsSubjectsPage bundle={bundle} onSaved={done} setConfirm={setConfirm} />}
+          {tab === 'assignments-subjects' && <AssignmentsSubjectsPage bundle={bundle} onSaved={done} setConfirm={setConfirm} onApiError={handleApiError} />}
         </main>
       </section>
 
-      {modal && <EntityModal modal={modal} options={options} students={bundle.students} onClose={() => setModal(null)} onSaved={done} setConfirm={setConfirm} />}
-      {confirm && <ConfirmDialog confirm={confirm} onClose={() => setConfirm(null)} />}
+      {modal && <EntityModal modal={modal} options={options} students={bundle.students} onClose={() => setModal(null)} onSaved={done} setConfirm={setConfirm} onApiError={handleApiError} />}
+      {confirm && <ConfirmDialog confirm={confirm} onClose={() => setConfirm(null)} onApiError={handleApiError} />}
+      {apiError && <ApiErrorModal error={apiError} onClose={() => setApiError(null)} />}
     </div>
   );
 }
@@ -1341,7 +1362,7 @@ type SubjectResponsibleRow = {
   teacher: AdminSubjectRow['teachers'][number] | undefined;
 };
 
-function SubjectResponsibleModal({ row, teachers, setConfirm, onClose, onSaved }: { row: SubjectResponsibleRow; teachers: AdminTeacherRow[]; setConfirm: (confirm: ConfirmState | null) => void; onClose: () => void; onSaved: () => void }) {
+function SubjectResponsibleModal({ row, teachers, setConfirm, onClose, onSaved, onApiError }: { row: SubjectResponsibleRow; teachers: AdminTeacherRow[]; setConfirm: (confirm: ConfirmState | null) => void; onClose: () => void; onSaved: () => void; onApiError: (error: unknown) => void }) {
   const [teacherId, setTeacherId] = useState(row.teacher?.id ?? '');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -1385,8 +1406,9 @@ function SubjectResponsibleModal({ row, teachers, setConfirm, onClose, onSaved }
       await assignAdminSubjectTeacher(row.subject.id, { teacherId, sectionId: row.section.id });
       onSaved();
     } catch (err) {
-      const message = (err as { response?: { data?: { message?: string } } }).response?.data?.message;
-      setError(message ?? 'No se pudo actualizar el responsable.');
+      const apiError = normalizeApiError(err);
+      if (apiError.kind === 'validation') setError(apiError.message);
+      else onApiError(apiError);
     } finally {
       setSaving(false);
     }
@@ -1424,7 +1446,7 @@ function SubjectResponsibleModal({ row, teachers, setConfirm, onClose, onSaved }
   );
 }
 
-function AssignmentsSubjectsPage({ bundle, onSaved, setConfirm }: { bundle: AdminBundle; onSaved: (message: string) => void; setConfirm: (confirm: ConfirmState | null) => void }) {
+function AssignmentsSubjectsPage({ bundle, onSaved, setConfirm, onApiError }: { bundle: AdminBundle; onSaved: (message: string) => void; setConfirm: (confirm: ConfirmState | null) => void; onApiError: (error: unknown) => void }) {
   const [query, setQuery] = useState('');
   const [course, setCourse] = useState('');
   const [subjectFilter, setSubjectFilter] = useState('');
@@ -1441,6 +1463,6 @@ function AssignmentsSubjectsPage({ bundle, onSaved, setConfirm }: { bundle: Admi
     setPage(1);
   };
 
-  return <div className="assignment-page"><header className="assignment-header"><div><h2>Responsables de asignatura</h2><p>Define el profesor responsable por asignatura y sección.</p></div></header><div className="assignment-filters responsible-filters"><select value={course} onChange={(e) => { setCourse(e.target.value); setPage(1); }}><option value="">Todos los cursos</option>{bundle.courses.map((item) => <option key={item.id} value={item.name}>{item.name}</option>)}</select><select value={subjectFilter} onChange={(e) => { setSubjectFilter(e.target.value); setPage(1); }}><option value="">Todas las asignaturas</option>{bundle.subjects.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select><select value={teacherFilter} onChange={(e) => { setTeacherFilter(e.target.value); setPage(1); }}><option value="">Todos los profesores</option>{bundle.teachers.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select><label className="admin-search"><Search size={17} /><input value={query} onChange={(e) => { setQuery(e.target.value); setPage(1); }} placeholder="Buscar por asignatura, curso, sección o profesor" /></label><button type="button" className="secondary-button" onClick={resetFilters} disabled={!hasFilters}>Limpiar filtros</button></div><div className="assignment-table"><div className="assignment-row head subject"><span>Asignatura</span><span>Curso / sección</span><span>Profesor responsable</span><span>Acciones</span></div>{visible.map((row) => <div key={row.id} className="assignment-row subject"><span>{row.subject.name}</span><span>{row.section.course} {row.section.name}</span><span>{row.teacher?.name ?? 'Sin responsable'}</span><span><button className="secondary-button" onClick={() => setEditingRow(row)}><Edit3 size={15} />Editar</button></span></div>)}</div>{!rows.length && <div className="admin-empty"><Search size={20} /><strong>Sin responsables</strong><span>No hay responsables que coincidan con los filtros actuales.</span></div>}<Pager page={page} total={total} onPage={setPage} />{editingRow && <SubjectResponsibleModal row={editingRow} teachers={bundle.teachers} setConfirm={setConfirm} onClose={() => setEditingRow(null)} onSaved={() => { setEditingRow(null); onSaved('Responsable actualizado correctamente.'); }} />}</div>;
+  return <div className="assignment-page"><header className="assignment-header"><div><h2>Responsables de asignatura</h2><p>Define el profesor responsable por asignatura y sección.</p></div></header><div className="assignment-filters responsible-filters"><select value={course} onChange={(e) => { setCourse(e.target.value); setPage(1); }}><option value="">Todos los cursos</option>{bundle.courses.map((item) => <option key={item.id} value={item.name}>{item.name}</option>)}</select><select value={subjectFilter} onChange={(e) => { setSubjectFilter(e.target.value); setPage(1); }}><option value="">Todas las asignaturas</option>{bundle.subjects.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select><select value={teacherFilter} onChange={(e) => { setTeacherFilter(e.target.value); setPage(1); }}><option value="">Todos los profesores</option>{bundle.teachers.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select><label className="admin-search"><Search size={17} /><input value={query} onChange={(e) => { setQuery(e.target.value); setPage(1); }} placeholder="Buscar por asignatura, curso, sección o profesor" /></label><button type="button" className="secondary-button" onClick={resetFilters} disabled={!hasFilters}>Limpiar filtros</button></div><div className="assignment-table"><div className="assignment-row head subject"><span>Asignatura</span><span>Curso / sección</span><span>Profesor responsable</span><span>Acciones</span></div>{visible.map((row) => <div key={row.id} className="assignment-row subject"><span>{row.subject.name}</span><span>{row.section.course} {row.section.name}</span><span>{row.teacher?.name ?? 'Sin responsable'}</span><span><button className="secondary-button" onClick={() => setEditingRow(row)}><Edit3 size={15} />Editar</button></span></div>)}</div>{!rows.length && <div className="admin-empty"><Search size={20} /><strong>Sin responsables</strong><span>No hay responsables que coincidan con los filtros actuales.</span></div>}<Pager page={page} total={total} onPage={setPage} />{editingRow && <SubjectResponsibleModal row={editingRow} teachers={bundle.teachers} setConfirm={setConfirm} onClose={() => setEditingRow(null)} onSaved={() => { setEditingRow(null); onSaved('Responsable actualizado correctamente.'); }} onApiError={onApiError} />}</div>;
 }
 

@@ -954,6 +954,7 @@
 
 .admin-modal,
 .admin-confirm,
+.api-error-modal,
 .student-picker-modal {
   width: min(820px, 100%);
   max-height: 88vh;
@@ -1619,6 +1620,32 @@
   justify-content: flex-end;
   gap: 10px;
   margin-top: 22px;
+}
+
+.api-error-modal {
+  max-width: 460px;
+  padding: 28px;
+  display: grid;
+  gap: 16px;
+}
+
+.api-error-modal svg {
+  color: #b45309;
+}
+
+.api-error-modal h2,
+.api-error-modal p {
+  margin: 0;
+}
+
+.api-error-modal p {
+  color: #475569;
+  line-height: 1.5;
+}
+
+.api-error-modal footer {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .admin-notice {

@@ -1,5 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { AuthSession } from './types';
 import { logout, sessionStorageKey } from './api';
 import { LoginPage } from './pages/LoginPage';
@@ -28,6 +28,15 @@ export function App() {
     localStorage.setItem(sessionStorageKey, JSON.stringify(nextSession));
     setSession(nextSession);
   }
+
+  useEffect(() => {
+    function expireSession() {
+      localStorage.removeItem(sessionStorageKey);
+      setSession(null);
+    }
+    window.addEventListener('school-session-expired', expireSession);
+    return () => window.removeEventListener('school-session-expired', expireSession);
+  }, []);
 
   async function handleLogout() {
     if (session?.refreshToken) {

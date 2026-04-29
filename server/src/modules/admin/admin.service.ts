@@ -524,7 +524,7 @@ export class AdminService {
   async setCourseStatus(id: string, input: StatusInput) {
     const current = (await repository.listCourses()).find((item) => item.id === id);
     if (!current) throw new HttpError(404, 'Curso no encontrado.');
-    if (!input.isActive && current.sections.some((section) => section.enrollments.length > 0)) throw new HttpError(400, 'No se puede desactivar un curso con estudiantes activos en sus secciones.');
+    if (!input.isActive && current.sections.some((section) => section.enrollments.length > 0)) throw new HttpError(409, 'No se puede desactivar un curso con estudiantes activos en sus secciones.');
     return serializeCourse(await repository.setCourseActive(id, input.isActive));
   }
 
@@ -553,15 +553,15 @@ export class AdminService {
   async setSectionStatus(id: string, input: StatusInput) {
     const section = await repository.findSection(id);
     if (!section) throw new HttpError(404, 'Seccion no encontrada.');
-    if (!input.isActive && section.enrollments.length) throw new HttpError(400, 'No se puede desactivar una seccion con estudiantes asignados.');
+    if (!input.isActive && section.enrollments.length) throw new HttpError(409, 'No se puede desactivar una seccion con estudiantes asignados.');
     return serializeSection(await repository.setSectionActive(id, input.isActive));
   }
 
   async deleteSection(id: string) {
     const section = await repository.findSection(id);
     if (!section) throw new HttpError(404, 'Seccion no encontrada.');
-    if (section.enrollments.length) throw new HttpError(400, 'No se puede eliminar una seccion con estudiantes asignados.');
-    if (section.subjects.length || section.schedules.length) throw new HttpError(400, 'No se puede eliminar una seccion en uso por asignaturas u horarios.');
+    if (section.enrollments.length) throw new HttpError(409, 'No se puede eliminar una seccion con estudiantes asignados.');
+    if (section.subjects.length || section.schedules.length) throw new HttpError(409, 'No se puede eliminar una seccion en uso por asignaturas u horarios.');
     await repository.deleteSection(id);
     return { ok: true };
   }
@@ -676,14 +676,14 @@ export class AdminService {
   async setClassroomStatus(id: string, input: StatusInput) {
     const classroom = await repository.findClassroom(id);
     if (!classroom) throw new HttpError(404, 'Sala no encontrada.');
-    if (!input.isActive && (classroom.sections.length || classroom.schedules.length)) throw new HttpError(400, 'No se puede desactivar una sala en uso.');
+    if (!input.isActive && (classroom.sections.length || classroom.schedules.length)) throw new HttpError(409, 'No se puede desactivar una sala en uso.');
     return serializeClassroom(await repository.setClassroomActive(id, input.isActive));
   }
 
   async deleteClassroom(id: string) {
     const classroom = await repository.findClassroom(id);
     if (!classroom) throw new HttpError(404, 'Sala no encontrada.');
-    if (classroom.sections.length || classroom.schedules.length) throw new HttpError(400, 'No se puede eliminar una sala en uso.');
+    if (classroom.sections.length || classroom.schedules.length) throw new HttpError(409, 'No se puede eliminar una sala en uso.');
     await repository.deleteClassroom(id);
     return { ok: true };
   }
