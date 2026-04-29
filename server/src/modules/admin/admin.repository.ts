@@ -49,6 +49,18 @@ export class AdminRepository {
     return prisma.user.findUnique({ where: { email } });
   }
 
+  findStudentByRut(rut: string) {
+    return prisma.student.findUnique({ where: { rut } });
+  }
+
+  findTeacherByEmployeeCode(employeeCode: string) {
+    return prisma.teacher.findUnique({ where: { employeeCode } });
+  }
+
+  findGuardianByRut(rut: string) {
+    return prisma.guardian.findUnique({ where: { rut } });
+  }
+
   findUserById(id: string) {
     return prisma.user.findUnique({ where: { id }, select: userSelect });
   }
@@ -110,8 +122,8 @@ export class AdminRepository {
     return tx.student.upsert({ where: { userId }, update: { rut: input.rut, birthDate: input.birthDate }, create: { userId, rut: input.rut, birthDate: input.birthDate } });
   }
 
-  createGuardianProfile(tx: Tx, userId: string, phone: string) {
-    return tx.guardian.upsert({ where: { userId }, update: { phone }, create: { userId, phone } });
+  createGuardianProfile(tx: Tx, userId: string, input: { phone: string; rut?: string }) {
+    return tx.guardian.upsert({ where: { userId }, update: { phone: input.phone, rut: input.rut }, create: { userId, phone: input.phone, rut: input.rut } });
   }
 
   createStaffProfile(tx: Tx, userId: string, input: { position: string; area: string }) {
@@ -211,7 +223,7 @@ export class AdminRepository {
     return prisma.guardian.findUnique({ where: { id }, include: { user: true } });
   }
 
-  updateGuardian(tx: Tx, id: string, input: Partial<{ phone: string }>) {
+  updateGuardian(tx: Tx, id: string, input: Partial<{ phone: string; rut: string | null }>) {
     return tx.guardian.update({ where: { id }, data: input, include: { user: true } });
   }
 
@@ -230,6 +242,10 @@ export class AdminRepository {
 
   listCourses() {
     return prisma.course.findMany({ include: { level: true, sections: { include: { enrollments: true } }, subjects: { include: { subject: true } } }, orderBy: { name: 'asc' } });
+  }
+
+  findCourseByNameLevel(name: string, levelId: string) {
+    return prisma.course.findFirst({ where: { name, levelId } });
   }
 
   createCourse(input: { name: string; levelId: string }) {
@@ -257,6 +273,10 @@ export class AdminRepository {
     return prisma.course.update({ where: { id }, data: input, include: { level: true, sections: { include: { enrollments: true } }, subjects: { include: { subject: true } } } });
   }
 
+  setCourseActive(id: string, isActive: boolean) {
+    return prisma.course.update({ where: { id }, data: { isActive }, include: { level: true, sections: { include: { enrollments: true } }, subjects: { include: { subject: true } } } });
+  }
+
   listSections() {
     return prisma.section.findMany({
       include: { course: true, classroom: true, headTeacher: { include: { user: true } }, enrollments: true, subjects: { include: { subject: true } } },
@@ -268,8 +288,16 @@ export class AdminRepository {
     return prisma.section.create({ data: input, include: { course: true, classroom: true, headTeacher: { include: { user: true } }, enrollments: true, subjects: { include: { subject: true } } } });
   }
 
+  findSectionByCourseName(courseId: string, name: string) {
+    return prisma.section.findFirst({ where: { courseId, name } });
+  }
+
   updateSection(id: string, input: Partial<{ name: string; courseId: string; teacherId: string | null; classroomId: string | null }>) {
     return prisma.section.update({ where: { id }, data: input, include: { course: true, classroom: true, headTeacher: { include: { user: true } }, enrollments: true, subjects: { include: { subject: true } } } });
+  }
+
+  setSectionActive(id: string, isActive: boolean) {
+    return prisma.section.update({ where: { id }, data: { isActive }, include: { course: true, classroom: true, headTeacher: { include: { user: true } }, enrollments: true, subjects: { include: { subject: true } } } });
   }
 
   findSection(id: string) {
@@ -292,12 +320,16 @@ export class AdminRepository {
     return prisma.classroom.findUnique({ where: { id }, include: { sections: true, schedules: true } });
   }
 
-  createClassroom(input: { name: string; capacity: number; type: string }) {
+  createClassroom(input: { name: string; capacity: number; type: string; floor?: number }) {
     return prisma.classroom.create({ data: input, include: { sections: true, schedules: true } });
   }
 
-  updateClassroom(id: string, input: Partial<{ name: string; capacity: number; type: string }>) {
+  updateClassroom(id: string, input: Partial<{ name: string; capacity: number; type: string; floor: number }>) {
     return prisma.classroom.update({ where: { id }, data: input, include: { sections: true, schedules: true } });
+  }
+
+  setClassroomActive(id: string, isActive: boolean) {
+    return prisma.classroom.update({ where: { id }, data: { isActive }, include: { sections: true, schedules: true } });
   }
 
   deleteClassroom(id: string) {
@@ -309,6 +341,10 @@ export class AdminRepository {
       include: { teachers: { include: { teacher: { include: { user: true } } } }, courses: { include: { course: true } }, sections: { include: { section: { include: { course: true } } } } },
       orderBy: { name: 'asc' }
     });
+  }
+
+  findSubjectByNameOrCode(input: { name?: string; code?: string }) {
+    return prisma.subject.findFirst({ where: { OR: [{ name: input.name }, { code: input.code }].filter((item) => Object.values(item)[0]) } });
   }
 
   createSubject(tx: Tx, input: { name: string; code: string }) {

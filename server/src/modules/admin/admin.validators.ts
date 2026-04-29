@@ -8,7 +8,9 @@ const optionalPhone = z.string().trim().regex(/^[+\d\s()-]{7,30}$/, 'Telefono in
 
 export const idParamSchema = z.object({ id: z.string().trim().min(1) });
 
-export const createAdminUserSchema = z.object({
+const chileanRutPattern = /^\d{1,2}\.?\d{3}\.?\d{3}-[\dkK]$/;
+
+const adminUserBaseSchema = z.object({
   name: z.string().trim().min(1, 'Nombre requerido').max(120),
   lastName: optionalTrimmed(120),
   email: z.string().trim().min(1, 'Correo requerido').email('Correo válido requerido').toLowerCase(),
@@ -23,7 +25,17 @@ export const createAdminUserSchema = z.object({
   studentIds: z.array(z.string().trim().min(1)).optional()
 });
 
-export const updateAdminUserSchema = createAdminUserSchema.partial().refine((value) => Object.keys(value).length > 0, {
+export const createAdminUserSchema = adminUserBaseSchema.superRefine((value, ctx) => {
+  if (value.role === 'guardian' && value.rut && !chileanRutPattern.test(value.rut)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['rut'], message: 'RUT/identificador invalido.' });
+  }
+});
+
+export const updateAdminUserSchema = adminUserBaseSchema.partial().superRefine((value, ctx) => {
+  if (value.role === 'guardian' && value.rut && !chileanRutPattern.test(value.rut)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['rut'], message: 'RUT/identificador invalido.' });
+  }
+}).refine((value) => Object.keys(value).length > 0, {
   message: 'Debe enviar al menos un campo.'
 });
 
@@ -98,7 +110,8 @@ export const updateSectionSchema = createSectionSchema.partial().refine((value) 
 export const createClassroomSchema = z.object({
   name: z.string().trim().min(1).max(120),
   capacity: z.coerce.number().int().positive(),
-  type: z.enum(['aula', 'laboratorio', 'biblioteca', 'gimnasio', 'otro']).optional().default('aula')
+  type: z.enum(['aula', 'laboratorio', 'biblioteca', 'gimnasio', 'otro']).optional().default('aula'),
+  floor: z.coerce.number().int().min(0).max(30).optional().default(1)
 });
 
 export const updateClassroomSchema = createClassroomSchema.partial().refine((value) => Object.keys(value).length > 0, {
