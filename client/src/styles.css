@@ -1643,6 +1643,15 @@
   line-height: 1.5;
 }
 
+.api-error-modal .api-error-solution {
+  margin-top: 10px;
+  color: #334155;
+}
+
+.api-error-modal .api-error-solution strong {
+  color: #17202a;
+}
+
 .api-error-modal footer {
   display: flex;
   justify-content: flex-end;

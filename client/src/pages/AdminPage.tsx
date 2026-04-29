@@ -102,7 +102,8 @@ const roleLabels: Record<Role, string> = {
 
 function splitName(name = '') {
   const parts = name.trim().split(' ').filter(Boolean);
-  return { name: parts.slice(0, 2).join(' ') || name, lastName: parts.slice(2).join(' ') };
+  if (parts.length <= 1) return { name: parts[0] ?? name, lastName: '' };
+  return { name: parts.slice(0, -1).join(' '), lastName: parts.at(-1) ?? '' };
 }
 
 function textIncludes(value: unknown, query: string) {

@@ -9,6 +9,7 @@ export function ApiErrorModal({ error, onClose }: { error: NormalizedApiError; o
         <div>
           <h2>{error.title}</h2>
           <p>{error.message}</p>
+          {error.solution && <p className="api-error-solution"><strong>Que hacer:</strong> {error.solution}</p>}
         </div>
         <footer>
           <button type="button" className="primary-button" onClick={onClose}>Entendido</button>
