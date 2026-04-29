@@ -18,4 +18,14 @@ export class AuthController {
     const result = await service.logout(req.body.refreshToken);
     res.json(result);
   }
+
+  async forgotPassword(req: Request, res: Response) {
+    const result = await service.forgotPassword(req.body.email);
+    res.json(result);
+  }
+
+  async resetPassword(req: Request, res: Response) {
+    const result = await service.resetPassword(req.body);
+    res.json(result);
+  }
 }

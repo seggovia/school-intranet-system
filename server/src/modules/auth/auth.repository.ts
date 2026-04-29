@@ -37,4 +37,27 @@ export class AuthRepository {
       data: { revokedAt: new Date() }
     });
   }
+
+  revokeRefreshTokensForUser(userId: string) {
+    return prisma.refreshToken.updateMany({
+      where: { userId, revokedAt: null },
+      data: { revokedAt: new Date() }
+    });
+  }
+
+  createPasswordResetToken(input: { tokenHash: string; userId: string; expiresAt: Date }) {
+    return prisma.passwordResetToken.create({ data: input });
+  }
+
+  findPasswordResetToken(tokenHash: string) {
+    return prisma.passwordResetToken.findUnique({ where: { tokenHash }, include: { user: { include: userInclude } } });
+  }
+
+  markPasswordResetTokenUsed(id: string) {
+    return prisma.passwordResetToken.update({ where: { id }, data: { usedAt: new Date() } });
+  }
+
+  updateUserPassword(userId: string, passwordHash: string) {
+    return prisma.user.update({ where: { id: userId }, data: { passwordHash } });
+  }
 }

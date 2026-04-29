@@ -167,6 +167,16 @@ export async function login(email: string, password: string) {
   return data;
 }
 
+export async function requestPasswordReset(email: string) {
+  const { data } = await api.post<{ message: string; resetUrl?: string }>('/auth/forgot-password', { email });
+  return data;
+}
+
+export async function resetPassword(input: { token: string; password: string }) {
+  const { data } = await api.post<{ ok: true; message: string }>('/auth/reset-password', input);
+  return data;
+}
+
 export async function logout(refreshToken: string) {
   const { data } = await api.post<{ ok: true }>('/auth/logout', { refreshToken });
   return data;

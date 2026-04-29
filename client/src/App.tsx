@@ -3,6 +3,8 @@ import { useEffect, useMemo, useState } from 'react';
 import type { AuthSession } from './types';
 import { logout, sessionStorageKey } from './api';
 import { LoginPage } from './pages/LoginPage';
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
+import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { Shell } from './components/Shell';
 import { DashboardPage } from './pages/DashboardPage';
 import { AcademicsPage } from './pages/AcademicsPage';
@@ -50,6 +52,8 @@ export function App() {
     return (
       <Routes>
         <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     );
@@ -69,6 +73,8 @@ export function App() {
         <Route path="/solicitudes" element={<RequestsPage user={auth.user!} />} />
         <Route path="/admin" element={<AdminPage user={auth.user!} />} />
         <Route path="/perfil" element={<ProfilePage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Shell>

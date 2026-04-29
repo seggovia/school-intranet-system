@@ -18,6 +18,7 @@ model User {
   updatedAt      DateTime       @updatedAt
   roles          UserRole[]
   refreshTokens  RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
   teacher        Teacher?
   student        Student?
   guardian       Guardian?
@@ -80,6 +81,19 @@ model RefreshToken {
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("refresh_tokens")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
 }
 
 model SchoolLevel {

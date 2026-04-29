@@ -1900,6 +1900,39 @@ button {
   font-size: 1.55rem;
 }
 
+.login-help-link {
+  color: #0f766e;
+  font-weight: 900;
+  text-decoration: none;
+  width: fit-content;
+}
+
+.login-help-link:hover {
+  text-decoration: underline;
+}
+
+.form-success {
+  margin: 0;
+  padding: 12px;
+  border-radius: 8px;
+  background: #d1fae5;
+  color: #047857;
+  font-weight: 800;
+}
+
+.dev-reset-link {
+  margin: 0;
+  padding: 12px;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #1e3a8a;
+  overflow-wrap: anywhere;
+}
+
+.dev-reset-link a {
+  color: #1d4ed8;
+}
+
 form {
   display: grid;
   gap: 18px;

@@ -5,9 +5,12 @@ import type { SignOptions } from 'jsonwebtoken';
 import { env } from '../../config/env.js';
 import { HttpError } from '../../shared/http-error.js';
 import { AuthRepository } from './auth.repository.js';
+import { EmailService } from './email.service.js';
 import type { JwtUser, PublicUser } from './auth.types.js';
 
 const repository = new AuthRepository();
+const emailService = new EmailService();
+const resetTokenMinutes = 30;
 
 function hashToken(token: string) {
   return crypto.createHash('sha256').update(token).digest('hex');
@@ -110,5 +113,39 @@ export class AuthService {
   async logout(refreshToken: string) {
     await repository.revokeRefreshToken(hashToken(refreshToken));
     return { ok: true };
+  }
+
+  async forgotPassword(email: string) {
+    const safeResponse: { message: string; resetUrl?: string } = {
+      message: 'Si el correo existe, enviaremos instrucciones para restablecer la contraseña.'
+    };
+    const user = await repository.findUserByEmail(email);
+    if (!user || !user.isActive) return safeResponse;
+
+    const token = crypto.randomBytes(32).toString('base64url');
+    const tokenHash = hashToken(token);
+    const expiresAt = new Date(Date.now() + resetTokenMinutes * 60 * 1000);
+    const resetUrl = `${env.CLIENT_URL}/reset-password?token=${encodeURIComponent(token)}`;
+
+    await repository.createPasswordResetToken({ tokenHash, userId: user.id, expiresAt });
+    await emailService.sendPasswordReset({ to: user.email, name: user.name, resetUrl });
+
+    if (env.NODE_ENV !== 'production') return { ...safeResponse, resetUrl };
+    return safeResponse;
+  }
+
+  async resetPassword(input: { token: string; password: string }) {
+    const tokenHash = hashToken(input.token);
+    const stored = await repository.findPasswordResetToken(tokenHash);
+    if (!stored || stored.usedAt || stored.expiresAt < new Date()) {
+      throw new HttpError(400, 'El enlace de restablecimiento es invalido o expiro.');
+    }
+    if (!stored.user.isActive) throw new HttpError(403, 'Usuario no disponible.');
+
+    await repository.updateUserPassword(stored.userId, await bcrypt.hash(input.password, 12));
+    await repository.markPasswordResetTokenUsed(stored.id);
+    await repository.revokeRefreshTokensForUser(stored.userId);
+
+    return { ok: true, message: 'Contraseña actualizada correctamente.' };
   }
 }
