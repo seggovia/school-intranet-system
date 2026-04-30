@@ -60,6 +60,10 @@ function linesToList(value: FormDataEntryValue | null) {
     .filter(Boolean);
 }
 
+function isFallbackUnit(unit: SubjectUnit, subjectId: string) {
+  return unit.id.startsWith(`${subjectId}-u`);
+}
+
 function scheduleSummary(subject: SubjectDetailData) {
   if (!subject.schedule.length) return 'Horario por confirmar';
   return subject.schedule.map((item) => `${item.weekdayName} ${item.startsAt}-${item.endsAt}`).join(' · ');
@@ -1316,11 +1320,21 @@ export function SubjectDetailPage({ user }: { user: User }) {
         if (!(file instanceof File) || file.size === 0) {
           throw new Error('Archivo requerido');
         }
-        await uploadUnitMaterial(modal.unit.id, {
+        const targetUnit = isFallbackUnit(modal.unit, subject.subject.id)
+          ? await createSubjectUnit(subject.subject.id, {
+            title: modal.unit.title,
+            description: modal.unit.description || `Contenidos de trabajo para ${subject.subject.name}.`,
+            duration: modal.unit.duration,
+            outcomes: modal.unit.outcomes ?? [],
+            bibliography: modal.unit.bibliography ?? []
+          })
+          : modal.unit;
+        await uploadUnitMaterial(targetUnit.id, {
           title: String(form.get('title') ?? ''),
           type: String(form.get('type') ?? modal.materialType),
           file
         });
+        setActiveUnit(targetUnit.id);
         showNotice('Material subido.');
       }
       if (modal.type === 'assignment') {

@@ -13,7 +13,8 @@ function canDownloadMaterial(user: JwtUser, material: DownloadMaterial) {
   if (user.roles.some((role) => ['admin', 'director'].includes(role))) return true;
   if (user.roles.includes('teacher')) {
     return material.unit.subject.teachers.some((item: any) => item.teacher.userId === user.id)
-      || material.unit.subject.sections.some((item: any) => item.section.headTeacher?.userId === user.id);
+      || material.unit.subject.sections.some((item: any) => item.section.headTeacher?.userId === user.id)
+      || material.unit.subject.sections.some((item: any) => item.section.schedules?.some((schedule: any) => schedule.teacher.userId === user.id));
   }
   if (user.roles.includes('student')) {
     return material.unit.subject.sections.some((item: any) => item.section.enrollments.some((enrollment: any) => enrollment.student.userId === user.id));

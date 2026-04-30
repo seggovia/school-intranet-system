@@ -14,6 +14,29 @@ const submissionListInclude = {
   reviewedBy: true
 };
 
+const subjectAccessInclude = {
+  teachers: { include: { teacher: true } },
+  sections: {
+    include: {
+      section: {
+        include: {
+          headTeacher: true,
+          schedules: { include: { teacher: true } },
+          enrollments: {
+            include: {
+              student: {
+                include: {
+                  guardians: { include: { guardian: true } }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+};
+
 export class SubjectRepository {
   list() {
     return prisma.subject.findMany({
@@ -347,8 +370,7 @@ export class SubjectRepository {
                   include: {
                     subject: {
                       include: {
-                        teachers: { include: { teacher: true } },
-                        sections: { include: { section: { include: { headTeacher: true, enrollments: { include: { student: { include: { guardians: { include: { guardian: true } } } } } } } } } }
+                        ...subjectAccessInclude
                       }
                     }
                   }
@@ -375,8 +397,7 @@ export class SubjectRepository {
                   include: {
                     subject: {
                       include: {
-                        teachers: { include: { teacher: true } },
-                        sections: { include: { section: { include: { headTeacher: true, enrollments: { include: { student: { include: { guardians: { include: { guardian: true } } } } } } } } } }
+                        ...subjectAccessInclude
                       }
                     }
                   }
@@ -403,8 +424,7 @@ export class SubjectRepository {
     return prisma.subject.findUnique({
       where: { id: subjectId },
       include: {
-        teachers: { include: { teacher: true } },
-        sections: { include: { section: { include: { headTeacher: true, enrollments: { include: { student: { include: { guardians: { include: { guardian: true } } } } } } } } } }
+        ...subjectAccessInclude
       }
     });
   }
@@ -415,8 +435,7 @@ export class SubjectRepository {
       include: {
         subject: {
           include: {
-            teachers: { include: { teacher: true } },
-            sections: { include: { section: { include: { headTeacher: true, enrollments: { include: { student: { include: { guardians: { include: { guardian: true } } } } } } } } } }
+            ...subjectAccessInclude
           }
         }
       }
@@ -431,8 +450,7 @@ export class SubjectRepository {
           include: {
             subject: {
               include: {
-                teachers: { include: { teacher: true } },
-                sections: { include: { section: { include: { headTeacher: true, enrollments: { include: { student: { include: { guardians: { include: { guardian: true } } } } } } } } } }
+                ...subjectAccessInclude
               }
             }
           }

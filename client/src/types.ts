@@ -267,7 +267,13 @@ export interface ScheduleCalendarEvent {
   teacher: string;
   room: string;
   section: string;
+  sectionId?: string;
   course: string;
+  weekday?: number;
+  startsAt?: string;
+  endsAt?: string;
+  level?: string | null;
+  students?: Array<{ id: string; name: string }>;
 }
 
 export interface UnitContentItem {
@@ -451,7 +457,7 @@ export interface RequestTicket {
   subject: string;
   requester: string;
   area: string;
-  status: 'nuevo' | 'en_proceso' | 'resuelto';
+  status: 'nuevo' | 'en_revision' | 'en_proceso' | 'resuelto' | 'rechazado';
   createdAt: string;
 }
 

@@ -1,22 +1,26 @@
 import { CalendarClock, MapPin } from 'lucide-react';
 import { loadEvents, loadMySchedule } from '../api';
 import { PageHeader } from '../components/PageHeader';
-import { ScheduleCalendar } from '../components/ScheduleCalendar';
+import { InstitutionalScheduleSummary, PersonalScheduleCards } from '../components/ScheduleCalendar';
 import { StatusBadge } from '../components/StatusBadge';
 import { useAsyncData } from '../hooks';
-import type { CalendarEvent, ScheduleCalendarEvent } from '../types';
+import type { CalendarEvent, ScheduleCalendarEvent, User } from '../types';
 
-export function CalendarPage() {
+export function CalendarPage({ user }: { user: User }) {
   const { data } = useAsyncData(loadEvents, [] as CalendarEvent[]);
   const schedule = useAsyncData(loadMySchedule, [] as ScheduleCalendarEvent[]);
+  const institutional = ['admin', 'director', 'inspector'].includes(user.primaryRole);
+  const title = institutional ? 'Horario institucional' : user.primaryRole === 'teacher' ? 'Mi horario docente' : user.primaryRole === 'guardian' ? 'Horario de estudiantes' : 'Mi horario de clases';
+  const description = institutional
+    ? 'Vista global por bloques para supervisión de clases, salas, docentes y operación escolar.'
+    : 'Vista personal de clases según tu rol y asignaciones vigentes.';
 
   return (
     <div className="page-stack">
-      <PageHeader eyebrow="Calendario" title="Calendario escolar y horario semanal" description="Eventos y horario de clases segun rol, con asignatura, docente, sala, dia y hora." />
+      <PageHeader eyebrow="Horario" title={title} description={description} />
 
       <section className="panel">
-        <h2>Horario semanal de clases</h2>
-        <ScheduleCalendar events={schedule.data} />
+        {institutional ? <InstitutionalScheduleSummary events={schedule.data} /> : <PersonalScheduleCards events={schedule.data} role={user.primaryRole} />}
       </section>
 
       <section className="timeline">

@@ -59,7 +59,12 @@ function serializeCalendarSchedule(schedule: {
   subject: { id: string; name: string };
   teacher: { user: { name: string } };
   classroom: { name: string };
-  section: { course: { name: string }; name: string };
+  section: {
+    id: string;
+    course: { name: string; level?: { name: string } | null };
+    name: string;
+    enrollments?: Array<{ student: { id: string; user: { name: string } } }>;
+  };
 }) {
   const date = dateForWeekday(schedule.weekday);
   const section = `${schedule.section.course.name} ${schedule.section.name}`;
@@ -74,7 +79,13 @@ function serializeCalendarSchedule(schedule: {
     teacher: schedule.teacher.user.name,
     room: schedule.classroom.name,
     section,
-    course: section
+    sectionId: schedule.section.id,
+    course: section,
+    weekday: schedule.weekday,
+    startsAt: schedule.startsAt,
+    endsAt: schedule.endsAt,
+    level: schedule.section.course.level?.name ?? null,
+    students: schedule.section.enrollments?.map((enrollment) => ({ id: enrollment.student.id, name: enrollment.student.user.name })) ?? []
   };
 }
 

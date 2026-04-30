@@ -38,7 +38,8 @@ function hasSubjectManagementAccess(user: JwtUser, subject: any) {
   if (user.roles.some((role) => ['admin', 'director'].includes(role))) return true;
   if (!user.roles.includes('teacher')) return false;
   return subject.teachers.some((item: any) => item.teacher.userId === user.id)
-    || subject.sections.some((item: any) => item.section.headTeacher?.userId === user.id);
+    || subject.sections.some((item: any) => item.section.headTeacher?.userId === user.id)
+    || subject.sections.some((item: any) => item.section.schedules?.some((schedule: any) => schedule.teacher.userId === user.id));
 }
 
 function studentIdsForUser(user: JwtUser, subject: any) {

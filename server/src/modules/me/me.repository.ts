@@ -15,9 +15,14 @@ export class MeRepository {
 
   findTeacherSections(userId: string) {
     return prisma.section.findMany({
-      where: { headTeacher: { userId } },
+      where: {
+        OR: [
+          { headTeacher: { userId } },
+          { schedules: { some: { teacher: { userId }, isActive: true } } }
+        ]
+      },
       include: {
-        course: true,
+        course: { include: { level: true } },
         classroom: true,
         headTeacher: { include: { user: true } },
         subjects: { include: { subject: { include: { assessments: { include: { grades: true } } } } } },
@@ -32,7 +37,7 @@ export class MeRepository {
     return prisma.section.findMany({
       where: { enrollments: { some: { student: { userId }, status: 'activo' } } },
       include: {
-        course: true,
+        course: { include: { level: true } },
         classroom: true,
         headTeacher: { include: { user: true } },
         subjects: { include: { subject: { include: { assessments: { include: { grades: true } } } } } },
@@ -46,7 +51,7 @@ export class MeRepository {
     return prisma.section.findMany({
       where: { enrollments: { some: { student: { guardians: { some: { guardian: { userId } } } }, status: 'activo' } } },
       include: {
-        course: true,
+        course: { include: { level: true } },
         classroom: true,
         headTeacher: { include: { user: true } },
         subjects: { include: { subject: { include: { assessments: { include: { grades: true } } } } } },
@@ -62,7 +67,7 @@ export class MeRepository {
   listAllSections() {
     return prisma.section.findMany({
       include: {
-        course: true,
+        course: { include: { level: true } },
         classroom: true,
         headTeacher: { include: { user: true } },
         subjects: { include: { subject: { include: { assessments: { include: { grades: true } } } } } },

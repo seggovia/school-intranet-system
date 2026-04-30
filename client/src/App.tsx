@@ -64,11 +64,12 @@ export function App() {
       <Routes>
         <Route path="/" element={<DashboardPage />} />
         <Route path="/academico" element={<AcademicsPage user={auth.user!} />} />
+        <Route path="/horario" element={<CalendarPage user={auth.user!} />} />
         <Route path="/asistencia" element={<AttendancePage user={auth.user!} />} />
         <Route path="/calificaciones" element={<GradesPage user={auth.user!} />} />
         <Route path="/subjects/:id" element={<SubjectDetailPage user={auth.user!} />} />
         <Route path="/comunicaciones" element={<CommunicationsPage user={auth.user!} />} />
-        <Route path="/calendario" element={<CalendarPage />} />
+        <Route path="/calendario" element={<CalendarPage user={auth.user!} />} />
         <Route path="/documentos" element={<DocumentsPage user={auth.user!} />} />
         <Route path="/solicitudes" element={<RequestsPage user={auth.user!} />} />
         <Route path="/admin" element={<AdminPage user={auth.user!} />} />
