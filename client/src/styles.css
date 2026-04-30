@@ -4721,6 +4721,317 @@ th {
   display: none;
 }
 
+.data-table-block {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.table-empty {
+  padding: 22px;
+  color: #52677a;
+  text-align: center;
+  background: #f8fafc;
+}
+
+.table-pagination,
+.table-pagination div,
+.panel-title-row,
+.quick-actions,
+.ticket-toolbar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.table-pagination {
+  justify-content: space-between;
+  color: #52677a;
+  font-weight: 800;
+}
+
+.table-link-button {
+  border: 0;
+  padding: 0;
+  color: #0f766e;
+  background: transparent;
+  font: inherit;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.panel-title-row {
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.chart-panel {
+  min-height: 280px;
+}
+
+.bar-chart {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+  align-items: end;
+  height: 190px;
+  padding-top: 16px;
+}
+
+.bar-chart div {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 8px;
+  height: 100%;
+  color: #52677a;
+  font-size: 0.82rem;
+  font-weight: 900;
+  text-align: center;
+}
+
+.bar-chart span {
+  align-self: end;
+  border-radius: 8px 8px 0 0;
+  background: linear-gradient(180deg, #2563eb, #0f766e);
+}
+
+.performance-list,
+.alert-list,
+.activity-list,
+.class-students-panel,
+.class-students-list,
+.course-detail-columns section {
+  display: grid;
+  gap: 10px;
+}
+
+.performance-list span {
+  display: grid;
+  grid-template-columns: minmax(100px, 0.8fr) minmax(120px, 1fr) 42px;
+  gap: 10px;
+  align-items: center;
+}
+
+.performance-list em {
+  height: 10px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  overflow: hidden;
+}
+
+.performance-list i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #0f766e;
+}
+
+.alert-list span,
+.activity-list span,
+.read-confirmation {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  color: #334155;
+}
+
+.quick-actions a {
+  min-height: 38px;
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  border-radius: 8px;
+  padding: 0 12px;
+  color: #0f2942;
+  background: #e7eef5;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.academic-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px;
+  border: 1px solid #d8e2ec;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.academic-tabs button {
+  min-height: 40px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  padding: 0 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #334155;
+  background: #f8fafc;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.academic-tabs button.active {
+  border-color: #0f766e;
+  color: #ffffff;
+  background: #0f766e;
+}
+
+.academic-filter-panel,
+.schedule-control-panel,
+.communication-filters {
+  display: grid;
+  grid-template-columns: minmax(240px, 1.4fr) repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  align-items: end;
+}
+
+.schedule-control-panel {
+  margin-bottom: 14px;
+}
+
+.schedule-control-panel select,
+.communication-filters select,
+.academic-filter-panel select,
+.ticket-toolbar select {
+  min-height: 42px;
+  border: 1px solid #cbd7e4;
+  border-radius: 7px;
+  padding: 9px 10px;
+  background: #fff;
+}
+
+.schedule-agenda {
+  display: grid;
+  gap: 10px;
+}
+
+.schedule-agenda button {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  border: 1px solid #d8e2ec;
+  border-radius: 8px;
+  padding: 12px;
+  color: #172033;
+  background: #ffffff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.schedule-agenda small,
+.schedule-agenda span {
+  color: #64748b;
+}
+
+.schedule-calendar.compact .fc-toolbar,
+.schedule-calendar.compact .fc-timegrid-axis {
+  display: none;
+}
+
+.class-students-panel {
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.class-students-panel h3 {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 0;
+}
+
+.class-students-list {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.class-students-list span,
+.course-detail-columns span {
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: #334155;
+  background: #ffffff;
+}
+
+.course-detail-modal {
+  width: min(980px, calc(100vw - 32px));
+  max-height: min(760px, calc(100vh - 40px));
+  overflow: auto;
+  display: grid;
+  gap: 16px;
+  padding: 22px;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 28px 70px rgba(15, 23, 42, 0.28);
+}
+
+.course-detail-modal header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: start;
+}
+
+.course-detail-grid,
+.communication-summary,
+.ticket-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+}
+
+.course-detail-grid article,
+.communication-summary article,
+.ticket-summary article {
+  display: grid;
+  gap: 7px;
+  padding: 16px;
+  border: 1px solid #d8e2ec;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.course-detail-grid strong,
+.communication-summary strong,
+.ticket-summary strong {
+  font-size: 1.7rem;
+  line-height: 1;
+}
+
+.course-detail-grid span,
+.communication-summary span,
+.ticket-summary span {
+  color: #52677a;
+  font-weight: 800;
+}
+
+.course-detail-columns {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.course-detail-columns section {
+  align-content: start;
+  border: 1px solid #d8e2ec;
+  border-radius: 8px;
+  padding: 14px;
+  background: #f8fafc;
+}
+
+.course-detail-columns h3 {
+  margin: 0;
+}
+
+.communication-summary article svg,
+.ticket-summary article svg {
+  color: #0f766e;
+}
+
 @media (max-width: 1100px) {
   .institution-header {
     grid-template-columns: auto minmax(0, 1fr) minmax(220px, 420px) auto;
@@ -4996,7 +5307,11 @@ th {
   .attendance-class-heading,
   .attendance-toolbar,
   .attendance-student-card,
-  .attendance-history-table article {
+  .attendance-history-table article,
+  .course-detail-columns,
+  .academic-filter-panel,
+  .schedule-control-panel,
+  .communication-filters {
     grid-template-columns: 1fr;
   }
 

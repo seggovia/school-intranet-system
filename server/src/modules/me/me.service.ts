@@ -59,7 +59,7 @@ function serializeCalendarSchedule(schedule: {
   subject: { id: string; name: string };
   teacher: { user: { name: string } };
   classroom: { name: string };
-  section: { course: { name: string }; name: string };
+  section: { id: string; course: { name: string }; name: string };
 }) {
   const date = dateForWeekday(schedule.weekday);
   const section = `${schedule.section.course.name} ${schedule.section.name}`;
@@ -74,6 +74,7 @@ function serializeCalendarSchedule(schedule: {
     teacher: schedule.teacher.user.name,
     room: schedule.classroom.name,
     section,
+    sectionId: schedule.section.id,
     course: section
   };
 }

@@ -6,7 +6,7 @@ export const createRequestSchema = z.object({
 });
 
 export const updateRequestStatusSchema = z.object({
-  status: z.enum(['nuevo', 'en_proceso', 'resuelto'])
+  status: z.enum(['nuevo', 'en_revision', 'en_proceso', 'resuelto', 'rechazado'])
 });
 
 export const requestIdParamSchema = z.object({

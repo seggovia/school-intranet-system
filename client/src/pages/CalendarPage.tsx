@@ -12,10 +12,10 @@ export function CalendarPage() {
 
   return (
     <div className="page-stack">
-      <PageHeader eyebrow="Calendario" title="Calendario escolar y horario semanal" description="Eventos y horario de clases segun rol, con asignatura, docente, sala, dia y hora." />
+      <PageHeader eyebrow="Horario" title="Horario y calendario académico" description="Filtra por día, semana, mes, curso o docente. Abre una clase para revisar datos y estudiantes." />
 
       <section className="panel">
-        <h2>Horario semanal de clases</h2>
+        <h2>Horario de clases</h2>
         <ScheduleCalendar events={schedule.data} />
       </section>
 

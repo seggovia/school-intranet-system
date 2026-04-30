@@ -64,6 +64,7 @@ export function App() {
       <Routes>
         <Route path="/" element={<DashboardPage />} />
         <Route path="/academico" element={<AcademicsPage user={auth.user!} />} />
+        <Route path="/horario" element={<CalendarPage />} />
         <Route path="/asistencia" element={<AttendancePage user={auth.user!} />} />
         <Route path="/calificaciones" element={<GradesPage user={auth.user!} />} />
         <Route path="/subjects/:id" element={<SubjectDetailPage user={auth.user!} />} />
