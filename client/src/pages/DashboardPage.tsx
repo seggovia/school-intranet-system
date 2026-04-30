@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { loadMyDashboard, loadMySchedule } from '../api';
 import { PageHeader } from '../components/PageHeader';
 import { RoleBadge } from '../components/RoleBadge';
-import { ScheduleCalendar } from '../components/ScheduleCalendar';
+import { InstitutionalScheduleSummary, PersonalScheduleCards } from '../components/ScheduleCalendar';
 import { SectionCard } from '../components/SectionCard';
 import { EmptyState, ErrorState, LoadingState } from '../components/States';
 import { StatCard } from '../components/StatCard';
@@ -127,7 +127,11 @@ export function DashboardPage() {
             <h2>Horario institucional</h2>
             <Link className="text-link" to="/horario">Abrir horario</Link>
           </div>
-          {schedule.data.length ? <ScheduleCalendar events={schedule.data} compact /> : <EmptyState title="Sin clases programadas" />}
+          {schedule.data.length ? (
+            ['admin', 'director', 'inspector'].includes(dashboard.data.role)
+              ? <InstitutionalScheduleSummary events={schedule.data} compact />
+              : <PersonalScheduleCards events={schedule.data} role={dashboard.data.role} />
+          ) : <EmptyState title="Sin clases programadas" />}
         </article>
 
         <article className="panel">

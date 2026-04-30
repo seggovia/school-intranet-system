@@ -5032,6 +5032,217 @@ th {
   color: #0f766e;
 }
 
+.institutional-schedule-filters,
+.personal-schedule-filters {
+  display: grid;
+  grid-template-columns: minmax(260px, 1.5fr) repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  align-items: end;
+  margin-bottom: 16px;
+}
+
+.institutional-schedule-filters input,
+.institutional-schedule-filters select,
+.personal-schedule-filters select {
+  min-height: 42px;
+  min-width: 0;
+  border: 1px solid #cbd7e4;
+  border-radius: 7px;
+  padding: 9px 10px;
+  background: #fff;
+}
+
+.institutional-schedule-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.institutional-schedule-kpis article {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid #d8e2ec;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.institutional-schedule-kpis svg {
+  color: #0f766e;
+}
+
+.institutional-schedule-kpis strong {
+  font-size: 1.55rem;
+  line-height: 1;
+}
+
+.institutional-schedule-kpis span {
+  color: #52677a;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.institutional-block-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 12px;
+}
+
+.institutional-block-card {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  border: 1px solid #d8e2ec;
+  border-radius: 8px;
+  padding: 14px;
+  color: #172033;
+  background: #ffffff;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+}
+
+.institutional-block-card:hover {
+  transform: translateY(-1px);
+  border-color: #0f766e;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
+}
+
+.institutional-block-card span {
+  color: #0f766e;
+  font-size: 0.82rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.institutional-block-card strong {
+  font-size: 1.1rem;
+}
+
+.institutional-block-card small {
+  color: #52677a;
+  font-weight: 800;
+}
+
+.institutional-block-card em {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  width: fit-content;
+  margin-top: 4px;
+  color: #0f766e;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.schedule-block-modal {
+  width: min(980px, calc(100vw - 32px));
+  max-height: min(760px, calc(100vh - 40px));
+  overflow: auto;
+  display: grid;
+  gap: 16px;
+  padding: 22px;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 28px 70px rgba(15, 23, 42, 0.28);
+  animation: modal-in 160ms ease-out;
+}
+
+.schedule-block-modal header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: start;
+}
+
+.schedule-block-modal h2,
+.schedule-block-modal p {
+  margin: 0;
+}
+
+.schedule-block-class-list {
+  display: grid;
+  gap: 10px;
+}
+
+.schedule-block-class-list button {
+  display: grid;
+  grid-template-columns: minmax(160px, 1.2fr) minmax(150px, 1fr) minmax(150px, 1fr) minmax(120px, 0.8fr) auto;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid #d8e2ec;
+  border-radius: 8px;
+  padding: 12px;
+  background: #fbfdff;
+  color: #172033;
+  text-align: left;
+  cursor: pointer;
+}
+
+.schedule-block-class-list small {
+  width: max-content;
+  border-radius: 999px;
+  padding: 6px 10px;
+  color: #047857;
+  background: #d1fae5;
+  font-weight: 900;
+}
+
+.class-quick-actions,
+.personal-class-card div {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.personal-schedule-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: start;
+  margin-bottom: 14px;
+}
+
+.personal-schedule-header h2 {
+  margin: 4px 0 0;
+}
+
+.personal-schedule-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.personal-class-card {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid #d8e2ec;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.personal-class-card span {
+  color: #0f766e;
+  font-size: 0.82rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.personal-class-card h3,
+.personal-class-card p {
+  margin: 0;
+}
+
+.personal-class-card small {
+  color: #52677a;
+  font-weight: 800;
+}
+
 @media (max-width: 1100px) {
   .institution-header {
     grid-template-columns: auto minmax(0, 1fr) minmax(220px, 420px) auto;
@@ -5311,7 +5522,10 @@ th {
   .course-detail-columns,
   .academic-filter-panel,
   .schedule-control-panel,
-  .communication-filters {
+  .communication-filters,
+  .institutional-schedule-filters,
+  .personal-schedule-filters,
+  .schedule-block-class-list button {
     grid-template-columns: 1fr;
   }
 

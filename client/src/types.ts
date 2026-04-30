@@ -269,6 +269,11 @@ export interface ScheduleCalendarEvent {
   section: string;
   sectionId?: string;
   course: string;
+  weekday?: number;
+  startsAt?: string;
+  endsAt?: string;
+  level?: string | null;
+  students?: Array<{ id: string; name: string }>;
 }
 
 export interface UnitContentItem {
