@@ -10,7 +10,17 @@ export class MaterialRepository {
             subject: {
               include: {
                 teachers: { include: { teacher: true } },
-                sections: { include: { section: { include: { headTeacher: true, enrollments: { include: { student: { include: { guardians: { include: { guardian: true } } } } } } } } } }
+                sections: {
+                  include: {
+                    section: {
+                      include: {
+                        headTeacher: true,
+                        schedules: { include: { teacher: true } },
+                        enrollments: { include: { student: { include: { guardians: { include: { guardian: true } } } } } }
+                      }
+                    }
+                  }
+                }
               }
             }
           }
