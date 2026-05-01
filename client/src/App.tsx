@@ -8,6 +8,7 @@ import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { Shell } from './components/Shell';
 import { DashboardPage } from './pages/DashboardPage';
 import { AcademicsPage } from './pages/AcademicsPage';
+import { MySubjectsPage } from './pages/MySubjectsPage';
 import { CommunicationsPage } from './pages/CommunicationsPage';
 import { CalendarPage } from './pages/CalendarPage';
 import { DocumentsPage } from './pages/DocumentsPage';
@@ -63,7 +64,8 @@ export function App() {
     <Shell user={auth.user!} onLogout={handleLogout}>
       <Routes>
         <Route path="/" element={<DashboardPage />} />
-        <Route path="/academico" element={<AcademicsPage user={auth.user!} />} />
+        <Route path="/academico" element={<MySubjectsPage />} />
+        <Route path="/gestion-academica" element={<AcademicsPage user={auth.user!} />} />
         <Route path="/horario" element={<CalendarPage user={auth.user!} />} />
         <Route path="/asistencia" element={<AttendancePage user={auth.user!} />} />
         <Route path="/calificaciones" element={<GradesPage user={auth.user!} />} />

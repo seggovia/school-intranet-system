@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Plus, Save } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   deleteGradebookEvaluation,
   loadGradebookContext,
@@ -172,6 +173,10 @@ function StudentGradebookView({ mode }: { mode: 'student' | 'guardian' }) {
 
 function StaffGradebookView({ user }: { user: User }) {
   const canWrite = ['admin', 'director', 'teacher'].includes(user.primaryRole);
+  const [searchParams] = useSearchParams();
+  const sectionParam = searchParams.get('cursoId') ?? '';
+  const subjectParam = searchParams.get('asignaturaId') ?? '';
+  const hasUrlSelection = Boolean(sectionParam && subjectParam);
   const [context, setContext] = useState<GradebookContext | null>(null);
   const [evaluations, setEvaluations] = useState<GradebookEvaluation[]>([]);
   const [students, setStudents] = useState<SectionStudent[]>([]);
@@ -190,6 +195,7 @@ function StaffGradebookView({ user }: { user: User }) {
   const [riskOnly, setRiskOnly] = useState(false);
   const [loadingGradebook, setLoadingGradebook] = useState(false);
   const section = context?.sections.find((item) => item.id === sectionId);
+  const selectedSubject = section?.subjects.find((item) => item.id === subjectId);
   const periodOptions = useMemo(() => Array.from(new Set(evaluations.map((item) => periodKey(item.date)))).sort().reverse(), [evaluations]);
   const filteredEvaluations = useMemo(() => evaluations.filter((item) => !period || periodKey(item.date) === period), [evaluations, period]);
   const gradebookRows = useMemo(() => buildGradebookRows(students, filteredEvaluations, recordsByEvaluation), [filteredEvaluations, recordsByEvaluation, students]);
@@ -199,11 +205,14 @@ function StaffGradebookView({ user }: { user: User }) {
   useEffect(() => {
     loadGradebookContext().then((result) => {
       setContext(result);
-      setSectionId(result.sections[0]?.id ?? '');
-      setSubjectId(result.sections[0]?.subjects[0]?.id ?? '');
+      const requestedSection = result.sections.find((item) => item.id === sectionParam);
+      const initialSection = requestedSection ?? result.sections[0];
+      const requestedSubject = initialSection?.subjects.find((item) => item.id === subjectParam);
+      setSectionId(initialSection?.id ?? '');
+      setSubjectId((requestedSubject ?? initialSection?.subjects[0])?.id ?? '');
     });
     if (['admin', 'director', 'inspector'].includes(user.primaryRole)) loadGradebookSummary().then(setSummary);
-  }, [user.primaryRole]);
+  }, [sectionParam, subjectParam, user.primaryRole]);
 
   useEffect(() => {
     if (!sectionId) return;
@@ -347,18 +356,31 @@ function StaffGradebookView({ user }: { user: User }) {
     <div className="page-stack">
       {notice && <div className="admin-notice success" onClick={() => setNotice('')}>{notice}</div>}
       {error && <div className="admin-notice error" onClick={() => setError('')}>{error}</div>}
+      {hasUrlSelection && (
+        <nav className="gradebook-breadcrumb" aria-label="Ruta de navegación">
+          <Link to="/academico">Mis asignaturas</Link>
+          <span>›</span>
+          <strong>{selectedSubject?.name ?? 'Asignatura'}</strong>
+          <span>›</span>
+          <span>Libro de calificaciones</span>
+        </nav>
+      )}
 
       <section className="panel gradebook-toolbar">
-        <label>Curso
-          <select value={sectionId} onChange={(event) => setSectionId(event.target.value)}>
-            {context.sections.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-          </select>
-        </label>
-        <label>Asignatura
-          <select value={subjectId} onChange={(event) => setSubjectId(event.target.value)}>
-            {section?.subjects.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-          </select>
-        </label>
+        {!hasUrlSelection && (
+          <>
+            <label>Curso
+              <select value={sectionId} onChange={(event) => setSectionId(event.target.value)}>
+                {context.sections.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+              </select>
+            </label>
+            <label>Asignatura
+              <select value={subjectId} onChange={(event) => setSubjectId(event.target.value)}>
+                {section?.subjects.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+              </select>
+            </label>
+          </>
+        )}
         <label>Período
           <select value={period} onChange={(event) => setPeriod(event.target.value)}>
             <option value="">Todos</option>

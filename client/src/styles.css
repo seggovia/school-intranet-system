@@ -1355,6 +1355,90 @@
   overflow: hidden;
 }
 
+.gradebook-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.gradebook-breadcrumb a {
+  color: #0d6e5c;
+  text-decoration: none;
+}
+
+.gradebook-breadcrumb strong {
+  color: #1e293b;
+}
+
+.my-subjects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.my-subject-card {
+  display: grid;
+  gap: 12px;
+  min-height: 190px;
+  padding: 18px;
+  border: 1px solid #d8e2ec;
+  border-radius: 8px;
+  background: #ffffff;
+  color: inherit;
+  text-decoration: none;
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.06);
+  transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+
+.my-subject-card:hover {
+  transform: translateY(-2px);
+  border-color: #0d6e5c;
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.1);
+}
+
+.my-subject-card header,
+.my-subject-card div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.my-subject-card h2 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1.2rem;
+}
+
+.my-subject-card p {
+  margin: 0;
+  color: #52677a;
+  font-weight: 800;
+}
+
+.my-subject-card div span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.subject-risk-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #fee2e2;
+  color: #b91c1c;
+  font-size: 12px;
+}
+
 .gradebook-evaluation-card {
   display: flex;
   justify-content: space-between;
@@ -1693,6 +1777,12 @@
   font-weight: 900;
 }
 
+.gradebook-spreadsheet .footer-label {
+  padding: 0 10px;
+  color: #0f172a;
+  text-align: left;
+}
+
 .gradebook-spreadsheet .student-col {
   min-width: 174px;
   width: 174px;
@@ -1760,6 +1850,11 @@
   justify-content: center;
   width: 100%;
   font-weight: 900;
+  text-align: center;
+}
+
+.gradebook-spreadsheet td.column-average {
+  display: table-cell;
   text-align: center;
 }
 

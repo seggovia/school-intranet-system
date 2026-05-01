@@ -108,12 +108,12 @@ export function GradebookTable({
         </tbody>
         <tfoot>
           <tr>
-            <th className="sticky-col student-col">Promedio evaluación</th>
+            <td className="sticky-col student-col footer-label">Promedio evaluación</td>
             {evaluations.map((evaluation) => {
               const average = columnAverage(rows, evaluation.id);
-              return <td key={evaluation.id} className={`column-average grade-tone-${gradeTone(average)}`}>{formatGrade(average)}</td>;
+              return <td key={evaluation.id} className="column-average"><span className={`grade-tone-${gradeTone(average)}`}>{formatGrade(average)}</span></td>;
             })}
-            <td className={`sticky-col-right average-col column-average grade-tone-${gradeTone(generalAverage)}`}>{formatGrade(generalAverage)}</td>
+            <td className="sticky-col-right average-col column-average"><span className={`grade-tone-${gradeTone(generalAverage)}`}>{formatGrade(generalAverage)}</span></td>
           </tr>
         </tfoot>
       </table>
