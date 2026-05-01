@@ -41,6 +41,11 @@ export function GradebookTable({
   onEditEvaluation?: (evaluation: GradebookEvaluation) => void;
   onDeleteEvaluation?: (evaluation: GradebookEvaluation) => void;
 }) {
+  const sortedEvaluations = [...evaluations].sort((a, b) => {
+    const byDate = a.date.localeCompare(b.date);
+    return byDate || a.title.localeCompare(b.title);
+  });
+
   function navigate(rowIndex: number, colIndex: number) {
     const target = document.querySelector<HTMLInputElement>(`[data-grade-cell="${rowIndex}:${colIndex}"]`);
     target?.focus();
@@ -55,7 +60,7 @@ export function GradebookTable({
         <thead>
           <tr>
             <th className="sticky-col student-col">Estudiante</th>
-            {evaluations.map((evaluation) => (
+            {sortedEvaluations.map((evaluation) => (
               <th key={evaluation.id} className="evaluation-col">
                 <EvalColumnHeader evaluation={evaluation} onEdit={onEditEvaluation} onDelete={onDeleteEvaluation} />
               </th>
@@ -76,7 +81,7 @@ export function GradebookTable({
                   {row.student}
                 </span>
               </th>
-              {evaluations.map((evaluation, colIndex) => {
+              {sortedEvaluations.map((evaluation, colIndex) => {
                 const key = cellKey(evaluation.id, row.studentId);
                 const cell = row.scores[evaluation.id];
                 return (
@@ -109,7 +114,7 @@ export function GradebookTable({
         <tfoot>
           <tr>
             <td className="sticky-col student-col footer-label">Promedio evaluación</td>
-            {evaluations.map((evaluation) => {
+            {sortedEvaluations.map((evaluation) => {
               const average = columnAverage(rows, evaluation.id);
               return <td key={evaluation.id} className="column-average"><span className={`grade-tone-${gradeTone(average)}`}>{formatGrade(average)}</span></td>;
             })}
