@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Edit3, Plus, Save, Trash2 } from 'lucide-react';
+import { AlertTriangle, Plus, Save } from 'lucide-react';
 import {
   deleteGradebookEvaluation,
   loadGradebookContext,
@@ -12,11 +12,11 @@ import {
   saveGradebookRecords
 } from '../api';
 import { EvaluationModal } from '../components/EvaluationModal';
+import { GradebookStats } from '../components/GradebookStats';
 import { GradebookTable } from '../components/GradebookTable';
 import { PageHeader } from '../components/PageHeader';
 import { EmptyState } from '../components/States';
 import type {
-  EvaluationType,
   GradeStatus,
   GradebookAdminSummary,
   GradebookContext,
@@ -36,17 +36,6 @@ const statusLabels: Record<GradeStatus, string> = {
   ausente: 'Ausente',
   eximido: 'Eximido'
 };
-
-const typeLabels: Record<EvaluationType, string> = {
-  prueba: 'Prueba',
-  trabajo: 'Trabajo',
-  tarea: 'Tarea',
-  control: 'Control',
-  proyecto: 'Proyecto',
-  participacion: 'Participación'
-};
-
-const gradeStatuses = Object.keys(statusLabels) as GradeStatus[];
 
 function formatAverage(value: number | null) {
   return value === null ? '-' : value.toFixed(1);
@@ -187,16 +176,13 @@ function StaffGradebookView({ user }: { user: User }) {
   const [evaluations, setEvaluations] = useState<GradebookEvaluation[]>([]);
   const [students, setStudents] = useState<SectionStudent[]>([]);
   const [recordsByEvaluation, setRecordsByEvaluation] = useState<Record<string, GradebookRecord[]>>({});
-  const [records, setRecords] = useState<GradebookRecord[]>([]);
   const [summary, setSummary] = useState<GradebookAdminSummary | null>(null);
   const [sectionId, setSectionId] = useState('');
   const [subjectId, setSubjectId] = useState('');
   const [period, setPeriod] = useState('');
-  const [evaluationId, setEvaluationId] = useState('');
   const [modalEvaluation, setModalEvaluation] = useState<GradebookEvaluation | null | undefined>(undefined);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
-  const [saving, setSaving] = useState(false);
   const [savingBulk, setSavingBulk] = useState(false);
   const [dirtyCells, setDirtyCells] = useState<Set<string>>(new Set());
   const [cellErrors, setCellErrors] = useState<Record<string, string>>({});
@@ -206,14 +192,9 @@ function StaffGradebookView({ user }: { user: User }) {
   const section = context?.sections.find((item) => item.id === sectionId);
   const periodOptions = useMemo(() => Array.from(new Set(evaluations.map((item) => periodKey(item.date)))).sort().reverse(), [evaluations]);
   const filteredEvaluations = useMemo(() => evaluations.filter((item) => !period || periodKey(item.date) === period), [evaluations, period]);
-  const evaluation = filteredEvaluations.find((item) => item.id === evaluationId);
   const gradebookRows = useMemo(() => buildGradebookRows(students, filteredEvaluations, recordsByEvaluation), [filteredEvaluations, recordsByEvaluation, students]);
   const riskCount = useMemo(() => gradebookRows.filter((row) => row.academicRisk).length, [gradebookRows]);
   const visibleGradebookRows = useMemo(() => riskOnly ? gradebookRows.filter((row) => row.academicRisk) : gradebookRows, [gradebookRows, riskOnly]);
-  const courseAverage = useMemo(() => {
-    const averages = visibleGradebookRows.map((row) => row.finalAverage).filter((value): value is number => value !== null);
-    return averages.length ? Number((averages.reduce((sum, value) => sum + value, 0) / averages.length).toFixed(1)) : null;
-  }, [visibleGradebookRows]);
 
   useEffect(() => {
     loadGradebookContext().then((result) => {
@@ -245,8 +226,6 @@ function StaffGradebookView({ user }: { user: User }) {
       setDirtyCells(new Set());
       setCellErrors({});
       setCellDrafts({});
-      setEvaluationId(items[0]?.id ?? '');
-      setRecords(items[0] ? nextRecordsByEvaluation[items[0].id] ?? [] : []);
     }).catch((err) => {
       if (active) setError(err instanceof Error ? err.message : 'No se pudo cargar el libro de notas.');
     }).finally(() => {
@@ -257,49 +236,12 @@ function StaffGradebookView({ user }: { user: User }) {
     };
   }, [sectionId, subjectId]);
 
-  useEffect(() => {
-    if (!filteredEvaluations.some((item) => item.id === evaluationId)) {
-      setEvaluationId(filteredEvaluations[0]?.id ?? '');
-    }
-  }, [evaluationId, filteredEvaluations]);
-
-  useEffect(() => {
-    setRecords(evaluationId ? recordsByEvaluation[evaluationId] ?? [] : []);
-  }, [evaluationId, recordsByEvaluation]);
-
-  async function saveRecords() {
-    if (!evaluationId) return;
-    setSaving(true);
-    setError('');
-    try {
-      await saveGradebookRecords({
-        evaluationId,
-        records: records.map((record) => ({ studentId: record.studentId, status: record.status, score: record.status === 'con_nota' ? record.score : null, comment: record.comment || null }))
-      });
-      const result = await loadGradebookRecords(evaluationId);
-      setRecords(result.students);
-      setRecordsByEvaluation((current) => ({ ...current, [evaluationId]: result.students }));
-      setDirtyCells((current) => {
-        const next = new Set(current);
-        records.forEach((record) => next.delete(`${evaluationId}:${record.studentId}`));
-        return next;
-      });
-      setCellDrafts((current) => Object.fromEntries(Object.entries(current).filter(([key]) => !key.startsWith(`${evaluationId}:`))));
-      setNotice('Notas guardadas correctamente');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudieron guardar las notas.');
-    } finally {
-      setSaving(false);
-    }
-  }
-
   async function removeEvaluation(item: GradebookEvaluation) {
     if (!confirm(`Eliminar evaluación "${item.title}"? Solo se permite si no tiene notas.`)) return;
     await deleteGradebookEvaluation(item.id);
     setNotice('Evaluación eliminada correctamente');
     const items = await loadGradebookEvaluations({ sectionId, subjectId });
     setEvaluations(items);
-    setEvaluationId(items[0]?.id ?? '');
     setRecordsByEvaluation((current) => {
       const next = { ...current };
       delete next[item.id];
@@ -308,7 +250,6 @@ function StaffGradebookView({ user }: { user: User }) {
     setDirtyCells((current) => new Set(Array.from(current).filter((key) => !key.startsWith(`${item.id}:`))));
     setCellErrors((current) => Object.fromEntries(Object.entries(current).filter(([key]) => !key.startsWith(`${item.id}:`))));
     setCellDrafts((current) => Object.fromEntries(Object.entries(current).filter(([key]) => !key.startsWith(`${item.id}:`))));
-    setRecords([]);
   }
 
   async function reloadEvaluations() {
@@ -319,13 +260,12 @@ function StaffGradebookView({ user }: { user: User }) {
     setDirtyCells(new Set());
     setCellErrors({});
     setCellDrafts({});
-    setEvaluationId(items[0]?.id ?? '');
   }
 
   function updateGradebookScore(evaluationItem: GradebookEvaluation, row: GradebookTableRow, value: string) {
     const key = `${evaluationItem.id}:${row.studentId}`;
     const trimmed = value.trim();
-    const parsedScore = Number(trimmed);
+    const parsedScore = Number(trimmed.replace(',', '.'));
     const score = trimmed ? parsedScore : null;
     const hasError = trimmed !== '' && (!Number.isFinite(parsedScore) || parsedScore < 1 || parsedScore > 7);
 
@@ -391,18 +331,6 @@ function StaffGradebookView({ user }: { user: User }) {
     }
   }
 
-  const counts = useMemo(() => ({
-    total: records.length,
-    scored: records.filter((item) => item.status === 'con_nota' && item.score !== null).length,
-    pending: records.filter((item) => item.status === 'pendiente').length,
-    absent: records.filter((item) => item.status === 'ausente').length,
-    exempt: records.filter((item) => item.status === 'eximido').length,
-    average: (() => {
-      const scored = records.filter((item) => item.status === 'con_nota' && item.score !== null);
-      return scored.length ? Number((scored.reduce((sum, item) => sum + Number(item.score), 0) / scored.length).toFixed(1)) : null;
-    })()
-  }), [records]);
-
   if (!context) return <section className="panel"><EmptyState title="Cargando libro de calificaciones" /></section>;
   if (!context.sections.length) {
     return (
@@ -419,13 +347,6 @@ function StaffGradebookView({ user }: { user: User }) {
     <div className="page-stack">
       {notice && <div className="admin-notice success" onClick={() => setNotice('')}>{notice}</div>}
       {error && <div className="admin-notice error" onClick={() => setError('')}>{error}</div>}
-      <div className="attendance-summary-grid">
-        <article><span>Promedio</span><strong>{formatAverage(counts.average)}</strong></article>
-        <article><span>Con nota</span><strong>{counts.scored}</strong></article>
-        <article><span>Pendientes</span><strong>{counts.pending}</strong></article>
-        <article><span>Ausentes</span><strong>{counts.absent}</strong></article>
-        <article><span>Eximidos</span><strong>{counts.exempt}</strong></article>
-      </div>
 
       <section className="panel gradebook-toolbar">
         <label>Curso
@@ -444,21 +365,17 @@ function StaffGradebookView({ user }: { user: User }) {
             {periodOptions.map((item) => <option key={item} value={item}>{periodLabel(item)}</option>)}
           </select>
         </label>
-        <label>Evaluación
-          <select value={evaluationId} onChange={(event) => setEvaluationId(event.target.value)}>
-            <option value="">Selecciona evaluación</option>
-            {filteredEvaluations.map((item) => <option key={item.id} value={item.id}>{item.title} · {item.date}</option>)}
-          </select>
-        </label>
         {canWrite && <button className="primary-button" onClick={() => setModalEvaluation(null)}><Plus size={17} />Nueva evaluación</button>}
       </section>
 
-      <section className="panel">
+      <GradebookStats rows={gradebookRows} />
+
+      <section className="panel gradebook-sheet-panel">
         <div className="gradebook-table-heading">
           <div>
-            <h2>Libro de notas</h2>
-            <span className={`gradebook-course-average ${courseAverage === null ? 'muted' : courseAverage >= 4 ? 'passing' : 'failing'}`}>Promedio general del curso: {formatAverage(courseAverage)}</span>
-            <span className="gradebook-risk-count">Estudiantes en riesgo: {riskCount}</span>
+            <strong>{gradebookRows.length} estudiantes</strong>
+            {riskCount > 0 && <span className="gradebook-risk-count">⚠ {riskCount} en riesgo (&lt; 4.0)</span>}
+            <span className="gradebook-color-legend"><i className="legend-high" />≥ 5.0 <i className="legend-mid" />4.0-4.9 <i className="legend-low" />&lt; 4.0</span>
           </div>
           <label className="gradebook-risk-filter">
             <input type="checkbox" checked={riskOnly} onChange={(event) => setRiskOnly(event.target.checked)} />
@@ -476,6 +393,8 @@ function StaffGradebookView({ user }: { user: User }) {
           <EmptyState title="No hay estudiantes registrados para este curso" />
         ) : !filteredEvaluations.length ? (
           <EmptyState title="No hay evaluaciones registradas para esta asignatura" />
+        ) : riskOnly && !visibleGradebookRows.length ? (
+          <EmptyState title="No hay estudiantes en riesgo académico" />
         ) : (
           <GradebookTable
             evaluations={filteredEvaluations}
@@ -489,34 +408,6 @@ function StaffGradebookView({ user }: { user: User }) {
             onScoreChange={updateGradebookScore}
           />
         )}
-      </section>
-
-      {evaluation && (
-        <section className="panel gradebook-evaluation-card">
-          <div><strong>{evaluation.title}</strong><small>{evaluation.subject} · {evaluation.section} · {typeLabels[evaluation.type]} · {evaluation.weight}%</small></div>
-          {canWrite && <div><button className="secondary-button" onClick={() => setModalEvaluation(evaluation)}><Edit3 size={16} />Editar</button><button className="danger-button" onClick={() => removeEvaluation(evaluation)}><Trash2 size={16} />Eliminar</button></div>}
-        </section>
-      )}
-
-      <section className="panel">
-        <h2>Registro de evaluación</h2>
-        {records.length ? (
-          <>
-            <div className="gradebook-record-list">
-              {records.map((record) => (
-                <article key={record.studentId} className="gradebook-record-row">
-                  <div><strong>{record.name}</strong><small>{record.email}</small></div>
-                  <select value={record.status} disabled={!canWrite} onChange={(event) => setRecords((current) => current.map((item) => item.studentId === record.studentId ? { ...item, status: event.target.value as GradeStatus, score: event.target.value === 'con_nota' ? item.score : null } : item))}>
-                    {gradeStatuses.map((status) => <option key={status} value={status}>{statusLabels[status]}</option>)}
-                  </select>
-                  <input type="number" min="1" max="7" step="0.1" value={record.score ?? ''} disabled={!canWrite || record.status !== 'con_nota'} onChange={(event) => setRecords((current) => current.map((item) => item.studentId === record.studentId ? { ...item, score: event.target.value ? Number(event.target.value) : null } : item))} placeholder="1.0 a 7.0" />
-                  <input value={record.comment} disabled={!canWrite} onChange={(event) => setRecords((current) => current.map((item) => item.studentId === record.studentId ? { ...item, comment: event.target.value } : item))} placeholder="Comentario opcional" />
-                </article>
-              ))}
-            </div>
-            {canWrite && <footer className="gradebook-actions"><button className="primary-button" onClick={saveRecords} disabled={saving}><Save size={17} />{saving ? 'Guardando...' : 'Guardar notas'}</button></footer>}
-          </>
-        ) : <EmptyState title={filteredEvaluations.length ? 'Selecciona una evaluación con estudiantes para registrar notas' : 'No hay evaluaciones registradas para esta asignatura'} />}
       </section>
 
       {summary && (
