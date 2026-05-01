@@ -194,6 +194,22 @@ export interface GradebookRecord {
   updatedAt: string | null;
 }
 
+export interface GradebookTableCell {
+  evaluationId: string;
+  score: number | null;
+  status: GradeStatus;
+  registered: boolean;
+}
+
+export interface GradebookTableRow {
+  id: string;
+  studentId: string;
+  student: string;
+  email?: string;
+  scores: Record<string, GradebookTableCell>;
+  finalAverage: number | null;
+}
+
 export interface GradebookRecordsResponse {
   evaluation: GradebookEvaluation;
   students: GradebookRecord[];
