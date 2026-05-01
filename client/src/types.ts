@@ -162,7 +162,7 @@ export interface AttendanceAdminSummary {
 }
 
 export type GradeStatus = 'con_nota' | 'pendiente' | 'ausente' | 'eximido';
-export type EvaluationType = 'prueba' | 'trabajo' | 'tarea' | 'proyecto' | 'participacion';
+export type EvaluationType = 'prueba' | 'tarea' | 'control' | 'trabajo' | 'proyecto' | 'participacion';
 
 export interface GradebookContext {
   sections: Array<{ id: string; name: string; subjects: Array<{ id: string; name: string; code: string }> }>;

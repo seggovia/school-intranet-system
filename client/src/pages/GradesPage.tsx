@@ -1,7 +1,6 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Edit3, Plus, Save, Trash2 } from 'lucide-react';
 import {
-  createGradebookEvaluation,
   deleteGradebookEvaluation,
   loadGradebookContext,
   loadGradebookEvaluations,
@@ -10,10 +9,9 @@ import {
   loadGradebookRecords,
   loadGradebookSummary,
   loadSectionStudents,
-  saveGradebookRecords,
-  updateGradebookEvaluation,
-  type GradebookEvaluationPayload
+  saveGradebookRecords
 } from '../api';
+import { EvaluationModal } from '../components/EvaluationModal';
 import { GradebookTable } from '../components/GradebookTable';
 import { PageHeader } from '../components/PageHeader';
 import { EmptyState } from '../components/States';
@@ -43,11 +41,11 @@ const typeLabels: Record<EvaluationType, string> = {
   prueba: 'Prueba',
   trabajo: 'Trabajo',
   tarea: 'Tarea',
+  control: 'Control',
   proyecto: 'Proyecto',
   participacion: 'Participación'
 };
 
-const evaluationTypes = Object.keys(typeLabels) as EvaluationType[];
 const gradeStatuses = Object.keys(statusLabels) as GradeStatus[];
 
 function formatAverage(value: number | null) {
@@ -174,72 +172,6 @@ function StudentGradebookView({ mode }: { mode: 'student' | 'guardian' }) {
   );
 }
 
-function EvaluationModal({ context, evaluation, sectionId, subjectId, onClose, onSaved }: { context: GradebookContext; evaluation?: GradebookEvaluation; sectionId: string; subjectId: string; onClose: () => void; onSaved: () => void }) {
-  const [selectedSection, setSelectedSection] = useState(evaluation?.sectionId ?? sectionId);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const section = context.sections.find((item) => item.id === selectedSection);
-
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setSaving(true);
-    setError('');
-    const fd = new FormData(event.currentTarget);
-    const payload: GradebookEvaluationPayload = {
-      title: String(fd.get('title') ?? '').trim(),
-      sectionId: selectedSection,
-      subjectId: String(fd.get('subjectId') ?? ''),
-      date: String(fd.get('date') ?? ''),
-      weight: Number(fd.get('weight') ?? 1),
-      type: String(fd.get('type') ?? 'prueba'),
-      description: String(fd.get('description') ?? '').trim() || undefined
-    };
-    try {
-      if (evaluation) await updateGradebookEvaluation(evaluation.id, payload);
-      else await createGradebookEvaluation(payload);
-      onSaved();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo guardar la evaluación.');
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <div className="admin-modal-backdrop" role="dialog" aria-modal="true">
-      <form className="admin-modal gradebook-evaluation-modal" onSubmit={submit}>
-        <header>
-          <div><span>Calificaciones</span><h2>{evaluation ? 'Editar evaluación' : 'Crear evaluación'}</h2></div>
-          <button type="button" onClick={onClose}>x</button>
-        </header>
-        <div className="admin-form-grid">
-          <label>Título<input name="title" defaultValue={evaluation?.title} required placeholder="Ej: Prueba unidad 1" /></label>
-          <label>Fecha<input name="date" type="date" defaultValue={evaluation?.date ?? new Date().toISOString().slice(0, 10)} required /></label>
-          <label>Sección
-            <select value={selectedSection} onChange={(event) => setSelectedSection(event.target.value)} required>
-              {context.sections.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-            </select>
-          </label>
-          <label>Asignatura
-            <select name="subjectId" defaultValue={evaluation?.subjectId ?? subjectId} required>
-              {section?.subjects.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-            </select>
-          </label>
-          <label>Tipo
-            <select name="type" defaultValue={evaluation?.type ?? 'prueba'}>
-              {evaluationTypes.map((type) => <option key={type} value={type}>{typeLabels[type]}</option>)}
-            </select>
-          </label>
-          <label>Ponderación / coeficiente<input name="weight" type="number" min="0.1" max="10" step="0.1" defaultValue={evaluation?.weight ?? 1} required /></label>
-          <label className="admin-form-wide">Descripción<textarea name="description" defaultValue={evaluation?.description ?? ''} placeholder="Opcional" /></label>
-        </div>
-        {error && <p className="admin-modal-error">{error}</p>}
-        <footer><button type="button" className="secondary-button" onClick={onClose}>Cancelar</button><button className="primary-button" disabled={saving}>{saving ? 'Guardando...' : 'Guardar evaluación'}</button></footer>
-      </form>
-    </div>
-  );
-}
-
 function StaffGradebookView({ user }: { user: User }) {
   const canWrite = ['admin', 'director', 'teacher'].includes(user.primaryRole);
   const [context, setContext] = useState<GradebookContext | null>(null);
@@ -347,6 +279,14 @@ function StaffGradebookView({ user }: { user: User }) {
     setRecords([]);
   }
 
+  async function reloadEvaluations() {
+    const items = await loadGradebookEvaluations({ sectionId, subjectId });
+    const recordEntries = await Promise.all(items.map(async (item) => [item.id, (await loadGradebookRecords(item.id)).students] as const));
+    setEvaluations(items);
+    setRecordsByEvaluation(Object.fromEntries(recordEntries));
+    setEvaluationId(items[0]?.id ?? '');
+  }
+
   const counts = useMemo(() => ({
     total: records.length,
     scored: records.filter((item) => item.status === 'con_nota' && item.score !== null).length,
@@ -418,13 +358,18 @@ function StaffGradebookView({ user }: { user: User }) {
         ) : !filteredEvaluations.length ? (
           <EmptyState title="No hay evaluaciones registradas para esta asignatura" />
         ) : (
-          <GradebookTable evaluations={filteredEvaluations} rows={gradebookRows} />
+          <GradebookTable
+            evaluations={filteredEvaluations}
+            rows={gradebookRows}
+            onEditEvaluation={canWrite ? (item) => setModalEvaluation(item) : undefined}
+            onDeleteEvaluation={canWrite ? removeEvaluation : undefined}
+          />
         )}
       </section>
 
       {evaluation && (
         <section className="panel gradebook-evaluation-card">
-          <div><strong>{evaluation.title}</strong><small>{evaluation.subject} · {evaluation.section} · {typeLabels[evaluation.type]} · coef. {evaluation.weight}</small></div>
+          <div><strong>{evaluation.title}</strong><small>{evaluation.subject} · {evaluation.section} · {typeLabels[evaluation.type]} · {evaluation.weight}%</small></div>
           {canWrite && <div><button className="secondary-button" onClick={() => setModalEvaluation(evaluation)}><Edit3 size={16} />Editar</button><button className="danger-button" onClick={() => removeEvaluation(evaluation)}><Trash2 size={16} />Eliminar</button></div>}
         </section>
       )}
@@ -465,14 +410,10 @@ function StaffGradebookView({ user }: { user: User }) {
         </section>
       )}
 
-      {modalEvaluation !== undefined && <EvaluationModal context={context} evaluation={modalEvaluation ?? undefined} sectionId={sectionId} subjectId={subjectId} onClose={() => setModalEvaluation(undefined)} onSaved={async () => {
+      {modalEvaluation !== undefined && <EvaluationModal evaluation={modalEvaluation ?? undefined} sectionId={sectionId} subjectId={subjectId} onClose={() => setModalEvaluation(undefined)} onSaved={async () => {
         setModalEvaluation(undefined);
         setNotice('Evaluación guardada correctamente');
-        const items = await loadGradebookEvaluations({ sectionId, subjectId });
-        const recordEntries = await Promise.all(items.map(async (item) => [item.id, (await loadGradebookRecords(item.id)).students] as const));
-        setEvaluations(items);
-        setRecordsByEvaluation(Object.fromEntries(recordEntries));
-        setEvaluationId(items[0]?.id ?? '');
+        await reloadEvaluations();
       }} />}
     </div>
   );

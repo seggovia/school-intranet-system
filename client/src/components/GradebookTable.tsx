@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { Edit3, MoreVertical, Trash2 } from 'lucide-react';
 import { DataTable, type Column } from './DataTable';
 import type { GradebookEvaluation, GradebookTableCell, GradebookTableRow } from '../types';
 
@@ -18,9 +20,22 @@ function renderCell(cell?: GradebookTableCell) {
   return <span className={`grade-status ${cell.status}`}>{statusText[cell.status]}</span>;
 }
 
-export function GradebookTable({ evaluations, rows }: { evaluations: GradebookEvaluation[]; rows: GradebookTableRow[] }) {
+export function GradebookTable({
+  evaluations,
+  rows,
+  onEditEvaluation,
+  onDeleteEvaluation
+}: {
+  evaluations: GradebookEvaluation[];
+  rows: GradebookTableRow[];
+  onEditEvaluation?: (evaluation: GradebookEvaluation) => void;
+  onDeleteEvaluation?: (evaluation: GradebookEvaluation) => void;
+}) {
+  const [openMenu, setOpenMenu] = useState('');
+  const canManage = Boolean(onEditEvaluation || onDeleteEvaluation);
   const columns: Column<GradebookTableRow>[] = [
     {
+      id: 'student',
       header: 'Estudiante',
       render: (row) => (
         <div className="gradebook-student-cell">
@@ -30,10 +45,32 @@ export function GradebookTable({ evaluations, rows }: { evaluations: GradebookEv
       )
     },
     ...evaluations.map((evaluation) => ({
-      header: `${evaluation.title} (${evaluation.date})`,
+      id: evaluation.id,
+      header: (
+        <div className="gradebook-evaluation-header">
+          <div>
+            <strong>{evaluation.title}</strong>
+            <small>{evaluation.weight}% · {evaluation.date}</small>
+          </div>
+          {canManage && (
+            <div className="gradebook-evaluation-menu">
+              <button type="button" className="icon-button" aria-label={`Acciones de ${evaluation.title}`} onClick={() => setOpenMenu((current) => current === evaluation.id ? '' : evaluation.id)}>
+                <MoreVertical size={16} />
+              </button>
+              {openMenu === evaluation.id && (
+                <div className="context-menu">
+                  {onEditEvaluation && <button type="button" onClick={() => { setOpenMenu(''); onEditEvaluation(evaluation); }}><Edit3 size={14} />Editar</button>}
+                  {onDeleteEvaluation && <button type="button" className="danger-menu-item" onClick={() => { setOpenMenu(''); onDeleteEvaluation(evaluation); }}><Trash2 size={14} />Eliminar</button>}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      ),
       render: (row: GradebookTableRow) => renderCell(row.scores[evaluation.id])
     })),
     {
+      id: 'finalAverage',
       header: 'Promedio final',
       render: (row) => <strong className="gradebook-final-average">{formatScore(row.finalAverage)}</strong>
     }

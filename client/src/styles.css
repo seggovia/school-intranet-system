@@ -1379,6 +1379,71 @@
   color: #94a3b8;
 }
 
+.gradebook-evaluation-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 150px;
+}
+
+.gradebook-evaluation-header strong,
+.gradebook-evaluation-header small {
+  display: block;
+}
+
+.gradebook-evaluation-header small {
+  color: #64748b;
+  font-size: 12px;
+  margin-top: 3px;
+  white-space: nowrap;
+}
+
+.gradebook-evaluation-menu {
+  position: relative;
+}
+
+.gradebook-evaluation-menu .icon-button {
+  min-height: 30px;
+  width: 30px;
+  border-radius: 6px;
+}
+
+.context-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 20;
+  min-width: 132px;
+  padding: 6px;
+  border: 1px solid #d8e2ec;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.16);
+}
+
+.context-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #314254;
+  font-weight: 800;
+  text-align: left;
+}
+
+.context-menu button:hover {
+  background: #edf2f6;
+}
+
+.context-menu .danger-menu-item {
+  color: #b91c1c;
+}
+
 .gradebook-actions {
   display: flex;
   justify-content: flex-end;

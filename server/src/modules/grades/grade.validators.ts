@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const gradeStatusSchema = z.enum(['con_nota', 'pendiente', 'ausente', 'eximido']);
-export const evaluationTypeSchema = z.enum(['prueba', 'trabajo', 'tarea', 'proyecto', 'participacion']);
+export const evaluationTypeSchema = z.enum(['prueba', 'tarea', 'control', 'trabajo', 'proyecto', 'participacion']);
 
 export const createGradeSchema = z.object({
   assessmentId: z.string().trim().min(1),
@@ -26,11 +26,11 @@ export const gradebookEvaluationsQuerySchema = z.object({
 });
 
 export const createEvaluationSchema = z.object({
-  title: z.string().trim().min(3).max(120),
+  title: z.string().trim().min(1).max(120),
   subjectId: z.string().trim().min(1),
   sectionId: z.string().trim().min(1),
   date: z.coerce.date(),
-  weight: z.coerce.number().min(0.1).max(10).default(1),
+  weight: z.coerce.number().min(0).max(100).default(0),
   type: evaluationTypeSchema,
   description: z.string().trim().max(1000).optional().or(z.literal('').transform(() => undefined))
 });
