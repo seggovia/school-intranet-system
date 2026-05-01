@@ -209,6 +209,7 @@ export interface GradebookTableRow {
   scores: Record<string, GradebookTableCell>;
   finalAverage: number | null;
   averageDetail: string;
+  academicRisk: boolean;
 }
 
 export interface GradebookRecordsResponse {

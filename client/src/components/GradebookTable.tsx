@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Edit3, MoreVertical, Trash2 } from 'lucide-react';
+import { AlertTriangle, Edit3, MoreVertical, Trash2 } from 'lucide-react';
 import { DataTable, type Column } from './DataTable';
 import type { GradebookEvaluation, GradebookTableCell, GradebookTableRow } from '../types';
 
@@ -53,7 +53,14 @@ export function GradebookTable({
       header: 'Estudiante',
       render: (row) => (
         <div className="gradebook-student-cell">
-          <strong>{row.student}</strong>
+          <strong>
+            {row.academicRisk && (
+              <span className="gradebook-risk-icon" title="Estudiante en riesgo académico" aria-label="Estudiante en riesgo académico">
+                <AlertTriangle size={16} />
+              </span>
+            )}
+            {row.student}
+          </strong>
           {row.email && <small>{row.email}</small>}
         </div>
       )

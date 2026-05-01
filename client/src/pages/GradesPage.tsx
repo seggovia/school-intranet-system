@@ -89,6 +89,7 @@ function buildGradebookRows(students: SectionStudent[], evaluations: GradebookEv
     });
 
     const finalAverage = averageParts.length ? Number(weightedTotal.toFixed(1)) : null;
+    const academicRisk = finalAverage !== null && finalAverage < 4;
     return {
       id: student.id,
       studentId: student.id,
@@ -96,7 +97,8 @@ function buildGradebookRows(students: SectionStudent[], evaluations: GradebookEv
       email: undefined,
       scores,
       finalAverage,
-      averageDetail: averageParts.length ? averageParts.join('\n') : 'Sin notas registradas para calcular promedio'
+      averageDetail: averageParts.length ? averageParts.join('\n') : 'Sin notas registradas para calcular promedio',
+      academicRisk
     };
   });
 }
@@ -199,16 +201,19 @@ function StaffGradebookView({ user }: { user: User }) {
   const [dirtyCells, setDirtyCells] = useState<Set<string>>(new Set());
   const [cellErrors, setCellErrors] = useState<Record<string, string>>({});
   const [cellDrafts, setCellDrafts] = useState<Record<string, string>>({});
+  const [riskOnly, setRiskOnly] = useState(false);
   const [loadingGradebook, setLoadingGradebook] = useState(false);
   const section = context?.sections.find((item) => item.id === sectionId);
   const periodOptions = useMemo(() => Array.from(new Set(evaluations.map((item) => periodKey(item.date)))).sort().reverse(), [evaluations]);
   const filteredEvaluations = useMemo(() => evaluations.filter((item) => !period || periodKey(item.date) === period), [evaluations, period]);
   const evaluation = filteredEvaluations.find((item) => item.id === evaluationId);
   const gradebookRows = useMemo(() => buildGradebookRows(students, filteredEvaluations, recordsByEvaluation), [filteredEvaluations, recordsByEvaluation, students]);
+  const riskCount = useMemo(() => gradebookRows.filter((row) => row.academicRisk).length, [gradebookRows]);
+  const visibleGradebookRows = useMemo(() => riskOnly ? gradebookRows.filter((row) => row.academicRisk) : gradebookRows, [gradebookRows, riskOnly]);
   const courseAverage = useMemo(() => {
-    const averages = gradebookRows.map((row) => row.finalAverage).filter((value): value is number => value !== null);
+    const averages = visibleGradebookRows.map((row) => row.finalAverage).filter((value): value is number => value !== null);
     return averages.length ? Number((averages.reduce((sum, value) => sum + value, 0) / averages.length).toFixed(1)) : null;
-  }, [gradebookRows]);
+  }, [visibleGradebookRows]);
 
   useEffect(() => {
     loadGradebookContext().then((result) => {
@@ -453,7 +458,12 @@ function StaffGradebookView({ user }: { user: User }) {
           <div>
             <h2>Libro de notas</h2>
             <span className={`gradebook-course-average ${courseAverage === null ? 'muted' : courseAverage >= 4 ? 'passing' : 'failing'}`}>Promedio general del curso: {formatAverage(courseAverage)}</span>
+            <span className="gradebook-risk-count">Estudiantes en riesgo: {riskCount}</span>
           </div>
+          <label className="gradebook-risk-filter">
+            <input type="checkbox" checked={riskOnly} onChange={(event) => setRiskOnly(event.target.checked)} />
+            Mostrar solo estudiantes en riesgo
+          </label>
           {canWrite && (
             <button className="primary-button" onClick={saveGradebookChanges} disabled={!dirtyCells.size || savingBulk || Boolean(Object.keys(cellErrors).length)}>
               <Save size={17} />{savingBulk ? 'Guardando...' : 'Guardar cambios'}
@@ -469,7 +479,7 @@ function StaffGradebookView({ user }: { user: User }) {
         ) : (
           <GradebookTable
             evaluations={filteredEvaluations}
-            rows={gradebookRows}
+            rows={visibleGradebookRows}
             onEditEvaluation={canWrite ? (item) => setModalEvaluation(item) : undefined}
             onDeleteEvaluation={canWrite ? removeEvaluation : undefined}
             editable={canWrite}
