@@ -1391,6 +1391,28 @@
   margin: 0;
 }
 
+.gradebook-course-average {
+  display: inline-flex;
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.gradebook-course-average.passing,
+.gradebook-final-average.passing {
+  color: #15803d;
+}
+
+.gradebook-course-average.failing,
+.gradebook-final-average.failing {
+  color: #b91c1c;
+}
+
+.gradebook-course-average.muted,
+.gradebook-final-average.muted {
+  color: #94a3b8;
+}
+
 .gradebook-score-editor {
   display: grid;
   gap: 4px;

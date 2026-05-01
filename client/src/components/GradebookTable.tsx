@@ -105,8 +105,15 @@ export function GradebookTable({
     })),
     {
       id: 'finalAverage',
-      header: 'Promedio final',
-      render: (row) => <strong className="gradebook-final-average">{formatScore(row.finalAverage)}</strong>
+      header: 'Promedio',
+      render: (row) => (
+        <strong
+          className={`gradebook-final-average ${row.finalAverage !== null && row.finalAverage >= 4 ? 'passing' : row.finalAverage !== null ? 'failing' : 'muted'}`}
+          title={row.averageDetail}
+        >
+          {formatScore(row.finalAverage)}
+        </strong>
+      )
     }
   ];
 

@@ -208,6 +208,7 @@ export interface GradebookTableRow {
   email?: string;
   scores: Record<string, GradebookTableCell>;
   finalAverage: number | null;
+  averageDetail: string;
 }
 
 export interface GradebookRecordsResponse {

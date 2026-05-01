@@ -70,7 +70,7 @@ function buildGradebookRows(students: SectionStudent[], evaluations: GradebookEv
   return students.map((student) => {
     const scores: GradebookTableRow['scores'] = {};
     let weightedTotal = 0;
-    let weightTotal = 0;
+    const averageParts: string[] = [];
 
     evaluations.forEach((evaluation) => {
       const record = recordMaps[evaluation.id]?.get(student.id);
@@ -82,18 +82,21 @@ function buildGradebookRows(students: SectionStudent[], evaluations: GradebookEv
         registered: record.registered
       };
       if (record.status === 'con_nota' && record.score !== null) {
-        weightedTotal += Number(record.score) * evaluation.weight;
-        weightTotal += evaluation.weight;
+        const contribution = Number(record.score) * (evaluation.weight / 100);
+        weightedTotal += contribution;
+        averageParts.push(`${evaluation.title}: ${Number(record.score).toFixed(1)} x ${evaluation.weight}% = ${contribution.toFixed(2)}`);
       }
     });
 
+    const finalAverage = averageParts.length ? Number(weightedTotal.toFixed(1)) : null;
     return {
       id: student.id,
       studentId: student.id,
       student: student.name,
       email: undefined,
       scores,
-      finalAverage: weightTotal ? Number((weightedTotal / weightTotal).toFixed(1)) : null
+      finalAverage,
+      averageDetail: averageParts.length ? averageParts.join('\n') : 'Sin notas registradas para calcular promedio'
     };
   });
 }
@@ -202,6 +205,10 @@ function StaffGradebookView({ user }: { user: User }) {
   const filteredEvaluations = useMemo(() => evaluations.filter((item) => !period || periodKey(item.date) === period), [evaluations, period]);
   const evaluation = filteredEvaluations.find((item) => item.id === evaluationId);
   const gradebookRows = useMemo(() => buildGradebookRows(students, filteredEvaluations, recordsByEvaluation), [filteredEvaluations, recordsByEvaluation, students]);
+  const courseAverage = useMemo(() => {
+    const averages = gradebookRows.map((row) => row.finalAverage).filter((value): value is number => value !== null);
+    return averages.length ? Number((averages.reduce((sum, value) => sum + value, 0) / averages.length).toFixed(1)) : null;
+  }, [gradebookRows]);
 
   useEffect(() => {
     loadGradebookContext().then((result) => {
@@ -443,7 +450,10 @@ function StaffGradebookView({ user }: { user: User }) {
 
       <section className="panel">
         <div className="gradebook-table-heading">
-          <h2>Libro de notas</h2>
+          <div>
+            <h2>Libro de notas</h2>
+            <span className={`gradebook-course-average ${courseAverage === null ? 'muted' : courseAverage >= 4 ? 'passing' : 'failing'}`}>Promedio general del curso: {formatAverage(courseAverage)}</span>
+          </div>
           {canWrite && (
             <button className="primary-button" onClick={saveGradebookChanges} disabled={!dirtyCells.size || savingBulk || Boolean(Object.keys(cellErrors).length)}>
               <Save size={17} />{savingBulk ? 'Guardando...' : 'Guardar cambios'}
