@@ -20,16 +20,30 @@ function renderCell(cell?: GradebookTableCell) {
   return <span className={`grade-status ${cell.status}`}>{statusText[cell.status]}</span>;
 }
 
+function cellKey(evaluationId: string, studentId: string) {
+  return `${evaluationId}:${studentId}`;
+}
+
 export function GradebookTable({
   evaluations,
   rows,
   onEditEvaluation,
-  onDeleteEvaluation
+  onDeleteEvaluation,
+  editable = false,
+  dirtyCells = new Set<string>(),
+  cellErrors = {},
+  cellDrafts = {},
+  onScoreChange
 }: {
   evaluations: GradebookEvaluation[];
   rows: GradebookTableRow[];
   onEditEvaluation?: (evaluation: GradebookEvaluation) => void;
   onDeleteEvaluation?: (evaluation: GradebookEvaluation) => void;
+  editable?: boolean;
+  dirtyCells?: Set<string>;
+  cellErrors?: Record<string, string>;
+  cellDrafts?: Record<string, string>;
+  onScoreChange?: (evaluation: GradebookEvaluation, row: GradebookTableRow, value: string) => void;
 }) {
   const [openMenu, setOpenMenu] = useState('');
   const canManage = Boolean(onEditEvaluation || onDeleteEvaluation);
@@ -67,7 +81,27 @@ export function GradebookTable({
           )}
         </div>
       ),
-      render: (row: GradebookTableRow) => renderCell(row.scores[evaluation.id])
+      render: (row: GradebookTableRow) => {
+        const key = cellKey(evaluation.id, row.studentId);
+        const cell = row.scores[evaluation.id];
+        if (!editable || !onScoreChange) return renderCell(cell);
+        return (
+          <label className={`gradebook-score-editor ${dirtyCells.has(key) ? 'dirty' : ''} ${cellErrors[key] ? 'invalid' : ''}`}>
+            <input
+              type="number"
+              min="1"
+              max="7"
+              step="0.1"
+              inputMode="decimal"
+              value={cellDrafts[key] ?? (cell?.status === 'con_nota' && cell.score !== null ? cell.score : '')}
+              onChange={(event) => onScoreChange(evaluation, row, event.target.value)}
+              placeholder="-"
+              aria-label={`${evaluation.title} - ${row.student}`}
+            />
+            {cellErrors[key] && <small>{cellErrors[key]}</small>}
+          </label>
+        );
+      }
     })),
     {
       id: 'finalAverage',

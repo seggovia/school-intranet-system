@@ -1379,6 +1379,49 @@
   color: #94a3b8;
 }
 
+.gradebook-table-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.gradebook-table-heading h2 {
+  margin: 0;
+}
+
+.gradebook-score-editor {
+  display: grid;
+  gap: 4px;
+  min-width: 74px;
+}
+
+.gradebook-score-editor input {
+  width: 74px;
+  min-height: 36px;
+  padding: 7px 8px;
+  border: 1px solid #d8e2ec;
+  border-radius: 7px;
+  font-weight: 800;
+}
+
+.gradebook-score-editor.dirty input {
+  border-color: #f59e0b;
+  background: #fffbeb;
+}
+
+.gradebook-score-editor.invalid input {
+  border-color: #dc2626;
+  background: #fef2f2;
+}
+
+.gradebook-score-editor small {
+  color: #b91c1c;
+  font-size: 11px;
+  font-weight: 800;
+}
+
 .gradebook-evaluation-header {
   display: flex;
   align-items: flex-start;

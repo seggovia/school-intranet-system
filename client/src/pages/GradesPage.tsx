@@ -63,13 +63,17 @@ function periodLabel(value: string) {
 }
 
 function buildGradebookRows(students: SectionStudent[], evaluations: GradebookEvaluation[], recordsByEvaluation: Record<string, GradebookRecord[]>): GradebookTableRow[] {
+  const recordMaps = Object.fromEntries(
+    Object.entries(recordsByEvaluation).map(([evaluationId, records]) => [evaluationId, new Map(records.map((record) => [record.studentId, record]))])
+  );
+
   return students.map((student) => {
     const scores: GradebookTableRow['scores'] = {};
     let weightedTotal = 0;
     let weightTotal = 0;
 
     evaluations.forEach((evaluation) => {
-      const record = recordsByEvaluation[evaluation.id]?.find((item) => item.studentId === student.id);
+      const record = recordMaps[evaluation.id]?.get(student.id);
       if (!record) return;
       scores[evaluation.id] = {
         evaluationId: evaluation.id,
@@ -188,6 +192,10 @@ function StaffGradebookView({ user }: { user: User }) {
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [savingBulk, setSavingBulk] = useState(false);
+  const [dirtyCells, setDirtyCells] = useState<Set<string>>(new Set());
+  const [cellErrors, setCellErrors] = useState<Record<string, string>>({});
+  const [cellDrafts, setCellDrafts] = useState<Record<string, string>>({});
   const [loadingGradebook, setLoadingGradebook] = useState(false);
   const section = context?.sections.find((item) => item.id === sectionId);
   const periodOptions = useMemo(() => Array.from(new Set(evaluations.map((item) => periodKey(item.date)))).sort().reverse(), [evaluations]);
@@ -222,6 +230,9 @@ function StaffGradebookView({ user }: { user: User }) {
       setStudents(sectionStudents);
       setEvaluations(items);
       setRecordsByEvaluation(nextRecordsByEvaluation);
+      setDirtyCells(new Set());
+      setCellErrors({});
+      setCellDrafts({});
       setEvaluationId(items[0]?.id ?? '');
       setRecords(items[0] ? nextRecordsByEvaluation[items[0].id] ?? [] : []);
     }).catch((err) => {
@@ -256,6 +267,12 @@ function StaffGradebookView({ user }: { user: User }) {
       const result = await loadGradebookRecords(evaluationId);
       setRecords(result.students);
       setRecordsByEvaluation((current) => ({ ...current, [evaluationId]: result.students }));
+      setDirtyCells((current) => {
+        const next = new Set(current);
+        records.forEach((record) => next.delete(`${evaluationId}:${record.studentId}`));
+        return next;
+      });
+      setCellDrafts((current) => Object.fromEntries(Object.entries(current).filter(([key]) => !key.startsWith(`${evaluationId}:`))));
       setNotice('Notas guardadas correctamente');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudieron guardar las notas.');
@@ -276,6 +293,9 @@ function StaffGradebookView({ user }: { user: User }) {
       delete next[item.id];
       return next;
     });
+    setDirtyCells((current) => new Set(Array.from(current).filter((key) => !key.startsWith(`${item.id}:`))));
+    setCellErrors((current) => Object.fromEntries(Object.entries(current).filter(([key]) => !key.startsWith(`${item.id}:`))));
+    setCellDrafts((current) => Object.fromEntries(Object.entries(current).filter(([key]) => !key.startsWith(`${item.id}:`))));
     setRecords([]);
   }
 
@@ -284,7 +304,79 @@ function StaffGradebookView({ user }: { user: User }) {
     const recordEntries = await Promise.all(items.map(async (item) => [item.id, (await loadGradebookRecords(item.id)).students] as const));
     setEvaluations(items);
     setRecordsByEvaluation(Object.fromEntries(recordEntries));
+    setDirtyCells(new Set());
+    setCellErrors({});
+    setCellDrafts({});
     setEvaluationId(items[0]?.id ?? '');
+  }
+
+  function updateGradebookScore(evaluationItem: GradebookEvaluation, row: GradebookTableRow, value: string) {
+    const key = `${evaluationItem.id}:${row.studentId}`;
+    const trimmed = value.trim();
+    const parsedScore = Number(trimmed);
+    const score = trimmed ? parsedScore : null;
+    const hasError = trimmed !== '' && (!Number.isFinite(parsedScore) || parsedScore < 1 || parsedScore > 7);
+
+    setCellDrafts((current) => ({ ...current, [key]: value }));
+    setCellErrors((current) => {
+      const next = { ...current };
+      if (hasError) next[key] = '1.0 a 7.0';
+      else delete next[key];
+      return next;
+    });
+    setDirtyCells((current) => new Set(current).add(key));
+    setRecordsByEvaluation((current) => {
+      const existingRecords = current[evaluationItem.id] ?? [];
+      const existing = existingRecords.find((record) => record.studentId === row.studentId);
+      const nextRecord: GradebookRecord = {
+        studentId: row.studentId,
+        enrollmentId: existing?.enrollmentId ?? '',
+        name: existing?.name ?? row.student,
+        email: existing?.email ?? '',
+        score: hasError ? existing?.score ?? null : score,
+        status: trimmed && !hasError ? 'con_nota' : 'pendiente',
+        comment: existing?.comment ?? '',
+        registered: existing?.registered ?? false,
+        updatedAt: existing?.updatedAt ?? null
+      };
+      const nextRecords = existing
+        ? existingRecords.map((record) => record.studentId === row.studentId ? nextRecord : record)
+        : [...existingRecords, nextRecord];
+      return { ...current, [evaluationItem.id]: nextRecords };
+    });
+  }
+
+  async function saveGradebookChanges() {
+    if (!dirtyCells.size) return;
+    if (Object.keys(cellErrors).length) {
+      setError('Corrige las notas fuera de rango antes de guardar.');
+      return;
+    }
+
+    setSavingBulk(true);
+    setError('');
+    try {
+      const evaluationIds = Array.from(new Set(Array.from(dirtyCells).map((key) => key.split(':')[0])));
+      await Promise.all(evaluationIds.map((id) => saveGradebookRecords({
+        evaluationId: id,
+        records: (recordsByEvaluation[id] ?? []).map((record) => ({
+          studentId: record.studentId,
+          status: record.status,
+          score: record.status === 'con_nota' ? record.score : null,
+          comment: record.comment || null
+        }))
+      })));
+      const refreshed = await Promise.all(evaluationIds.map(async (id) => [id, (await loadGradebookRecords(id)).students] as const));
+      setRecordsByEvaluation((current) => ({ ...current, ...Object.fromEntries(refreshed) }));
+      setDirtyCells(new Set());
+      setCellErrors({});
+      setCellDrafts({});
+      setNotice('Cambios guardados correctamente');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudieron guardar los cambios.');
+    } finally {
+      setSavingBulk(false);
+    }
   }
 
   const counts = useMemo(() => ({
@@ -350,7 +442,14 @@ function StaffGradebookView({ user }: { user: User }) {
       </section>
 
       <section className="panel">
-        <h2>Libro de notas</h2>
+        <div className="gradebook-table-heading">
+          <h2>Libro de notas</h2>
+          {canWrite && (
+            <button className="primary-button" onClick={saveGradebookChanges} disabled={!dirtyCells.size || savingBulk || Boolean(Object.keys(cellErrors).length)}>
+              <Save size={17} />{savingBulk ? 'Guardando...' : 'Guardar cambios'}
+            </button>
+          )}
+        </div>
         {loadingGradebook ? (
           <EmptyState title="Cargando libro de notas" />
         ) : !students.length ? (
@@ -363,6 +462,11 @@ function StaffGradebookView({ user }: { user: User }) {
             rows={gradebookRows}
             onEditEvaluation={canWrite ? (item) => setModalEvaluation(item) : undefined}
             onDeleteEvaluation={canWrite ? removeEvaluation : undefined}
+            editable={canWrite}
+            dirtyCells={dirtyCells}
+            cellErrors={cellErrors}
+            cellDrafts={cellDrafts}
+            onScoreChange={updateGradebookScore}
           />
         )}
       </section>
