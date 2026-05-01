@@ -162,7 +162,7 @@ export interface AttendanceAdminSummary {
 }
 
 export type GradeStatus = 'con_nota' | 'pendiente' | 'ausente' | 'eximido';
-export type EvaluationType = 'prueba' | 'trabajo' | 'tarea' | 'proyecto' | 'participacion';
+export type EvaluationType = 'prueba' | 'tarea' | 'control' | 'trabajo' | 'proyecto' | 'participacion';
 
 export interface GradebookContext {
   sections: Array<{ id: string; name: string; subjects: Array<{ id: string; name: string; code: string }> }>;
@@ -192,6 +192,24 @@ export interface GradebookRecord {
   comment: string;
   registered: boolean;
   updatedAt: string | null;
+}
+
+export interface GradebookTableCell {
+  evaluationId: string;
+  score: number | null;
+  status: GradeStatus;
+  registered: boolean;
+}
+
+export interface GradebookTableRow {
+  id: string;
+  studentId: string;
+  student: string;
+  email?: string;
+  scores: Record<string, GradebookTableCell>;
+  finalAverage: number | null;
+  averageDetail: string;
+  academicRisk: boolean;
 }
 
 export interface GradebookRecordsResponse {

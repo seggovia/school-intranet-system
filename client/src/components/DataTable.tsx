@@ -1,7 +1,8 @@
 import { useMemo, useState, type ReactNode } from 'react';
 
 export interface Column<T> {
-  header: string;
+  id?: string;
+  header: ReactNode;
   render: (row: T) => ReactNode;
 }
 
@@ -28,7 +29,7 @@ export function DataTable<T extends { id: string }>({
           <thead>
             <tr>
               {columns.map((column) => (
-                <th key={column.header}>{column.header}</th>
+                <th key={column.id ?? String(column.header)}>{column.header}</th>
               ))}
             </tr>
           </thead>
@@ -36,7 +37,7 @@ export function DataTable<T extends { id: string }>({
             {visibleRows.map((row) => (
               <tr key={row.id}>
                 {columns.map((column) => (
-                  <td key={column.header}>{column.render(row)}</td>
+                  <td key={column.id ?? String(column.header)}>{column.render(row)}</td>
                 ))}
               </tr>
             ))}
