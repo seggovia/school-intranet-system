@@ -1,0 +1,42 @@
+{
+  "preferences": {
+    "header": {
+      "eyebrow": "Account",
+      "title": "Preferences",
+      "description": "Configure personal options available for your session. Some options are ready for future integration."
+    },
+    "saved": "Preferences saved locally.",
+    "theme": {
+      "eyebrow": "Visual theme",
+      "title": "Appearance",
+      "system": "System",
+      "light": "Light",
+      "dark": "Dark",
+      "description": "Your selection is applied immediately and stored in this browser. Effective mode: {{mode}}.",
+      "resolvedLight": "light",
+      "resolvedDark": "dark"
+    },
+    "notifications": {
+      "eyebrow": "Notifications",
+      "title": "Basic alerts",
+      "email": "Receive email alerts when available",
+      "academic": "Notify important academic changes",
+      "tickets": "Notify request progress"
+    },
+    "language": {
+      "eyebrow": "Language",
+      "title": "Localization",
+      "label": "Interface language",
+      "es": "Spanish",
+      "en": "English",
+      "description": "Selector prepared for future internationalization. The interface defaults to Spanish."
+    },
+    "security": {
+      "eyebrow": "Security",
+      "title": "Session",
+      "user": "User",
+      "email": "Email",
+      "role": "Active role"
+    }
+  }
+}

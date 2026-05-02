@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Bell, CheckCircle2, Languages, Monitor, Moon, Shield, Sun } from 'lucide-react';
 import { PageHeader } from '../components/PageHeader';
+import { getStoredLanguage, languageStorageKey, type SupportedLanguage } from '../i18n';
 import { useTheme, type ThemePreference } from '../theme';
 import type { User } from '../types';
 
@@ -9,7 +11,7 @@ type PreferenceState = {
   emailNotifications: boolean;
   academicNotifications: boolean;
   ticketNotifications: boolean;
-  language: 'es-CL';
+  language: SupportedLanguage;
 };
 
 const defaultPreferences: PreferenceState = {
@@ -17,7 +19,7 @@ const defaultPreferences: PreferenceState = {
   emailNotifications: true,
   academicNotifications: true,
   ticketNotifications: true,
-  language: 'es-CL'
+  language: 'es'
 };
 
 function preferenceKey(userId: string) {
@@ -25,10 +27,13 @@ function preferenceKey(userId: string) {
 }
 
 export function PreferencesPage({ user }: { user: User }) {
+  const { i18n, t } = useTranslation();
   const { theme, resolvedTheme, setTheme } = useTheme();
   const [preferences, setPreferences] = useState<PreferenceState>(() => {
     const raw = localStorage.getItem(preferenceKey(user.id));
-    return raw ? { ...defaultPreferences, ...(JSON.parse(raw) as Partial<PreferenceState>), theme } : { ...defaultPreferences, theme };
+    return raw
+      ? { ...defaultPreferences, ...(JSON.parse(raw) as Partial<PreferenceState>), theme, language: getStoredLanguage() }
+      : { ...defaultPreferences, theme, language: getStoredLanguage() };
   });
   const [saved, setSaved] = useState(false);
 
@@ -48,46 +53,53 @@ export function PreferencesPage({ user }: { user: User }) {
     setPreferences((current) => ({ ...current, theme: nextTheme }));
   }
 
+  function handleLanguageChange(nextLanguage: SupportedLanguage) {
+    localStorage.setItem(languageStorageKey, nextLanguage);
+    void i18n.changeLanguage(nextLanguage);
+    setPreferences((current) => ({ ...current, language: nextLanguage }));
+  }
+
   return (
     <div className="page-stack preferences-page">
-      <PageHeader eyebrow="Cuenta" title="Preferencias" description="Configura opciones personales disponibles para tu sesión. Algunas opciones quedan preparadas para futura integración." />
+      <PageHeader eyebrow={t('preferences.header.eyebrow')} title={t('preferences.header.title')} description={t('preferences.header.description')} />
 
-      {saved && <div className="admin-notice success"><CheckCircle2 size={16} />Preferencias guardadas localmente.</div>}
+      {saved && <div className="admin-notice success"><CheckCircle2 size={16} />{t('preferences.saved')}</div>}
 
       <section className="preferences-grid">
         <article className="panel preference-card">
-          <header><div><span className="eyebrow">Tema visual</span><h2>Apariencia</h2></div><Monitor size={20} /></header>
+          <header><div><span className="eyebrow">{t('preferences.theme.eyebrow')}</span><h2>{t('preferences.theme.title')}</h2></div><Monitor size={20} /></header>
           <div className="preference-options">
-            <button className={theme === 'system' ? 'active' : ''} onClick={() => handleThemeChange('system')}><Monitor size={17} />Sistema</button>
-            <button className={theme === 'light' ? 'active' : ''} onClick={() => handleThemeChange('light')}><Sun size={17} />Claro</button>
-            <button className={theme === 'dark' ? 'active' : ''} onClick={() => handleThemeChange('dark')}><Moon size={17} />Oscuro</button>
+            <button className={theme === 'system' ? 'active' : ''} onClick={() => handleThemeChange('system')}><Monitor size={17} />{t('preferences.theme.system')}</button>
+            <button className={theme === 'light' ? 'active' : ''} onClick={() => handleThemeChange('light')}><Sun size={17} />{t('preferences.theme.light')}</button>
+            <button className={theme === 'dark' ? 'active' : ''} onClick={() => handleThemeChange('dark')}><Moon size={17} />{t('preferences.theme.dark')}</button>
           </div>
-          <p>La selección se aplica al instante y queda almacenada en este navegador. Modo efectivo: {resolvedTheme === 'dark' ? 'oscuro' : 'claro'}.</p>
+          <p>{t('preferences.theme.description', { mode: t(resolvedTheme === 'dark' ? 'preferences.theme.resolvedDark' : 'preferences.theme.resolvedLight') })}</p>
         </article>
 
         <article className="panel preference-card">
-          <header><div><span className="eyebrow">Notificaciones</span><h2>Avisos básicos</h2></div><Bell size={20} /></header>
-          <label><input type="checkbox" checked={preferences.emailNotifications} onChange={(event) => setPreferences((current) => ({ ...current, emailNotifications: event.target.checked }))} /> Recibir avisos por correo cuando esté disponible</label>
-          <label><input type="checkbox" checked={preferences.academicNotifications} onChange={(event) => setPreferences((current) => ({ ...current, academicNotifications: event.target.checked }))} /> Notificar cambios académicos importantes</label>
-          <label><input type="checkbox" checked={preferences.ticketNotifications} onChange={(event) => setPreferences((current) => ({ ...current, ticketNotifications: event.target.checked }))} /> Notificar avances de solicitudes</label>
+          <header><div><span className="eyebrow">{t('preferences.notifications.eyebrow')}</span><h2>{t('preferences.notifications.title')}</h2></div><Bell size={20} /></header>
+          <label><input type="checkbox" checked={preferences.emailNotifications} onChange={(event) => setPreferences((current) => ({ ...current, emailNotifications: event.target.checked }))} /> {t('preferences.notifications.email')}</label>
+          <label><input type="checkbox" checked={preferences.academicNotifications} onChange={(event) => setPreferences((current) => ({ ...current, academicNotifications: event.target.checked }))} /> {t('preferences.notifications.academic')}</label>
+          <label><input type="checkbox" checked={preferences.ticketNotifications} onChange={(event) => setPreferences((current) => ({ ...current, ticketNotifications: event.target.checked }))} /> {t('preferences.notifications.tickets')}</label>
         </article>
 
         <article className="panel preference-card">
-          <header><div><span className="eyebrow">Idioma</span><h2>Localización</h2></div><Languages size={20} /></header>
-          <label>Idioma de interfaz
-            <select value={preferences.language} onChange={() => setPreferences((current) => ({ ...current, language: 'es-CL' }))}>
-              <option value="es-CL">Español (Chile)</option>
+          <header><div><span className="eyebrow">{t('preferences.language.eyebrow')}</span><h2>{t('preferences.language.title')}</h2></div><Languages size={20} /></header>
+          <label>{t('preferences.language.label')}
+            <select value={preferences.language} onChange={(event) => handleLanguageChange(event.target.value as SupportedLanguage)}>
+              <option value="es">{t('preferences.language.es')}</option>
+              <option value="en">{t('preferences.language.en')}</option>
             </select>
           </label>
-          <p>Selector preparado para futura internacionalización. Actualmente la interfaz funciona en español.</p>
+          <p>{t('preferences.language.description')}</p>
         </article>
 
         <article className="panel preference-card">
-          <header><div><span className="eyebrow">Seguridad</span><h2>Sesión</h2></div><Shield size={20} /></header>
+          <header><div><span className="eyebrow">{t('preferences.security.eyebrow')}</span><h2>{t('preferences.security.title')}</h2></div><Shield size={20} /></header>
           <div className="preference-account">
-            <span><strong>Usuario</strong>{user.name}</span>
-            <span><strong>Correo</strong>{user.email}</span>
-            <span><strong>Rol activo</strong>{user.primaryRole}</span>
+            <span><strong>{t('preferences.security.user')}</strong>{user.name}</span>
+            <span><strong>{t('preferences.security.email')}</strong>{user.email}</span>
+            <span><strong>{t('preferences.security.role')}</strong>{user.primaryRole}</span>
           </div>
         </article>
       </section>

@@ -1,0 +1,42 @@
+{
+  "preferences": {
+    "header": {
+      "eyebrow": "Cuenta",
+      "title": "Preferencias",
+      "description": "Configura opciones personales disponibles para tu sesión. Algunas opciones quedan preparadas para futura integración."
+    },
+    "saved": "Preferencias guardadas localmente.",
+    "theme": {
+      "eyebrow": "Tema visual",
+      "title": "Apariencia",
+      "system": "Sistema",
+      "light": "Claro",
+      "dark": "Oscuro",
+      "description": "La selección se aplica al instante y queda almacenada en este navegador. Modo efectivo: {{mode}}.",
+      "resolvedLight": "claro",
+      "resolvedDark": "oscuro"
+    },
+    "notifications": {
+      "eyebrow": "Notificaciones",
+      "title": "Avisos básicos",
+      "email": "Recibir avisos por correo cuando esté disponible",
+      "academic": "Notificar cambios académicos importantes",
+      "tickets": "Notificar avances de solicitudes"
+    },
+    "language": {
+      "eyebrow": "Idioma",
+      "title": "Localización",
+      "label": "Idioma de interfaz",
+      "es": "Español",
+      "en": "Inglés",
+      "description": "Selector preparado para futura internacionalización. Actualmente la interfaz funciona en español por defecto."
+    },
+    "security": {
+      "eyebrow": "Seguridad",
+      "title": "Sesión",
+      "user": "Usuario",
+      "email": "Correo",
+      "role": "Rol activo"
+    }
+  }
+}
