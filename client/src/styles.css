@@ -5973,6 +5973,141 @@ th {
   text-decoration: none;
 }
 
+.communication-list {
+  display: grid;
+  gap: 12px;
+}
+
+.communication-card {
+  display: grid;
+  gap: 12px;
+  border: 1px solid #d8e2ec;
+  border-radius: 8px;
+  padding: 16px;
+  background: #ffffff;
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.communication-card.no_leido {
+  border-left: 4px solid #2563eb;
+}
+
+.communication-card:hover {
+  transform: translateY(-1px);
+  border-color: #93c5fd;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
+}
+
+.communication-card header,
+.communication-card footer,
+.communication-meta {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.communication-card header {
+  justify-content: space-between;
+}
+
+.communication-card h2,
+.communication-card p {
+  margin: 0;
+}
+
+.communication-card p {
+  color: #475569;
+  line-height: 1.5;
+}
+
+.communication-meta span {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  color: #64748b;
+  font-size: 0.84rem;
+  font-weight: 900;
+}
+
+.communication-card footer {
+  justify-content: flex-end;
+}
+
+.communication-detail-modal {
+  width: min(760px, calc(100vw - 32px));
+  max-height: calc(100vh - 44px);
+  overflow: auto;
+  display: grid;
+  gap: 16px;
+  border-radius: 8px;
+  padding: 22px;
+  background: #ffffff;
+  box-shadow: 0 28px 70px rgba(15, 23, 42, 0.28);
+}
+
+.communication-detail-modal header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: start;
+}
+
+.communication-detail-modal h2,
+.communication-detail-modal p,
+.communication-attachments h3 {
+  margin: 0;
+}
+
+.communication-detail-modal p {
+  color: #334155;
+  line-height: 1.6;
+}
+
+.communication-detail-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.communication-detail-meta span {
+  display: grid;
+  gap: 5px;
+  border: 1px solid #d8e2ec;
+  border-radius: 8px;
+  padding: 12px;
+  color: #334155;
+  background: #fbfdff;
+}
+
+.communication-detail-meta svg {
+  color: #0f766e;
+}
+
+.communication-detail-meta strong {
+  color: #64748b;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+}
+
+.communication-attachments {
+  display: grid;
+  gap: 10px;
+}
+
+.communication-attachments a {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  width: fit-content;
+  border-radius: 8px;
+  padding: 9px 11px;
+  color: #0f2942;
+  background: #e7eef5;
+  font-weight: 900;
+  text-decoration: none;
+}
+
 .academic-tabs {
   display: flex;
   gap: 8px;
