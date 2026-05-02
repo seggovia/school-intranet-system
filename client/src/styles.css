@@ -1,9 +1,41 @@
 :root {
-  color: #17202a;
-  background: #f3f6f8;
+  --color-bg: #f3f6f8;
+  --color-card: #ffffff;
+  --color-border: #d8e2ec;
+  --color-text: #17202a;
+  --color-muted: #64748b;
+  --color-card-subtle: #fbfdff;
+  --color-surface-muted: #f8fafc;
+  --color-input: #ffffff;
+  --color-navbar: linear-gradient(180deg, #0f2f4a 0%, #102a43 48%, #0b2238 100%);
+  --color-navbar-text: #ffffff;
+  --color-link-surface: #e7eef5;
+  --color-link-surface-hover: #edf2f6;
+  --shadow-card: 0 12px 28px rgba(16, 42, 67, 0.06);
+  --shadow-modal: 0 24px 70px rgba(15, 23, 42, 0.28);
+  color: var(--color-text);
+  background: var(--color-bg);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
+}
+
+.dark {
+  --color-bg: #08111d;
+  --color-card: #101b2b;
+  --color-border: #25364a;
+  --color-text: #e5edf6;
+  --color-muted: #9fb0c3;
+  --color-card-subtle: #0d1726;
+  --color-surface-muted: #0b1422;
+  --color-input: #0b1422;
+  --color-navbar: linear-gradient(180deg, #07111d 0%, #0b1f34 54%, #06101b 100%);
+  --color-navbar-text: #ffffff;
+  --color-link-surface: #18283a;
+  --color-link-surface-hover: #21354c;
+  --shadow-card: 0 18px 42px rgba(0, 0, 0, 0.24);
+  --shadow-modal: 0 28px 70px rgba(0, 0, 0, 0.42);
+  color-scheme: dark;
 }
 
 .admin-page {
@@ -19,9 +51,9 @@
 .admin-summary-card,
 .admin-panel,
 .admin-relation-card {
-  background: #fff;
-  border: 1px solid #d8e2ec;
-  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.06);
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-card);
 }
 
 .admin-summary-card {
@@ -45,17 +77,17 @@
 .attendance-summary-grid article {
   min-height: 112px;
   padding: 18px;
-  border: 1px solid #d8e2ec;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: #ffffff;
-  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.06);
+  background: var(--color-card);
+  box-shadow: var(--shadow-card);
   display: grid;
   align-content: center;
   gap: 8px;
 }
 
 .attendance-summary-grid span {
-  color: #50647a;
+  color: var(--color-muted);
   font-size: 0.92rem;
 }
 
@@ -67,7 +99,7 @@
 .admin-summary-card span,
 .admin-table-card small,
 .admin-table-card span {
-  color: #52677a;
+  color: var(--color-muted);
 }
 
 .admin-summary-card strong {
@@ -303,10 +335,10 @@
   align-items: center;
   padding: 11px 14px;
   margin-bottom: 8px;
-  border: 1px solid #d8e2ec;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: #f8fafc;
-  color: #475569;
+  background: var(--color-surface-muted);
+  color: var(--color-muted);
   font-size: 12px;
   font-weight: 900;
   text-transform: uppercase;
@@ -318,9 +350,9 @@
   gap: 14px;
   align-items: center;
   padding: 14px;
-  border: 1px solid #d8e2ec;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: #fbfdff;
+  background: var(--color-card-subtle);
   min-width: 0;
 }
 
@@ -360,15 +392,15 @@
   gap: 10px;
   align-items: center;
   padding: 13px;
-  border: 1px solid #d8e2ec;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: #fbfdff;
+  background: var(--color-card-subtle);
   min-width: 0;
 }
 
 .schedule-row.head {
-  background: #f8fafc;
-  color: #475569;
+  background: var(--color-surface-muted);
+  color: var(--color-muted);
   font-size: 12px;
   font-weight: 900;
   text-transform: uppercase;
@@ -567,7 +599,7 @@
 
 .course-table {
   display: grid;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   overflow: hidden;
 }
@@ -578,13 +610,13 @@
   gap: 12px;
   align-items: center;
   padding: 12px;
-  border-top: 1px solid #edf2f7;
+  border-top: 1px solid var(--color-border);
 }
 
 .course-table-row.head {
   border-top: 0;
-  background: #f8fafc;
-  color: #475569;
+  background: var(--color-surface-muted);
+  color: var(--color-muted);
   font-size: 12px;
   font-weight: 900;
   text-transform: uppercase;
@@ -596,7 +628,7 @@
 }
 
 .course-table-row small {
-  color: #64748b;
+  color: var(--color-muted);
 }
 
 .guardian-selected-card {
@@ -798,10 +830,10 @@
 
 .classroom-table {
   display: grid;
-  border: 1px solid #d8e2ec;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   overflow: hidden;
-  background: #fff;
+  background: var(--color-card);
 }
 
 .classroom-row {
@@ -959,9 +991,10 @@
   width: min(820px, 100%);
   max-height: 88vh;
   overflow: auto;
-  background: #fff;
+  color: var(--color-text);
+  background: var(--color-card);
   border-radius: 8px;
-  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.28);
+  box-shadow: var(--shadow-modal);
   animation: modal-in 160ms ease-out;
 }
 
@@ -2500,6 +2533,8 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  color: var(--color-text);
+  background: var(--color-bg);
 }
 
 button,
@@ -2650,11 +2685,11 @@ label {
 input,
 select {
   width: 100%;
-  border: 1px solid #cbd5df;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   padding: 12px 13px;
-  color: #17202a;
-  background: #ffffff;
+  color: var(--color-text);
+  background: var(--color-input);
 }
 
 .password-field > span {
@@ -2787,6 +2822,8 @@ select:disabled {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   min-height: 100vh;
+  color: var(--color-text);
+  background: var(--color-bg);
 }
 
 .institution-header {
@@ -2799,8 +2836,8 @@ select:disabled {
   gap: 16px;
   min-height: 78px;
   padding: 12px clamp(18px, 2.5vw, 34px);
-  color: #ffffff;
-  background: linear-gradient(180deg, #0f2f4a 0%, #102a43 48%, #0b2238 100%);
+  color: var(--color-navbar-text);
+  background: var(--color-navbar);
   border-bottom: 0;
   box-shadow: none;
 }
@@ -2858,7 +2895,7 @@ select:disabled {
 
 .nav-list a.active,
 .nav-list a:hover {
-  color: #ffffff;
+  color: var(--color-navbar-text);
   border-color: rgba(255, 255, 255, 0.14);
   background: rgba(255, 255, 255, 0.12);
 }
@@ -2898,8 +2935,8 @@ select:disabled {
   padding: 0 11px;
   border: 1px solid rgba(203, 213, 225, 0.28);
   border-radius: 8px;
-  color: #314254;
-  background: rgba(255, 255, 255, 0.96);
+  color: var(--color-text);
+  background: var(--color-input);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 
@@ -2907,7 +2944,7 @@ select:disabled {
   min-width: 0;
   border: 0;
   padding: 0;
-  color: #17202a;
+  color: var(--color-text);
   background: transparent;
   outline: 0;
 }
@@ -2929,7 +2966,7 @@ select:disabled {
   padding: 0 10px 0 0;
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 10px;
-  color: #ffffff;
+  color: var(--color-navbar-text);
   background: rgba(255, 255, 255, 0.08);
   font-weight: 900;
 }
@@ -2941,7 +2978,7 @@ select:disabled {
   width: 44px;
   height: 44px;
   border-radius: 9px;
-  color: #ffffff;
+  color: var(--color-navbar-text);
   background: #2563eb;
   font-weight: 900;
 }
@@ -2960,11 +2997,11 @@ select:disabled {
   gap: 10px;
   width: min(310px, calc(100vw - 24px));
   padding: 14px;
-  border: 1px solid #dbe3ea;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  color: #17202a;
-  background: #ffffff;
-  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.26);
+  color: var(--color-text);
+  background: var(--color-card);
+  box-shadow: var(--shadow-modal);
 }
 
 .profile-menu-header {
@@ -2980,12 +3017,12 @@ select:disabled {
 }
 
 .profile-menu-header small {
-  color: #617282;
+  color: var(--color-muted);
 }
 
 .profile-menu-divider {
   height: 1px;
-  background: #e5edf3;
+  background: var(--color-border);
 }
 
 .profile-menu button,
@@ -2998,7 +3035,7 @@ select:disabled {
   border: 0;
   border-radius: 8px;
   padding: 0 10px;
-  color: #102a43;
+  color: var(--color-text);
   background: transparent;
   font-weight: 800;
   text-decoration: none;
@@ -3006,7 +3043,7 @@ select:disabled {
 
 .profile-menu button:hover,
 .profile-menu a:hover {
-  background: #edf2f6;
+  background: var(--color-link-surface-hover);
 }
 
 .topbar {
@@ -3070,6 +3107,7 @@ select:disabled {
 
 .content {
   padding: 28px;
+  background: var(--color-bg);
 }
 
 .page-stack {
@@ -3100,7 +3138,7 @@ select:disabled {
 
 .page-header p {
   margin-top: 10px;
-  color: #5d6e7d;
+  color: var(--color-muted);
 }
 
 .kpi-grid,
@@ -3127,10 +3165,10 @@ select:disabled {
 .announcement-card,
 .request-form,
 .timeline-item {
-  border: 1px solid #dce5ec;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: #ffffff;
-  box-shadow: 0 12px 28px rgba(16, 42, 67, 0.06);
+  background: var(--color-card);
+  box-shadow: var(--shadow-card);
 }
 
 .kpi-card {
@@ -3141,7 +3179,7 @@ select:disabled {
 
 .kpi-card span,
 .kpi-card small {
-  color: #657686;
+  color: var(--color-muted);
 }
 
 .kpi-card strong {
@@ -3200,12 +3238,12 @@ th,
 td {
   padding: 14px 12px;
   text-align: left;
-  border-bottom: 1px solid #e7edf2;
+  border-bottom: 1px solid var(--color-border);
   white-space: nowrap;
 }
 
 th {
-  color: #5d6e7d;
+  color: var(--color-muted);
   font-size: 0.78rem;
   text-transform: uppercase;
 }
@@ -5048,14 +5086,14 @@ th {
 }
 
 .preference-card p {
-  color: #64748b;
+  color: var(--color-muted);
   line-height: 1.5;
 }
 
 .preference-card label {
   display: grid;
   gap: 8px;
-  color: #334155;
+  color: var(--color-text);
   font-weight: 900;
 }
 
@@ -5075,11 +5113,11 @@ th {
   display: inline-flex;
   gap: 8px;
   align-items: center;
-  border: 1px solid #d8e2ec;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   padding: 0 12px;
-  color: #334155;
-  background: #ffffff;
+  color: var(--color-text);
+  background: var(--color-card);
   font-weight: 900;
   cursor: pointer;
 }
@@ -5098,14 +5136,14 @@ th {
 .preference-account span {
   display: grid;
   gap: 4px;
-  border: 1px solid #d8e2ec;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   padding: 10px;
-  background: #fbfdff;
+  background: var(--color-card-subtle);
 }
 
 .preference-account strong {
-  color: #64748b;
+  color: var(--color-muted);
   font-size: 0.78rem;
   text-transform: uppercase;
 }
@@ -6083,10 +6121,10 @@ th {
   display: grid;
   gap: 8px;
   min-width: 0;
-  border: 1px solid #d8e2ec;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   padding: 14px;
-  background: #fbfdff;
+  background: var(--color-card-subtle);
   transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
 }
 
@@ -6102,7 +6140,7 @@ th {
 }
 
 .student-feature-card small {
-  color: #52677a;
+  color: var(--color-muted);
   font-weight: 800;
 }
 
@@ -6214,10 +6252,10 @@ th {
 .communication-card {
   display: grid;
   gap: 12px;
-  border: 1px solid #d8e2ec;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   padding: 16px;
-  background: #ffffff;
+  background: var(--color-card);
   transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
 }
 
@@ -6250,7 +6288,7 @@ th {
 }
 
 .communication-card p {
-  color: #475569;
+  color: var(--color-muted);
   line-height: 1.5;
 }
 
@@ -6258,7 +6296,7 @@ th {
   display: inline-flex;
   gap: 6px;
   align-items: center;
-  color: #64748b;
+  color: var(--color-muted);
   font-size: 0.84rem;
   font-weight: 900;
 }
@@ -6275,8 +6313,9 @@ th {
   gap: 16px;
   border-radius: 8px;
   padding: 22px;
-  background: #ffffff;
-  box-shadow: 0 28px 70px rgba(15, 23, 42, 0.28);
+  color: var(--color-text);
+  background: var(--color-card);
+  box-shadow: var(--shadow-modal);
 }
 
 .communication-detail-modal header {
@@ -7051,8 +7090,8 @@ th {
 }
 
 html.dark {
-  color: #e5edf6;
-  background: #08111d;
+  color: var(--color-text);
+  background: var(--color-bg);
   color-scheme: dark;
 }
 
@@ -7061,12 +7100,12 @@ html.dark .app-shell,
 html.dark .main-area,
 html.dark .content,
 html.dark .login-panel {
-  color: #e5edf6;
-  background: #08111d;
+  color: var(--color-text);
+  background: var(--color-bg);
 }
 
 html.dark .institution-header {
-  background: linear-gradient(180deg, #07111d 0%, #0b1f34 54%, #06101b 100%);
+  background: var(--color-navbar);
 }
 
 html.dark :where(
@@ -7097,10 +7136,10 @@ html.dark :where(
   .profile-menu,
   .login-form
 ) {
-  color: #e5edf6;
-  border-color: #25364a;
-  background: #101b2b;
-  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.24);
+  color: var(--color-text);
+  border-color: var(--color-border);
+  background: var(--color-card);
+  box-shadow: var(--shadow-card);
 }
 
 html.dark :where(
@@ -7136,9 +7175,9 @@ html.dark :where(
   .schedule-agenda button,
   .schedule-block-class-list button
 ) {
-  color: #e5edf6;
-  border-color: #25364a;
-  background: #0d1726;
+  color: var(--color-text);
+  border-color: var(--color-border);
+  background: var(--color-card-subtle);
 }
 
 html.dark :where(
@@ -7151,9 +7190,9 @@ html.dark :where(
   .course-detail-modal,
   .schedule-block-modal
 ) {
-  color: #e5edf6;
-  background: #101b2b;
-  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.42);
+  color: var(--color-text);
+  background: var(--color-card);
+  box-shadow: var(--shadow-modal);
 }
 
 html.dark :where(
@@ -7165,13 +7204,13 @@ html.dark :where(
   .labelled-filters .admin-search > div,
   .institution-search
 ) {
-  color: #e5edf6;
-  border-color: #31465f;
-  background: #0b1422;
+  color: var(--color-text);
+  border-color: var(--color-border);
+  background: var(--color-input);
 }
 
 html.dark :where(input::placeholder, textarea::placeholder) {
-  color: #8294aa;
+  color: var(--color-muted);
 }
 
 html.dark :where(
@@ -7201,7 +7240,7 @@ html.dark :where(
   .student-list-row span,
   .student-list-row small
 ) {
-  color: #9fb0c3;
+  color: var(--color-muted);
 }
 
 html.dark :where(
@@ -7216,7 +7255,7 @@ html.dark :where(
   .guardian-detail-summary,
   .profile-menu-divider
 ) {
-  border-color: #25364a;
+  border-color: var(--color-border);
 }
 
 html.dark :where(
@@ -7229,8 +7268,8 @@ html.dark :where(
   .quick-actions a,
   .communication-attachments a
 ) {
-  color: #dbeafe;
-  background: #18283a;
+  color: var(--color-text);
+  background: var(--color-link-surface);
 }
 
 html.dark :where(
@@ -7242,13 +7281,13 @@ html.dark :where(
   .quick-actions a:hover,
   .communication-attachments a:hover
 ) {
-  background: #21354c;
+  background: var(--color-link-surface-hover);
 }
 
 html.dark .preference-options button {
-  color: #dbeafe;
-  border-color: #31465f;
-  background: #0b1422;
+  color: var(--color-text);
+  border-color: var(--color-border);
+  background: var(--color-input);
 }
 
 html.dark .preference-options button.active {
