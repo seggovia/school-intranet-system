@@ -1,5 +1,6 @@
 import { FormEvent, ReactNode, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, BookOpen, CalendarDays, CheckCircle2, Clock, MapPin, Save, Search, Users, XCircle } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { loadAttendanceContext, loadAttendanceGuardian, loadAttendanceMe, loadAttendanceRecords, loadAttendanceSummary, saveAttendanceBulk } from '../api';
 import { normalizeApiError, type NormalizedApiError } from '../api-error';
 import { ApiErrorModal } from '../components/ApiErrorModal';
@@ -100,6 +101,10 @@ export function AttendancePage({ user }: { user: User }) {
 }
 
 function ManageAttendance({ user }: { user: User }) {
+  const [searchParams] = useSearchParams();
+  const sectionParam = searchParams.get('cursoId') ?? '';
+  const subjectParam = searchParams.get('asignaturaId') ?? '';
+  const dateParam = searchParams.get('fecha') ?? '';
   const [context, setContext] = useState<AttendanceContext | null>(null);
   const [sectionId, setSectionId] = useState('');
   const [subjectId, setSubjectId] = useState('');
@@ -141,13 +146,17 @@ function ManageAttendance({ user }: { user: User }) {
       .then(([nextContext, adminSummary]) => {
         setContext(nextContext);
         setSummary(adminSummary);
-        if (!isTeacher) {
-          setSectionId(nextContext.sections[0]?.id ?? '');
-          setSubjectId(nextContext.sections[0]?.subjects[0]?.id ?? '');
+        const requestedSection = nextContext.sections.find((item) => item.id === sectionParam);
+        const initialSection = requestedSection ?? (!isTeacher ? nextContext.sections[0] : undefined);
+        const requestedSubject = initialSection?.subjects.find((item) => item.id === subjectParam);
+        if (initialSection) {
+          setSectionId(initialSection.id);
+          setSubjectId((requestedSubject ?? initialSection.subjects[0])?.id ?? '');
         }
+        if (dateParam) setDate(dateParam);
       })
       .finally(() => setLoading(false));
-  }, [isTeacher, user.primaryRole]);
+  }, [dateParam, isTeacher, sectionParam, subjectParam, user.primaryRole]);
 
   useEffect(() => {
     if (!notice && !error) return;
@@ -381,10 +390,15 @@ function AttendanceStudentRow({ student, onChange, onNote }: { student: Attendan
 }
 
 function StudentAttendance() {
+  const [searchParams] = useSearchParams();
   const [data, setData] = useState<{ summary: AttendanceSummary; history: AttendanceHistoryItem[] } | null>(null);
   useEffect(() => { loadAttendanceMe().then(setData); }, []);
   if (!data) return <LoadingState label="Cargando asistencia..." />;
-  return <div className="page-stack"><PageHeader eyebrow="Asistencia" title="Mi asistencia" description="Resumen e historial de tus registros." /><SummaryCards values={data.summary} /><section className="panel"><HistoryTable rows={data.history} /></section></div>;
+  const subject = searchParams.get('asignatura') ?? '';
+  const section = searchParams.get('curso') ?? '';
+  const filteredHistory = data.history.filter((row) => (!subject || row.subject === subject) && (!section || row.section === section));
+  const filtered = Boolean(subject || section);
+  return <div className="page-stack"><PageHeader eyebrow="Asistencia" title={filtered ? 'Asistencia filtrada' : 'Mi asistencia'} description={filtered ? [section, subject].filter(Boolean).join(' · ') : 'Resumen e historial de tus registros.'} /><SummaryCards values={data.summary} /><section className="panel"><HistoryTable rows={filtered ? filteredHistory : data.history} /></section></div>;
 }
 
 function GuardianAttendance() {

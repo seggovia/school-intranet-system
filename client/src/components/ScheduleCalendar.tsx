@@ -4,7 +4,7 @@ import interactionPlugin from '@fullcalendar/interaction';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import type { EventClickArg, EventContentArg } from '@fullcalendar/core';
 import esLocale from '@fullcalendar/core/locales/es';
-import { AlertTriangle, BookOpen, CalendarDays, CheckCircle2, Clock, DoorOpen, Eye, RotateCcw, Search, UserRound, Users, X } from 'lucide-react';
+import { AlertTriangle, BookOpen, CalendarDays, CheckCircle2, Clock, DoorOpen, Eye, MapPin, RotateCcw, Search, UserRound, Users, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { loadSectionStudents } from '../api';
@@ -101,8 +101,48 @@ function useClassDetails() {
   return { selected, students, studentsLoading, openSelected, closeSelected: () => setSelected(null) };
 }
 
-function DetailModal({ selected, students, studentsLoading, onClose }: { selected: ScheduleCalendarEvent; students: SectionStudent[] | null; studentsLoading: boolean; onClose: () => void }) {
+type InfoModal =
+  | { type: 'teacher' }
+  | { type: 'room'; related: ScheduleCalendarEvent[] }
+  | { type: 'admin-course'; related: ScheduleCalendarEvent[] }
+  | null;
+
+function isAdminRole(role: string) {
+  return ['admin', 'director', 'inspector'].includes(role);
+}
+
+function buildParams(selected: ScheduleCalendarEvent) {
+  const params = new URLSearchParams();
+  if (selected.sectionId) params.set('cursoId', selected.sectionId);
+  if (selected.subjectId) params.set('asignaturaId', selected.subjectId);
+  params.set('curso', selected.course);
+  params.set('asignatura', selected.subject);
+  params.set('fecha', selected.start.slice(0, 10));
+  return params.toString();
+}
+
+function DetailModal({ selected, events, role, students, studentsLoading, onClose }: { selected: ScheduleCalendarEvent; events: ScheduleCalendarEvent[]; role: string; students: SectionStudent[] | null; studentsLoading: boolean; onClose: () => void }) {
   const navigate = useNavigate();
+  const [info, setInfo] = useState<InfoModal>(null);
+  const relatedRoomEvents = useMemo(() => events.filter((event) => event.room === selected.room), [events, selected.room]);
+  const relatedCourseEvents = useMemo(() => events.filter((event) => event.sectionId === selected.sectionId || event.course === selected.course), [events, selected.course, selected.sectionId]);
+  const params = buildParams(selected);
+  const canOpenCourse = role === 'student' ? Boolean(selected.subjectId) : role === 'teacher' ? Boolean(selected.sectionId && selected.subjectId) : Boolean(selected.sectionId || selected.subjectId || selected.course);
+  const canOpenAttendance = role !== 'guardian' && Boolean(selected.sectionId && selected.subjectId);
+
+  function openCourse() {
+    if (!canOpenCourse) return setInfo({ type: 'admin-course', related: relatedCourseEvents });
+    if (role === 'student') return navigate(`/subjects/${selected.subjectId}?${params}`);
+    if (role === 'teacher') return navigate(`/calificaciones?${params}`);
+    if (isAdminRole(role)) return setInfo({ type: 'admin-course', related: relatedCourseEvents });
+    setInfo({ type: 'admin-course', related: relatedCourseEvents });
+  }
+
+  function openAttendance() {
+    if (!canOpenAttendance) return;
+    navigate(`/asistencia?${params}`);
+  }
+
   return (
     <div className="modal-backdrop" role="presentation" onClick={onClose}>
       <section className="class-modal" role="dialog" aria-modal="true" aria-labelledby="class-modal-title" onClick={(event) => event.stopPropagation()}>
@@ -133,17 +173,79 @@ function DetailModal({ selected, students, studentsLoading, onClose }: { selecte
         </div>
 
         <div className="class-quick-actions">
-          <button className="secondary-button" type="button" onClick={() => navigate('/academico')}>Ver curso</button>
-          <button className="secondary-button" type="button">Ver profesor</button>
-          <button className="secondary-button" type="button">Ver sala</button>
-          <button className="primary-button" type="button" onClick={() => navigate('/asistencia')}>Ver asistencia</button>
+          {canOpenCourse ? <button className="secondary-button" type="button" onClick={openCourse}>Ver curso</button> : <span className="class-action-state">Curso sin detalle disponible</span>}
+          {(role === 'student' || isAdminRole(role)) && <button className="secondary-button" type="button" onClick={() => setInfo({ type: 'teacher' })}>Ver profesor</button>}
+          {(role === 'student' || isAdminRole(role)) && <button className="secondary-button" type="button" onClick={() => setInfo({ type: 'room', related: relatedRoomEvents })}>Ver sala</button>}
+          {canOpenAttendance ? <button className="primary-button" type="button" onClick={openAttendance}>{role === 'teacher' ? 'Tomar asistencia' : 'Ver asistencia'}</button> : <span className="class-action-state">Asistencia no disponible para esta clase</span>}
         </div>
+        {info && <ClassInfoModal selected={selected} info={info} students={students} onClose={() => setInfo(null)} />}
       </section>
     </div>
   );
 }
 
-export function InstitutionalScheduleSummary({ events, compact = false }: { events: ScheduleCalendarEvent[]; compact?: boolean }) {
+function ClassInfoModal({ selected, info, students, onClose }: { selected: ScheduleCalendarEvent; info: InfoModal; students: SectionStudent[] | null; onClose: () => void }) {
+  if (!info) return null;
+  const title = info.type === 'teacher' ? 'Detalle del docente' : info.type === 'room' ? 'Detalle de sala' : 'Detalle administrativo';
+  return (
+    <div className="nested-modal-backdrop" role="presentation" onClick={onClose}>
+      <section className="class-info-modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+        <header><div><span className="eyebrow">{title}</span><h3>{info.type === 'room' ? selected.room : info.type === 'teacher' ? selected.teacher : selected.course}</h3></div><button className="icon-button" type="button" onClick={onClose} aria-label="Cerrar"><X size={18} /></button></header>
+        {info.type === 'teacher' && (
+          <div className="class-info-grid">
+            <span><UserRound size={16} /><strong>Nombre</strong>{selected.teacher || 'Sin docente asignado'}</span>
+            <span><BookOpen size={16} /><strong>Especialidad</strong>{selected.teacherDepartment || 'Sin especialidad registrada'}</span>
+            <span><Search size={16} /><strong>Correo</strong>{selected.teacherEmail || 'Sin correo disponible'}</span>
+            <span><Users size={16} /><strong>Curso</strong>{selected.course}</span>
+          </div>
+        )}
+        {info.type === 'room' && (
+          <>
+            <div className="class-info-grid">
+              <span><DoorOpen size={16} /><strong>Sala</strong>{selected.room || 'Sin sala asignada'}</span>
+              <span><MapPin size={16} /><strong>Piso</strong>{selected.roomFloor ? `Piso ${selected.roomFloor}` : 'Sin piso registrado'}</span>
+              <span><Users size={16} /><strong>Capacidad</strong>{selected.roomCapacity ? `${selected.roomCapacity} cupos` : 'Sin capacidad registrada'}</span>
+              <span><BookOpen size={16} /><strong>Tipo</strong>{selected.roomType || 'Sin tipo registrado'}</span>
+            </div>
+            <RelatedSchedules rows={info.related} empty="No hay horarios relacionados para esta sala." />
+          </>
+        )}
+        {info.type === 'admin-course' && (
+          <>
+            <div className="class-info-grid">
+              <span><BookOpen size={16} /><strong>Curso / sección</strong>{selected.course}</span>
+              <span><ClipboardIcon /><strong>Asignatura</strong>{selected.subject}</span>
+              <span><Users size={16} /><strong>Estudiantes</strong>{students ? students.length : 'Sin nómina cargada'}</span>
+              <span><DoorOpen size={16} /><strong>Sala base</strong>{selected.room || 'Sin sala'}</span>
+            </div>
+            <RelatedSchedules rows={info.related} empty="No hay otros horarios para este curso/sección." />
+          </>
+        )}
+      </section>
+    </div>
+  );
+}
+
+function ClipboardIcon() {
+  return <BookOpen size={16} />;
+}
+
+function RelatedSchedules({ rows, empty }: { rows: ScheduleCalendarEvent[]; empty: string }) {
+  if (!rows.length) return <EmptyState title={empty} />;
+  return (
+    <div className="class-related-schedules">
+      {rows.slice(0, 8).map((event) => (
+        <article key={event.id}>
+          <strong>{event.subject}</strong>
+          <span>{weekdayNames[Number(eventWeekday(event))] ?? 'Dia'} {eventTime(event).startsAt} - {eventTime(event).endsAt}</span>
+          <small>{event.course} · {event.teacher}</small>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+export function InstitutionalScheduleSummary({ events, role = 'admin', compact = false }: { events: ScheduleCalendarEvent[]; role?: string; compact?: boolean }) {
   const { selected, students, studentsLoading, openSelected, closeSelected } = useClassDetails();
   const [selectedBlock, setSelectedBlock] = useState<Block | null>(null);
   const [filters, setFilters] = useState({ day: '', from: '', to: '', course: '', teacher: '', room: '', subject: '', level: '', query: '' });
@@ -260,13 +362,14 @@ export function InstitutionalScheduleSummary({ events, compact = false }: { even
           </section>
         </div>
       )}
-      {selected && <DetailModal selected={selected} students={students} studentsLoading={studentsLoading} onClose={closeSelected} />}
+      {selected && <DetailModal selected={selected} events={events} role={role} students={students} studentsLoading={studentsLoading} onClose={closeSelected} />}
     </>
   );
 }
 
 export function PersonalScheduleCards({ events, role }: { events: ScheduleCalendarEvent[]; role: string }) {
   const { selected, students, studentsLoading, openSelected, closeSelected } = useClassDetails();
+  const navigate = useNavigate();
   const [filters, setFilters] = useState({ day: '', course: '', subject: '', student: '' });
   const studentOptions = useMemo(() => getUnique(events.flatMap((event) => event.students?.map((student) => student.name) ?? [])), [events]);
   const courseOptions = useMemo(() => getUnique(events.map((event) => event.course)), [events]);
@@ -305,18 +408,18 @@ export function PersonalScheduleCards({ events, role }: { events: ScheduleCalend
             <small>{event.teacher} · {event.room}</small>
             <div>
               <button type="button" className="secondary-button" onClick={() => openSelected(event)}>Ver clase</button>
-              {role === 'teacher' && <button type="button" className="primary-button" onClick={() => window.location.assign('/asistencia')}>Tomar asistencia</button>}
+              {role === 'teacher' && event.sectionId && event.subjectId && <button type="button" className="primary-button" onClick={() => navigate(`/asistencia?${buildParams(event)}`)}>Tomar asistencia</button>}
             </div>
           </article>
         ))}
         {!filtered.length && <EmptyState title="Sin clases programadas" />}
       </div>
-      {selected && <DetailModal selected={selected} students={students} studentsLoading={studentsLoading} onClose={closeSelected} />}
+      {selected && <DetailModal selected={selected} events={events} role={role} students={students} studentsLoading={studentsLoading} onClose={closeSelected} />}
     </>
   );
 }
 
-export function ScheduleCalendar({ events, compact = false }: { events: ScheduleCalendarEvent[]; compact?: boolean }) {
+export function ScheduleCalendar({ events, role = 'admin', compact = false }: { events: ScheduleCalendarEvent[]; role?: string; compact?: boolean }) {
   const { selected, students, studentsLoading, openSelected, closeSelected } = useClassDetails();
   const [view, setView] = useState<'agenda' | 'week'>('week');
   const [filters, setFilters] = useState({ day: '', period: 'semana', course: '', teacher: '', query: '' });
@@ -406,7 +509,7 @@ export function ScheduleCalendar({ events, compact = false }: { events: Schedule
         </div>
       )}
 
-      {selected && <DetailModal selected={selected} students={students} studentsLoading={studentsLoading} onClose={closeSelected} />}
+      {selected && <DetailModal selected={selected} events={events} role={role} students={students} studentsLoading={studentsLoading} onClose={closeSelected} />}
     </>
   );
 }

@@ -129,7 +129,7 @@ export function DashboardPage() {
           </div>
           {schedule.data.length ? (
             ['admin', 'director', 'inspector'].includes(dashboard.data.role)
-              ? <InstitutionalScheduleSummary events={schedule.data} compact />
+              ? <InstitutionalScheduleSummary events={schedule.data} role={dashboard.data.role} compact />
               : <PersonalScheduleCards events={schedule.data} role={dashboard.data.role} />
           ) : <EmptyState title="Sin clases programadas" />}
         </article>

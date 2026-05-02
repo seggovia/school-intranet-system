@@ -57,8 +57,8 @@ function serializeCalendarSchedule(schedule: {
   startsAt: string;
   endsAt: string;
   subject: { id: string; name: string };
-  teacher: { user: { name: string } };
-  classroom: { name: string };
+  teacher: { id: string; user: { name: string; email: string; department: string } };
+  classroom: { id: string; name: string; capacity: number; floor: number; type: string };
   section: {
     id: string;
     course: { name: string; level?: { name: string } | null };
@@ -76,8 +76,15 @@ function serializeCalendarSchedule(schedule: {
     end: `${date}T${schedule.endsAt}`,
     subjectId: schedule.subject.id,
     subject: schedule.subject.name,
+    teacherId: schedule.teacher.id,
     teacher: schedule.teacher.user.name,
+    teacherEmail: schedule.teacher.user.email,
+    teacherDepartment: schedule.teacher.user.department,
     room: schedule.classroom.name,
+    roomId: schedule.classroom.id,
+    roomCapacity: schedule.classroom.capacity,
+    roomFloor: schedule.classroom.floor,
+    roomType: schedule.classroom.type,
     section,
     sectionId: schedule.section.id,
     course: section,

@@ -282,8 +282,15 @@ export interface ScheduleCalendarEvent {
   end: string;
   subjectId: string;
   subject: string;
+  teacherId?: string;
   teacher: string;
+  teacherEmail?: string;
+  teacherDepartment?: string;
   room: string;
+  roomId?: string;
+  roomCapacity?: number;
+  roomFloor?: number;
+  roomType?: string;
   section: string;
   sectionId?: string;
   course: string;
