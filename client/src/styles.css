@@ -7049,3 +7049,222 @@ th {
     grid-template-columns: 1fr;
   }
 }
+
+html.dark {
+  color: #e5edf6;
+  background: #08111d;
+  color-scheme: dark;
+}
+
+html.dark body,
+html.dark .app-shell,
+html.dark .main-area,
+html.dark .content,
+html.dark .login-panel {
+  color: #e5edf6;
+  background: #08111d;
+}
+
+html.dark .institution-header {
+  background: linear-gradient(180deg, #07111d 0%, #0b1f34 54%, #06101b 100%);
+}
+
+html.dark :where(
+  .panel,
+  .announcement-card,
+  .request-form,
+  .timeline-item,
+  .admin-panel,
+  .admin-summary-card,
+  .admin-relation-card,
+  .attendance-summary-grid article,
+  .academic-tabs,
+  .course-table,
+  .classroom-table,
+  .section-list.standalone,
+  .guardian-list-panel,
+  .guardian-detail-panel,
+  .gradebook-sheet-panel,
+  .attendance-history-panel,
+  .toolbar-panel,
+  .chart-panel,
+  .class-students-panel,
+  .academic-filter-panel,
+  .schedule-control-panel,
+  .communication-filters,
+  .course-detail-columns section,
+  .institutional-schedule-kpis article,
+  .profile-menu,
+  .login-form
+) {
+  color: #e5edf6;
+  border-color: #25364a;
+  background: #101b2b;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.24);
+}
+
+html.dark :where(
+  .admin-table-card,
+  .admin-table-header,
+  .admin-empty,
+  .course-card,
+  .classroom-section,
+  .course-level-group,
+  .course-level-toggle,
+  .course-level-content,
+  .course-card-header,
+  .section-row.head,
+  .classroom-row.head,
+  .schedule-row,
+  .schedule-row.head,
+  .guardian-selected-card,
+  .guardian-option-card,
+  .course-section-row,
+  .student-feature-card,
+  .student-list-row,
+  .communication-card,
+  .communication-detail-meta span,
+  .course-detail-grid article,
+  .communication-summary article,
+  .ticket-summary article,
+  .institutional-block-card,
+  .personal-class-card,
+  .preference-account span,
+  .timetable-day,
+  .class-students-list span,
+  .course-detail-columns span,
+  .schedule-agenda button,
+  .schedule-block-class-list button
+) {
+  color: #e5edf6;
+  border-color: #25364a;
+  background: #0d1726;
+}
+
+html.dark :where(
+  .admin-modal,
+  .admin-confirm,
+  .api-error-modal,
+  .student-picker-modal,
+  .guardian-detail-modal,
+  .communication-detail-modal,
+  .course-detail-modal,
+  .schedule-block-modal
+) {
+  color: #e5edf6;
+  background: #101b2b;
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.42);
+}
+
+html.dark :where(
+  input,
+  select,
+  textarea,
+  .admin-search,
+  .admin-filterbar .admin-search > div,
+  .labelled-filters .admin-search > div,
+  .institution-search
+) {
+  color: #e5edf6;
+  border-color: #31465f;
+  background: #0b1422;
+}
+
+html.dark :where(input::placeholder, textarea::placeholder) {
+  color: #8294aa;
+}
+
+html.dark :where(
+  .page-header p,
+  .login-heading p,
+  .preference-card p,
+  .admin-summary-card span,
+  .admin-table-card small,
+  .admin-table-card span,
+  .attendance-summary-grid span,
+  .guardian-option-card small,
+  .course-table-row small,
+  .classroom-row small,
+  .profile-menu-header small,
+  .kpi-card span,
+  .kpi-card small,
+  .communication-card p,
+  .communication-meta span,
+  .course-detail-grid span,
+  .communication-summary span,
+  .ticket-summary span,
+  .personal-class-card small,
+  .institutional-block-card small,
+  .schedule-agenda small,
+  .schedule-agenda span,
+  .student-feature-card small,
+  .student-list-row span,
+  .student-list-row small
+) {
+  color: #9fb0c3;
+}
+
+html.dark :where(
+  th,
+  td,
+  .admin-toolbar,
+  .course-card-header,
+  .admin-modal header,
+  .student-picker-modal header,
+  .guardian-detail-modal header,
+  .guardian-detail-modal .guardian-detail-actions,
+  .guardian-detail-summary,
+  .profile-menu-divider
+) {
+  border-color: #25364a;
+}
+
+html.dark :where(
+  .secondary-button,
+  .icon-button,
+  .text-button,
+  .profile-menu button,
+  .profile-menu a,
+  .student-dashboard-actions a,
+  .quick-actions a,
+  .communication-attachments a
+) {
+  color: #dbeafe;
+  background: #18283a;
+}
+
+html.dark :where(
+  .secondary-button:hover,
+  .icon-button:hover,
+  .profile-menu button:hover,
+  .profile-menu a:hover,
+  .student-dashboard-actions a:hover,
+  .quick-actions a:hover,
+  .communication-attachments a:hover
+) {
+  background: #21354c;
+}
+
+html.dark .preference-options button {
+  color: #dbeafe;
+  border-color: #31465f;
+  background: #0b1422;
+}
+
+html.dark .preference-options button.active {
+  color: #bfdbfe;
+  border-color: #60a5fa;
+  background: #172554;
+}
+
+html.dark .admin-notice.success {
+  color: #bbf7d0;
+  background: #064e3b;
+}
+
+html.dark .admin-notice.error,
+html.dark .form-error,
+html.dark .alert {
+  color: #fecaca;
+  background: #7f1d1d;
+}

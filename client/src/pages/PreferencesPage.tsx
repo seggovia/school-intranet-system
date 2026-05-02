@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Bell, CheckCircle2, Languages, Monitor, Moon, Shield, Sun } from 'lucide-react';
 import { PageHeader } from '../components/PageHeader';
+import { useTheme, type ThemePreference } from '../theme';
 import type { User } from '../types';
 
 type PreferenceState = {
-  theme: 'system' | 'light' | 'dark';
+  theme: ThemePreference;
   emailNotifications: boolean;
   academicNotifications: boolean;
   ticketNotifications: boolean;
@@ -24,11 +25,16 @@ function preferenceKey(userId: string) {
 }
 
 export function PreferencesPage({ user }: { user: User }) {
+  const { theme, resolvedTheme, setTheme } = useTheme();
   const [preferences, setPreferences] = useState<PreferenceState>(() => {
     const raw = localStorage.getItem(preferenceKey(user.id));
-    return raw ? { ...defaultPreferences, ...(JSON.parse(raw) as Partial<PreferenceState>) } : defaultPreferences;
+    return raw ? { ...defaultPreferences, ...(JSON.parse(raw) as Partial<PreferenceState>), theme } : { ...defaultPreferences, theme };
   });
   const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    setPreferences((current) => (current.theme === theme ? current : { ...current, theme }));
+  }, [theme]);
 
   useEffect(() => {
     localStorage.setItem(preferenceKey(user.id), JSON.stringify(preferences));
@@ -36,6 +42,11 @@ export function PreferencesPage({ user }: { user: User }) {
     const timer = window.setTimeout(() => setSaved(false), 1600);
     return () => window.clearTimeout(timer);
   }, [preferences, user.id]);
+
+  function handleThemeChange(nextTheme: ThemePreference) {
+    setTheme(nextTheme);
+    setPreferences((current) => ({ ...current, theme: nextTheme }));
+  }
 
   return (
     <div className="page-stack preferences-page">
@@ -47,11 +58,11 @@ export function PreferencesPage({ user }: { user: User }) {
         <article className="panel preference-card">
           <header><div><span className="eyebrow">Tema visual</span><h2>Apariencia</h2></div><Monitor size={20} /></header>
           <div className="preference-options">
-            <button className={preferences.theme === 'system' ? 'active' : ''} onClick={() => setPreferences((current) => ({ ...current, theme: 'system' }))}><Monitor size={17} />Sistema</button>
-            <button className={preferences.theme === 'light' ? 'active' : ''} onClick={() => setPreferences((current) => ({ ...current, theme: 'light' }))}><Sun size={17} />Claro</button>
-            <button className={preferences.theme === 'dark' ? 'active' : ''} onClick={() => setPreferences((current) => ({ ...current, theme: 'dark' }))}><Moon size={17} />Oscuro</button>
+            <button className={theme === 'system' ? 'active' : ''} onClick={() => handleThemeChange('system')}><Monitor size={17} />Sistema</button>
+            <button className={theme === 'light' ? 'active' : ''} onClick={() => handleThemeChange('light')}><Sun size={17} />Claro</button>
+            <button className={theme === 'dark' ? 'active' : ''} onClick={() => handleThemeChange('dark')}><Moon size={17} />Oscuro</button>
           </div>
-          <p>La selección queda almacenada para esta cuenta en este navegador. El tema global se integrará cuando exista soporte visual completo.</p>
+          <p>La selección se aplica al instante y queda almacenada en este navegador. Modo efectivo: {resolvedTheme === 'dark' ? 'oscuro' : 'claro'}.</p>
         </article>
 
         <article className="panel preference-card">
