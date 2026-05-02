@@ -11,6 +11,10 @@ function isSupportedLanguage(value: string | null): value is SupportedLanguage {
   return value === 'es' || value === 'en';
 }
 
+export function resolveSupportedLanguage(value: string | undefined): SupportedLanguage {
+  return value?.startsWith('en') ? 'en' : 'es';
+}
+
 export function getStoredLanguage(): SupportedLanguage {
   const storedLanguage = localStorage.getItem(languageStorageKey);
   return isSupportedLanguage(storedLanguage) ? storedLanguage : 'es';

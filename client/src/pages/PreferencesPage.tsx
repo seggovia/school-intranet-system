@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Bell, CheckCircle2, Languages, Monitor, Moon, Shield, Sun } from 'lucide-react';
 import { PageHeader } from '../components/PageHeader';
-import { getStoredLanguage, languageStorageKey, type SupportedLanguage } from '../i18n';
+import { getStoredLanguage, languageStorageKey, resolveSupportedLanguage, type SupportedLanguage } from '../i18n';
 import { useTheme, type ThemePreference } from '../theme';
 import type { User } from '../types';
 
@@ -40,6 +40,12 @@ export function PreferencesPage({ user }: { user: User }) {
   useEffect(() => {
     setPreferences((current) => (current.theme === theme ? current : { ...current, theme }));
   }, [theme]);
+
+  useEffect(() => {
+    const currentLanguage = resolveSupportedLanguage(i18n.resolvedLanguage ?? i18n.language);
+    localStorage.setItem(languageStorageKey, currentLanguage);
+    setPreferences((current) => (current.language === currentLanguage ? current : { ...current, language: currentLanguage }));
+  }, [i18n.language, i18n.resolvedLanguage]);
 
   useEffect(() => {
     localStorage.setItem(preferenceKey(user.id), JSON.stringify(preferences));

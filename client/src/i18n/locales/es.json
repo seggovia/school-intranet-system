@@ -27,8 +27,8 @@
       "eyebrow": "Idioma",
       "title": "Localización",
       "label": "Idioma de interfaz",
-      "es": "Español",
-      "en": "Inglés",
+      "es": "Español (Chile)",
+      "en": "English",
       "description": "Selector preparado para futura internacionalización. Actualmente la interfaz funciona en español por defecto."
     },
     "security": {

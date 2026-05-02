@@ -27,7 +27,7 @@
       "eyebrow": "Language",
       "title": "Localization",
       "label": "Interface language",
-      "es": "Spanish",
+      "es": "Spanish (Chile)",
       "en": "English",
       "description": "Selector prepared for future internationalization. The interface defaults to Spanish."
     },
