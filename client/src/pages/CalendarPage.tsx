@@ -20,7 +20,7 @@ export function CalendarPage({ user }: { user: User }) {
       <PageHeader eyebrow="Horario" title={title} description={description} />
 
       <section className="panel">
-        {institutional ? <InstitutionalScheduleSummary events={schedule.data} /> : <PersonalScheduleCards events={schedule.data} role={user.primaryRole} />}
+        {institutional ? <InstitutionalScheduleSummary events={schedule.data} role={user.primaryRole} /> : <PersonalScheduleCards events={schedule.data} role={user.primaryRole} />}
       </section>
 
       <section className="timeline">

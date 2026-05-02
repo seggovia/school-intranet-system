@@ -18,6 +18,7 @@ import { GradesPage } from './pages/GradesPage';
 import { SubjectDetailPage } from './pages/SubjectDetailPage';
 import { AdminPage } from './pages/AdminPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { PreferencesPage } from './pages/PreferencesPage';
 
 export function App() {
   const [session, setSession] = useState<AuthSession | null>(() => {
@@ -76,6 +77,7 @@ export function App() {
         <Route path="/solicitudes" element={<RequestsPage user={auth.user!} />} />
         <Route path="/admin" element={<AdminPage user={auth.user!} />} />
         <Route path="/perfil" element={<ProfilePage />} />
+        <Route path="/preferencias" element={<PreferencesPage user={auth.user!} />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />

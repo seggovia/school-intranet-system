@@ -1,5 +1,6 @@
 import { FormEvent, ReactNode, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, BookOpen, CalendarDays, CheckCircle2, Clock, MapPin, Save, Search, Users, XCircle } from 'lucide-react';
+import { AlertTriangle, BookOpen, CalendarDays, CheckCircle2, Clock, MapPin, Percent, Save, Search, TrendingUp, Users, XCircle } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { loadAttendanceContext, loadAttendanceGuardian, loadAttendanceMe, loadAttendanceRecords, loadAttendanceSummary, saveAttendanceBulk } from '../api';
 import { normalizeApiError, type NormalizedApiError } from '../api-error';
 import { ApiErrorModal } from '../components/ApiErrorModal';
@@ -22,6 +23,14 @@ const statusFilters: Array<{ value: AttendanceRosterStatus | 'todos'; label: str
 
 const weekdayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
+const historyStatusOptions: Array<{ value: AttendanceStatus | 'todos'; label: string }> = [
+  { value: 'todos', label: 'Todos los estados' },
+  { value: 'presente', label: 'Presentes' },
+  { value: 'ausente', label: 'Ausentes' },
+  { value: 'atrasado', label: 'Atrasos' },
+  { value: 'justificado', label: 'Justificados' }
+];
+
 type ConfirmState = { title: string; message: ReactNode; action: () => void | Promise<void>; danger?: boolean };
 
 function today() {
@@ -36,6 +45,25 @@ function weekdayFromDate(date: string) {
 function formatDate(date: string) {
   if (!date) return '';
   return new Intl.DateTimeFormat('es-CL', { dateStyle: 'long', timeZone: 'UTC' }).format(new Date(`${date}T00:00:00Z`));
+}
+
+function formatShortDate(date: string) {
+  if (!date) return '-';
+  return new Intl.DateTimeFormat('es-CL', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${date}T00:00:00Z`));
+}
+
+function monthLabel(month: string) {
+  if (!month) return 'Todos los meses';
+  return new Intl.DateTimeFormat('es-CL', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${month}-01T00:00:00Z`));
+}
+
+function statusLabel(status: AttendanceStatus) {
+  return status === 'atrasado' ? 'tarde' : status;
+}
+
+function dayFromHistoryDate(date: string) {
+  const weekday = weekdayFromDate(date);
+  return weekdayNames[weekday] ?? '-';
 }
 
 function scheduleLabel(schedule: AttendanceScheduleItem) {
@@ -67,6 +95,16 @@ function SummaryCards({ values }: { values: Partial<AttendanceSummary> & { sin_r
   return <section className="attendance-summary-cards">{cards.map(([label, value, Icon]) => <article key={label}><Icon size={19} /><span>{label}</span><strong>{value}</strong></article>)}</section>;
 }
 
+function historySummary(rows: AttendanceHistoryItem[]) {
+  const total = rows.length;
+  const presente = rows.filter((row) => row.status === 'presente').length;
+  const ausente = rows.filter((row) => row.status === 'ausente').length;
+  const atrasado = rows.filter((row) => row.status === 'atrasado').length;
+  const justificado = rows.filter((row) => row.status === 'justificado').length;
+  const percentage = total ? Math.round(((presente + atrasado) / total) * 100) : 0;
+  return { total, percentage, presente, ausente, atrasado, justificado };
+}
+
 function ConfirmModal({ confirm, onClose, onApiError }: { confirm: ConfirmState; onClose: () => void; onApiError: (error: unknown) => void }) {
   const [busy, setBusy] = useState(false);
   return (
@@ -83,15 +121,6 @@ function ConfirmModal({ confirm, onClose, onApiError }: { confirm: ConfirmState;
   );
 }
 
-function HistoryTable({ rows }: { rows: AttendanceHistoryItem[] }) {
-  if (!rows.length) return <EmptyState title="Sin historial de asistencia" />;
-  return (
-    <div className="attendance-history-table">
-      {rows.map((row) => <article key={row.id}><span>{row.date}</span><strong>{row.subject}</strong><span>{row.section}</span><span className={`attendance-badge ${row.status}`}>{row.status === 'atrasado' ? 'tarde' : row.status}</span><small>{row.note || '-'}</small></article>)}
-    </div>
-  );
-}
-
 export function AttendancePage({ user }: { user: User }) {
   const canManage = ['admin', 'director', 'teacher', 'inspector'].includes(user.primaryRole);
   if (canManage) return <ManageAttendance user={user} />;
@@ -100,6 +129,10 @@ export function AttendancePage({ user }: { user: User }) {
 }
 
 function ManageAttendance({ user }: { user: User }) {
+  const [searchParams] = useSearchParams();
+  const sectionParam = searchParams.get('cursoId') ?? '';
+  const subjectParam = searchParams.get('asignaturaId') ?? '';
+  const dateParam = searchParams.get('fecha') ?? '';
   const [context, setContext] = useState<AttendanceContext | null>(null);
   const [sectionId, setSectionId] = useState('');
   const [subjectId, setSubjectId] = useState('');
@@ -141,13 +174,17 @@ function ManageAttendance({ user }: { user: User }) {
       .then(([nextContext, adminSummary]) => {
         setContext(nextContext);
         setSummary(adminSummary);
-        if (!isTeacher) {
-          setSectionId(nextContext.sections[0]?.id ?? '');
-          setSubjectId(nextContext.sections[0]?.subjects[0]?.id ?? '');
+        const requestedSection = nextContext.sections.find((item) => item.id === sectionParam);
+        const initialSection = requestedSection ?? (!isTeacher ? nextContext.sections[0] : undefined);
+        const requestedSubject = initialSection?.subjects.find((item) => item.id === subjectParam);
+        if (initialSection) {
+          setSectionId(initialSection.id);
+          setSubjectId((requestedSubject ?? initialSection.subjects[0])?.id ?? '');
         }
+        if (dateParam) setDate(dateParam);
       })
       .finally(() => setLoading(false));
-  }, [isTeacher, user.primaryRole]);
+  }, [dateParam, isTeacher, sectionParam, subjectParam, user.primaryRole]);
 
   useEffect(() => {
     if (!notice && !error) return;
@@ -381,10 +418,19 @@ function AttendanceStudentRow({ student, onChange, onNote }: { student: Attendan
 }
 
 function StudentAttendance() {
+  const [searchParams] = useSearchParams();
   const [data, setData] = useState<{ summary: AttendanceSummary; history: AttendanceHistoryItem[] } | null>(null);
   useEffect(() => { loadAttendanceMe().then(setData); }, []);
   if (!data) return <LoadingState label="Cargando asistencia..." />;
-  return <div className="page-stack"><PageHeader eyebrow="Asistencia" title="Mi asistencia" description="Resumen e historial de tus registros." /><SummaryCards values={data.summary} /><section className="panel"><HistoryTable rows={data.history} /></section></div>;
+  const subject = searchParams.get('asignatura') ?? '';
+  const section = searchParams.get('curso') ?? '';
+  const filtered = Boolean(subject || section);
+  return (
+    <div className="page-stack attendance-self-page">
+      <PageHeader eyebrow="Asistencia" title={filtered ? 'Asistencia filtrada' : 'Mi asistencia'} description={filtered ? [section, subject].filter(Boolean).join(' · ') : 'Resumen e historial de tus registros.'} />
+      <AttendanceInsightPanel rows={data.history} initialSubject={subject} initialSection={section} />
+    </div>
+  );
 }
 
 function GuardianAttendance() {
@@ -393,5 +439,111 @@ function GuardianAttendance() {
   useEffect(() => { loadAttendanceGuardian().then((next) => { setData(next); setStudentId(next.students[0]?.id ?? ''); }); }, []);
   const student = useMemo(() => data?.students.find((item) => item.id === studentId), [data, studentId]);
   if (!data) return <LoadingState label="Cargando asistencia..." />;
-  return <div className="page-stack"><PageHeader eyebrow="Asistencia" title="Asistencia del estudiante" description="Consulta la asistencia de estudiantes vinculados." /><section className="panel attendance-filters"><label>Estudiante<select value={studentId} onChange={(event) => setStudentId(event.target.value)}>{data.students.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label></section>{student ? <><SummaryCards values={student.summary} /><section className="panel"><HistoryTable rows={student.history} /></section></> : <EmptyState title="Sin estudiantes vinculados" />}</div>;
+  return (
+    <div className="page-stack attendance-self-page">
+      <PageHeader eyebrow="Asistencia" title="Asistencia del estudiante" description="Consulta la asistencia de estudiantes vinculados." />
+      <section className="panel attendance-guardian-selector">
+        <label>Estudiante vinculado<select value={studentId} onChange={(event) => setStudentId(event.target.value)}>{data.students.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+      </section>
+      {student ? <AttendanceInsightPanel key={student.id} rows={student.history} ownerName={student.name} /> : <EmptyState title="Sin estudiantes vinculados" description="Cuando exista un estudiante vinculado, su asistencia aparecerá aquí." />}
+    </div>
+  );
+}
+
+function AttendanceInsightPanel({ rows, ownerName, initialSubject = '', initialSection = '' }: { rows: AttendanceHistoryItem[]; ownerName?: string; initialSubject?: string; initialSection?: string }) {
+  const [subject, setSubject] = useState(initialSubject);
+  const [section, setSection] = useState(initialSection);
+  const [month, setMonth] = useState('');
+  const [status, setStatus] = useState<AttendanceStatus | 'todos'>('todos');
+  const [page, setPage] = useState(1);
+  const pageSize = 8;
+  const subjectOptions = useMemo(() => Array.from(new Set(rows.map((row) => row.subject).filter(Boolean))).sort(), [rows]);
+  const sectionOptions = useMemo(() => Array.from(new Set(rows.map((row) => row.section).filter(Boolean))).sort(), [rows]);
+  const monthOptions = useMemo(() => Array.from(new Set(rows.map((row) => row.date.slice(0, 7)).filter(Boolean))).sort().reverse(), [rows]);
+  const rowsForTrend = useMemo(() => rows.filter((row) =>
+    (!subject || row.subject === subject) &&
+    (!section || row.section === section) &&
+    (status === 'todos' || row.status === status)
+  ), [rows, section, status, subject]);
+  const filteredRows = useMemo(() => rowsForTrend.filter((row) => !month || row.date.startsWith(month)).sort((a, b) => b.date.localeCompare(a.date)), [month, rowsForTrend]);
+  const summary = useMemo(() => historySummary(filteredRows), [filteredRows]);
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const visibleRows = filteredRows.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const monthlyTrend = useMemo(() => monthOptions.slice(0, 6).reverse().map((item) => {
+    const monthRows = rowsForTrend.filter((row) => row.date.startsWith(item));
+    return { month: item, ...historySummary(monthRows) };
+  }), [monthOptions, rowsForTrend]);
+  const hasFilters = Boolean(subject || section || month || status !== 'todos');
+
+  useEffect(() => { setPage(1); }, [month, section, status, subject]);
+  useEffect(() => { if (page > totalPages) setPage(totalPages); }, [page, totalPages]);
+
+  function clearFilters() {
+    setSubject('');
+    setSection('');
+    setMonth('');
+    setStatus('todos');
+  }
+
+  return (
+    <>
+      <section className="attendance-self-summary">
+        <article className="primary"><Percent size={20} /><span>Porcentaje general</span><strong>{summary.percentage}%</strong></article>
+        <article><CheckCircle2 size={19} /><span>Presentes</span><strong>{summary.presente}</strong></article>
+        <article><XCircle size={19} /><span>Ausentes</span><strong>{summary.ausente}</strong></article>
+        <article><Clock size={19} /><span>Atrasos</span><strong>{summary.atrasado}</strong></article>
+        <article><Users size={19} /><span>Justificados</span><strong>{summary.justificado}</strong></article>
+        <article><BookOpen size={19} /><span>Clases registradas</span><strong>{summary.total}</strong></article>
+      </section>
+
+      <section className="panel attendance-self-filters">
+        <div><span className="eyebrow">{ownerName ? `Estudiante: ${ownerName}` : 'Filtros'}</span><h2>Historial de asistencia</h2></div>
+        <label>Asignatura<select value={subject} onChange={(event) => setSubject(event.target.value)}><option value="">Todas las asignaturas</option>{subjectOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+        <label>Curso/sección<select value={section} onChange={(event) => setSection(event.target.value)}><option value="">Todos los cursos</option>{sectionOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+        <label>Mes<select value={month} onChange={(event) => setMonth(event.target.value)}><option value="">Todos los meses</option>{monthOptions.map((item) => <option key={item} value={item}>{monthLabel(item)}</option>)}</select></label>
+        <label>Estado<select value={status} onChange={(event) => setStatus(event.target.value as AttendanceStatus | 'todos')}>{historyStatusOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
+        <button type="button" className="secondary-button" onClick={clearFilters} disabled={!hasFilters}>Limpiar filtros</button>
+      </section>
+
+      <section className="attendance-month-trend">
+        {monthlyTrend.map((item) => (
+          <article key={item.month}>
+            <div><TrendingUp size={17} /><span>{monthLabel(item.month)}</span></div>
+            <strong>{item.percentage}%</strong>
+            <small>{item.total} clases · {item.ausente} ausencias · {item.atrasado} atrasos</small>
+            <em><i style={{ width: `${item.percentage}%` }} /></em>
+          </article>
+        ))}
+        {!monthlyTrend.length && <section className="panel"><EmptyState title="Sin tendencia mensual" description="La tendencia aparecerá cuando existan registros de asistencia." /></section>}
+      </section>
+
+      <section className="panel attendance-history-panel">
+        {visibleRows.length ? (
+          <>
+            <div className="attendance-history-grid">
+              <div className="attendance-history-row head"><span>Fecha</span><span>Día</span><span>Asignatura</span><span>Curso/sección</span><span>Estado</span><span>Observación</span></div>
+              {visibleRows.map((row) => (
+                <article key={row.id} className="attendance-history-row">
+                  <span>{formatShortDate(row.date)}</span>
+                  <span>{dayFromHistoryDate(row.date)}</span>
+                  <strong>{row.subject}</strong>
+                  <span>{row.section}</span>
+                  <span><span className={`attendance-badge ${row.status}`}>{statusLabel(row.status)}</span></span>
+                  <small>{row.note || 'Sin observación'}</small>
+                </article>
+              ))}
+            </div>
+            <div className="assignment-pager">
+              <button className="secondary-button" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)}>Anterior</button>
+              <span>Página {currentPage} de {totalPages}</span>
+              <button className="secondary-button" disabled={currentPage >= totalPages} onClick={() => setPage(currentPage + 1)}>Siguiente</button>
+            </div>
+          </>
+        ) : (
+          <EmptyState title="Sin registros para mostrar" description={hasFilters ? 'No hay registros que coincidan con los filtros seleccionados.' : 'Cuando se registre asistencia, verás el historial completo con fechas, estados y observaciones.'} />
+        )}
+      </section>
+    </>
+  );
 }

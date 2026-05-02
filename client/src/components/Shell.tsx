@@ -19,7 +19,6 @@ export function Shell({ user, onLogout, children }: { user: User; onLogout: () =
   const [open, setOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
-  const gradebookProfileLink = user.primaryRole === 'teacher' ? '/academico' : '/calificaciones';
 
   useEffect(() => {
     function handlePointerDown(event: PointerEvent) {
@@ -91,13 +90,13 @@ export function Shell({ user, onLogout, children }: { user: User; onLogout: () =
                 <UserCircle size={18} />
                 Perfil
               </NavLink>
-              <NavLink to={gradebookProfileLink} role="menuitem" onClick={() => setProfileOpen(false)}><Star size={18} /> Calificaciones</NavLink>
-              <NavLink to="/calendario" role="menuitem" onClick={() => setProfileOpen(false)}><CalendarDays size={18} /> Calendario</NavLink>
+              <NavLink to="/calificaciones" role="menuitem" onClick={() => setProfileOpen(false)}><Star size={18} /> Calificaciones</NavLink>
+              <NavLink to="/horario" role="menuitem" onClick={() => setProfileOpen(false)}><CalendarDays size={18} /> Calendario</NavLink>
               <NavLink to="/documentos" role="menuitem" onClick={() => setProfileOpen(false)}><FileText size={18} /> Documentos</NavLink>
-              <button type="button" role="menuitem" onClick={() => setProfileOpen(false)}>
+              <NavLink to="/preferencias" role="menuitem" onClick={() => setProfileOpen(false)}>
                 <Shield size={18} />
                 Preferencias
-              </button>
+              </NavLink>
               <button
                 type="button"
                 role="menuitem"

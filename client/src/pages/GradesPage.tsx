@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Plus, Save } from 'lucide-react';
+import { AlertTriangle, BookOpen, CalendarDays, ClipboardList, Clock, FileText, Plus, Save, Star, UserCheck } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   deleteGradebookEvaluation,
@@ -52,6 +52,22 @@ function periodLabel(value: string) {
   return `${month}/${year}`;
 }
 
+function formatDate(value: string) {
+  if (!value) return '-';
+  return new Intl.DateTimeFormat('es-CL', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${value}T00:00:00Z`));
+}
+
+function scoreTone(value: number | null) {
+  if (value === null) return 'pending';
+  if (value < 4) return 'low';
+  if (value < 5) return 'mid';
+  return 'high';
+}
+
+function scoreLabel(value: number | null) {
+  return value === null ? '-' : value.toFixed(1);
+}
+
 function buildGradebookRows(students: SectionStudent[], evaluations: GradebookEvaluation[], recordsByEvaluation: Record<string, GradebookRecord[]>): GradebookTableRow[] {
   const recordMaps = Object.fromEntries(
     Object.entries(recordsByEvaluation).map(([evaluationId, records]) => [evaluationId, new Map(records.map((record) => [record.studentId, record]))])
@@ -94,18 +110,28 @@ function buildGradebookRows(students: SectionStudent[], evaluations: GradebookEv
 }
 
 function SummaryCards({ summary }: { summary: MyGradebookResponse['summary'] }) {
+  const cards = [
+    ['Promedio general', formatAverage(summary.average), Star],
+    ['Evaluaciones registradas', summary.scored, ClipboardList],
+    ['Notas pendientes', summary.pending, Clock],
+    ['Ausentes', summary.absent, AlertTriangle],
+    ['Eximidos', summary.exempt, UserCheck],
+    ['Registros totales', summary.total, FileText]
+  ] as const;
   return (
-    <div className="attendance-summary-grid">
-      <article><span>Promedio general</span><strong>{formatAverage(summary.average)}</strong></article>
-      <article><span>Notas registradas</span><strong>{summary.scored}</strong></article>
-      <article><span>Pendientes</span><strong>{summary.pending}</strong></article>
-      <article><span>Ausentes</span><strong>{summary.absent}</strong></article>
-      <article><span>Eximidos</span><strong>{summary.exempt}</strong></article>
+    <div className="student-grade-summary">
+      {cards.map(([label, value, Icon]) => (
+        <article key={label}>
+          <Icon size={19} />
+          <span>{label}</span>
+          <strong>{value}</strong>
+        </article>
+      ))}
     </div>
   );
 }
 
-function HistoryTable({ history }: { history: GradebookHistoryItem[] }) {
+export function HistoryTable({ history }: { history: GradebookHistoryItem[] }) {
   if (!history.length) return <EmptyState title="Sin calificaciones disponibles" />;
   return (
     <div className="gradebook-history">
@@ -124,6 +150,99 @@ function HistoryTable({ history }: { history: GradebookHistoryItem[] }) {
   );
 }
 
+type SubjectGradeGroup = {
+  subject: string;
+  average: number | null;
+  registered: number;
+  pending: number;
+  absent: number;
+  exempt: number;
+  rows: GradebookHistoryItem[];
+};
+
+function buildSubjectGroups(summary: MyGradebookResponse['summary'], history: GradebookHistoryItem[]): SubjectGradeGroup[] {
+  const bySubject = new Map<string, SubjectGradeGroup>();
+  summary.subjects.forEach((item) => {
+    bySubject.set(item.subject, { subject: item.subject, average: item.average, registered: item.grades, pending: 0, absent: 0, exempt: 0, rows: [] });
+  });
+  history.forEach((item) => {
+    const current = bySubject.get(item.subject) ?? { subject: item.subject, average: null, registered: 0, pending: 0, absent: 0, exempt: 0, rows: [] };
+    current.rows.push(item);
+    current.pending += item.status === 'pendiente' ? 1 : 0;
+    current.absent += item.status === 'ausente' ? 1 : 0;
+    current.exempt += item.status === 'eximido' ? 1 : 0;
+    if (item.status === 'con_nota') current.registered = Math.max(current.registered, current.rows.filter((row) => row.status === 'con_nota').length);
+    bySubject.set(item.subject, current);
+  });
+  return Array.from(bySubject.values()).sort((a, b) => a.subject.localeCompare(b.subject));
+}
+
+function SubjectOverview({ groups }: { groups: SubjectGradeGroup[] }) {
+  if (!groups.length) return <EmptyState title="Sin asignaturas con notas" description="Cuando se publiquen calificaciones, aparecerá el promedio por asignatura." />;
+  return (
+    <div className="student-grade-subject-chart">
+      {groups.map((group) => {
+        const width = group.average === null ? 0 : Math.min(100, Math.max(0, (group.average / 7) * 100));
+        return (
+          <article key={group.subject}>
+            <div><BookOpen size={17} /><span>{group.subject}</span><strong>{formatAverage(group.average)}</strong></div>
+            <em><i className={`grade-tone-${scoreTone(group.average)}`} style={{ width: `${width}%` }} /></em>
+            <small>{group.registered} notas · {group.pending} pendientes · {group.absent} ausentes · {group.exempt} eximidos</small>
+          </article>
+        );
+      })}
+    </div>
+  );
+}
+
+function SubjectGradeTable({ group }: { group: SubjectGradeGroup }) {
+  return (
+    <section className="panel student-grade-subject-panel">
+      <header>
+        <div><span className="eyebrow">Asignatura</span><h2>{group.subject}</h2></div>
+        <strong className={`student-subject-average grade-tone-${scoreTone(group.average)}`}>{formatAverage(group.average)}</strong>
+      </header>
+      {group.rows.length ? (
+        <div className="student-grade-table">
+          <div className="student-grade-row head"><span>Evaluación</span><span>Fecha</span><span>Ponderación</span><span>Nota</span><span>Estado</span><span>Comentario</span></div>
+          {group.rows.map((item) => (
+            <article key={item.id} className="student-grade-row">
+              <strong>{item.evaluation}</strong>
+              <span><CalendarDays size={15} />{formatDate(item.date)}</span>
+              <span>{item.weight}%</span>
+              <span className={`student-score grade-tone-${scoreTone(item.score)}`}>{scoreLabel(item.score)}</span>
+              <span><span className={`grade-status ${item.status}`}>{statusLabels[item.status]}</span></span>
+              <small>{item.comment || 'Sin comentario'}</small>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <EmptyState title="Sin evaluaciones registradas" description="La asignatura existe en el resumen, pero aún no tiene evaluaciones visibles." />
+      )}
+    </section>
+  );
+}
+
+function StudentGradebookContent({ current }: { current: MyGradebookResponse | GuardianGradebookResponse['students'][number] }) {
+  const groups = useMemo(() => buildSubjectGroups(current.summary, current.history), [current.history, current.summary]);
+  return (
+    <>
+      <SummaryCards summary={current.summary} />
+      <section className="panel student-grade-overview">
+        <header><div><span className="eyebrow">Resumen</span><h2>Promedio por asignatura</h2></div></header>
+        <SubjectOverview groups={groups} />
+      </section>
+      {groups.length ? (
+        <div className="student-grade-subjects">
+          {groups.map((group) => <SubjectGradeTable key={group.subject} group={group} />)}
+        </div>
+      ) : (
+        <section className="panel"><EmptyState title="Sin notas disponibles" description="Aún no hay evaluaciones publicadas para mostrar." /></section>
+      )}
+    </>
+  );
+}
+
 function StudentGradebookView({ mode }: { mode: 'student' | 'guardian' }) {
   const [data, setData] = useState<MyGradebookResponse | GuardianGradebookResponse | null>(null);
   const [selectedStudent, setSelectedStudent] = useState('');
@@ -139,10 +258,10 @@ function StudentGradebookView({ mode }: { mode: 'student' | 'guardian' }) {
   const current = 'students' in data ? data.students.find((student) => student.id === selectedStudent) ?? data.students[0] : data;
 
   return (
-    <div className="page-stack">
+    <div className="page-stack student-gradebook-view">
       {'students' in data && (
-        <section className="panel toolbar-panel">
-          <label>Estudiante
+        <section className="panel student-grade-picker">
+          <label>Estudiante vinculado
             <select value={selectedStudent} onChange={(event) => setSelectedStudent(event.target.value)}>
               {data.students.map((student) => <option key={student.id} value={student.id}>{student.name}</option>)}
             </select>
@@ -150,23 +269,8 @@ function StudentGradebookView({ mode }: { mode: 'student' | 'guardian' }) {
         </section>
       )}
       {current ? (
-        <>
-          <SummaryCards summary={current.summary} />
-          <section className="panel">
-            <h2>Promedio por asignatura</h2>
-            <div className="gradebook-subject-grid">
-              {current.summary.subjects.map((subject) => (
-                <article key={subject.subjectId}>
-                  <span>{subject.subject}</span>
-                  <strong>{formatAverage(subject.average)}</strong>
-                  <small>{subject.grades} notas</small>
-                </article>
-              ))}
-            </div>
-          </section>
-          <section className="panel"><HistoryTable history={current.history} /></section>
-        </>
-      ) : <section className="panel"><EmptyState title="Sin estudiantes vinculados" /></section>}
+        <StudentGradebookContent current={current} />
+      ) : <section className="panel"><EmptyState title="Sin estudiantes vinculados" description="Cuando exista un estudiante vinculado, sus calificaciones aparecerán aquí." /></section>}
     </div>
   );
 }
