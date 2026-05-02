@@ -1,9 +1,32 @@
 import type { JwtUser } from '../auth/auth.types.js';
 import { MeRepository } from './me.repository.js';
+import type { UserPreferencesInput } from './me.validators.js';
 
 const repository = new MeRepository();
 
 const weekdayNames = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'];
+
+const defaultPreferences: UserPreferencesInput = {
+  theme: 'system',
+  language: 'es',
+  notifications: {
+    email: true,
+    academic: true,
+    tickets: true
+  }
+};
+
+function serializePreferences(value: unknown): UserPreferencesInput {
+  const preferences = value as Partial<UserPreferencesInput> | null | undefined;
+  return {
+    ...defaultPreferences,
+    ...(preferences ?? {}),
+    notifications: {
+      ...defaultPreferences.notifications,
+      ...(preferences?.notifications ?? {})
+    }
+  };
+}
 
 function average(values: Array<number | null>) {
   const scored = values.filter((value): value is number => value !== null);
@@ -143,6 +166,11 @@ export class MeService {
       subjects: Array.from(subjectMap.values()),
       linkedStudents: profile?.guardian?.students.map((item) => ({ id: item.student.id, name: item.student.user.name, relationship: item.relationship })) ?? []
     };
+  }
+
+  async updatePreferences(user: JwtUser, preferences: UserPreferencesInput) {
+    const updated = await repository.updatePreferences(user.id, serializePreferences(preferences));
+    return { preferences: serializePreferences(updated.preferences) };
   }
 
   async dashboard(user: JwtUser) {

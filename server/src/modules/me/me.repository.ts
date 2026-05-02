@@ -1,4 +1,5 @@
 import { prisma } from '../../config/db.js';
+import type { UserPreferencesInput } from './me.validators.js';
 
 export class MeRepository {
   findUserProfile(userId: string) {
@@ -84,5 +85,13 @@ export class MeRepository {
 
   listDocuments() {
     return prisma.document.findMany({ include: { category: true, owner: true }, orderBy: { updatedAt: 'desc' }, take: 20 });
+  }
+
+  updatePreferences(userId: string, preferences: UserPreferencesInput) {
+    return prisma.user.update({
+      where: { id: userId },
+      data: { preferences },
+      select: { id: true, preferences: true }
+    });
   }
 }

@@ -42,6 +42,7 @@ import type {
   Student,
   Subject,
   SubjectDetailData,
+  UserPreferences,
   UserProfileData
 } from './types';
 
@@ -343,6 +344,11 @@ export async function downloadSubmissionFile(fileId: string) {
 export async function loadMyProfile() {
   const { data } = await api.get<UserProfileData>('/me/profile');
   return data;
+}
+
+export async function updateMyPreferences(preferences: UserPreferences) {
+  const { data } = await api.patch<{ preferences: UserPreferences }>('/me/preferences', preferences);
+  return data.preferences;
 }
 
 export async function loadMySchedule() {

@@ -18,6 +18,16 @@ export interface AuthSession {
   refreshToken: string;
 }
 
+export interface UserPreferences {
+  theme: 'system' | 'light' | 'dark';
+  language: 'es' | 'en';
+  notifications: {
+    email: boolean;
+    academic: boolean;
+    tickets: boolean;
+  };
+}
+
 export interface Kpi {
   label: string;
   value: string | number;

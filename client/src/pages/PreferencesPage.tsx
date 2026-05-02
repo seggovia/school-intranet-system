@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Bell, CheckCircle2, Languages, Monitor, Moon, Shield, Sun } from 'lucide-react';
 import { PageHeader } from '../components/PageHeader';
+import { updateMyPreferences } from '../api';
+import { normalizeApiError } from '../api-error';
 import { getStoredLanguage, languageStorageKey, resolveSupportedLanguage, type SupportedLanguage } from '../i18n';
 import { useTheme, type ThemePreference } from '../theme';
-import type { User } from '../types';
+import type { User, UserPreferences } from '../types';
 
 type PreferenceState = {
   theme: ThemePreference;
@@ -26,6 +28,18 @@ function preferenceKey(userId: string) {
   return `school-user-preferences:${userId}`;
 }
 
+function toUserPreferences(preferences: PreferenceState): UserPreferences {
+  return {
+    theme: preferences.theme,
+    language: preferences.language,
+    notifications: {
+      email: preferences.emailNotifications,
+      academic: preferences.academicNotifications,
+      tickets: preferences.ticketNotifications
+    }
+  };
+}
+
 export function PreferencesPage({ user }: { user: User }) {
   const { i18n, t } = useTranslation();
   const { theme, resolvedTheme, setTheme } = useTheme();
@@ -36,6 +50,7 @@ export function PreferencesPage({ user }: { user: User }) {
       : { ...defaultPreferences, theme, language: getStoredLanguage() };
   });
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     setPreferences((current) => (current.theme === theme ? current : { ...current, theme }));
@@ -54,15 +69,31 @@ export function PreferencesPage({ user }: { user: User }) {
     return () => window.clearTimeout(timer);
   }, [preferences, user.id]);
 
+  async function persistPreferences(nextPreferences: PreferenceState) {
+    try {
+      await updateMyPreferences(toUserPreferences(nextPreferences));
+      setSaveError(null);
+    } catch (error) {
+      const normalized = normalizeApiError(error);
+      setSaveError(`${normalized.title}: ${normalized.message}`);
+    }
+  }
+
+  function savePreferences(nextPreferences: PreferenceState) {
+    setPreferences(nextPreferences);
+    localStorage.setItem(preferenceKey(user.id), JSON.stringify(nextPreferences));
+    void persistPreferences(nextPreferences);
+  }
+
   function handleThemeChange(nextTheme: ThemePreference) {
     setTheme(nextTheme);
-    setPreferences((current) => ({ ...current, theme: nextTheme }));
+    savePreferences({ ...preferences, theme: nextTheme });
   }
 
   function handleLanguageChange(nextLanguage: SupportedLanguage) {
     localStorage.setItem(languageStorageKey, nextLanguage);
     void i18n.changeLanguage(nextLanguage);
-    setPreferences((current) => ({ ...current, language: nextLanguage }));
+    savePreferences({ ...preferences, language: nextLanguage });
   }
 
   return (
@@ -70,6 +101,7 @@ export function PreferencesPage({ user }: { user: User }) {
       <PageHeader eyebrow={t('preferences.header.eyebrow')} title={t('preferences.header.title')} description={t('preferences.header.description')} />
 
       {saved && <div className="admin-notice success"><CheckCircle2 size={16} />{t('preferences.saved')}</div>}
+      {saveError && <div className="admin-notice error">{saveError}</div>}
 
       <section className="preferences-grid">
         <article className="panel preference-card">
@@ -84,9 +116,9 @@ export function PreferencesPage({ user }: { user: User }) {
 
         <article className="panel preference-card">
           <header><div><span className="eyebrow">{t('preferences.notifications.eyebrow')}</span><h2>{t('preferences.notifications.title')}</h2></div><Bell size={20} /></header>
-          <label><input type="checkbox" checked={preferences.emailNotifications} onChange={(event) => setPreferences((current) => ({ ...current, emailNotifications: event.target.checked }))} /> {t('preferences.notifications.email')}</label>
-          <label><input type="checkbox" checked={preferences.academicNotifications} onChange={(event) => setPreferences((current) => ({ ...current, academicNotifications: event.target.checked }))} /> {t('preferences.notifications.academic')}</label>
-          <label><input type="checkbox" checked={preferences.ticketNotifications} onChange={(event) => setPreferences((current) => ({ ...current, ticketNotifications: event.target.checked }))} /> {t('preferences.notifications.tickets')}</label>
+          <label><input type="checkbox" checked={preferences.emailNotifications} onChange={(event) => savePreferences({ ...preferences, emailNotifications: event.target.checked })} /> {t('preferences.notifications.email')}</label>
+          <label><input type="checkbox" checked={preferences.academicNotifications} onChange={(event) => savePreferences({ ...preferences, academicNotifications: event.target.checked })} /> {t('preferences.notifications.academic')}</label>
+          <label><input type="checkbox" checked={preferences.ticketNotifications} onChange={(event) => savePreferences({ ...preferences, ticketNotifications: event.target.checked })} /> {t('preferences.notifications.tickets')}</label>
         </article>
 
         <article className="panel preference-card">
