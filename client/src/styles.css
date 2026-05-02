@@ -5018,6 +5018,98 @@ th {
   gap: 10px;
 }
 
+.profile-list .empty-state {
+  justify-items: start;
+  text-align: left;
+}
+
+.preferences-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.preference-card {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+}
+
+.preference-card header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.preference-card h2,
+.preference-card p {
+  margin: 0;
+}
+
+.preference-card p {
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.preference-card label {
+  display: grid;
+  gap: 8px;
+  color: #334155;
+  font-weight: 900;
+}
+
+.preference-card label:has(input[type="checkbox"]) {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+}
+
+.preference-options {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.preference-options button {
+  min-height: 38px;
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  border: 1px solid #d8e2ec;
+  border-radius: 8px;
+  padding: 0 12px;
+  color: #334155;
+  background: #ffffff;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.preference-options button.active {
+  color: #1d4ed8;
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+
+.preference-account {
+  display: grid;
+  gap: 10px;
+}
+
+.preference-account span {
+  display: grid;
+  gap: 4px;
+  border: 1px solid #d8e2ec;
+  border-radius: 8px;
+  padding: 10px;
+  background: #fbfdff;
+}
+
+.preference-account strong {
+  color: #64748b;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+}
+
 .classroom-modal-backdrop {
   position: fixed;
   inset: 0;
@@ -6684,6 +6776,7 @@ th {
   }
 
   .workspace-grid,
+  .preferences-grid,
   .subject-detail-grid,
   .subject-grid,
   .section-grid {

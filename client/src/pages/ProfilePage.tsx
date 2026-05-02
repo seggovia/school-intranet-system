@@ -43,12 +43,12 @@ export function ProfilePage() {
       </section>
 
       <section className="section-card profile-section">
-        <header><h2>Cursos asociados</h2></header>
+        <header><h2>Curso / sección</h2></header>
         <div className="profile-list">
           {profile.courses.map((course) => (
             <span key={course.id}><Users size={18} /> <b>{course.name}</b> {course.classroom} · {course.students} estudiantes</span>
           ))}
-          {!profile.courses.length && <span>Sin cursos asociados.</span>}
+          {!profile.courses.length && <EmptyState title="Sin curso o sección asociada" description="Cuando tu usuario tenga una matrícula, jefatura o vínculo académico, aparecerá aquí." />}
         </div>
       </section>
 
@@ -58,20 +58,19 @@ export function ProfilePage() {
           {profile.subjects.map((subject) => (
             <span key={`${subject.id}-${subject.section}`}><BookOpen size={18} /> <b>{subject.name}</b> {subject.code} · {subject.section}</span>
           ))}
-          {!profile.subjects.length && <span>Sin asignaturas asociadas.</span>}
+          {!profile.subjects.length && <EmptyState title="Sin asignaturas asociadas" description="Las asignaturas aparecerán cuando estén configuradas para tu rol." />}
         </div>
       </section>
 
-      {profile.linkedStudents.length > 0 && (
-        <section className="section-card profile-section">
-          <header><h2>Estudiantes vinculados</h2></header>
-          <div className="profile-list">
-            {profile.linkedStudents.map((student) => (
-              <span key={student.id}><GraduationCap size={18} /> <b>{student.name}</b> {student.relationship}</span>
-            ))}
-          </div>
-        </section>
-      )}
+      <section className="section-card profile-section">
+        <header><h2>Vínculos familiares</h2></header>
+        <div className="profile-list">
+          {profile.linkedStudents.map((student) => (
+            <span key={student.id}><GraduationCap size={18} /> <b>{student.name}</b> {student.relationship}</span>
+          ))}
+          {!profile.linkedStudents.length && <EmptyState title="Sin estudiantes vinculados" description="Si eres apoderado, tus estudiantes vinculados aparecerán en esta sección." />}
+        </div>
+      </section>
     </div>
   );
 }
