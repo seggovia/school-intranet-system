@@ -1932,6 +1932,200 @@
   color: #64748b;
 }
 
+.student-gradebook-view {
+  animation: panel-in 180ms ease-out;
+}
+
+.student-grade-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+}
+
+.student-grade-summary article {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  border: 1px solid #d8e2ec;
+  border-radius: 8px;
+  padding: 14px;
+  background: #ffffff;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.student-grade-summary article:hover,
+.student-grade-subject-chart article:hover,
+.student-grade-subject-panel:hover {
+  transform: translateY(-2px);
+  border-color: #93c5fd;
+  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.08);
+}
+
+.student-grade-summary svg {
+  color: #2563eb;
+}
+
+.student-grade-summary span {
+  color: #52677a;
+  font-size: 0.84rem;
+  font-weight: 900;
+}
+
+.student-grade-summary strong {
+  font-size: clamp(1.55rem, 4vw, 2.15rem);
+}
+
+.student-grade-picker {
+  display: grid;
+  grid-template-columns: minmax(220px, 420px);
+}
+
+.student-grade-overview {
+  display: grid;
+  gap: 14px;
+}
+
+.student-grade-overview h2,
+.student-grade-subject-panel h2 {
+  margin: 3px 0 0;
+}
+
+.student-grade-subject-chart,
+.student-grade-subjects {
+  display: grid;
+  gap: 12px;
+}
+
+.student-grade-subject-chart {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.student-grade-subject-chart article {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  border: 1px solid #d8e2ec;
+  border-radius: 8px;
+  padding: 14px;
+  background: #fbfdff;
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.student-grade-subject-chart div,
+.student-grade-subject-panel header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.student-grade-subject-chart div {
+  justify-content: flex-start;
+}
+
+.student-grade-subject-chart div span {
+  min-width: 0;
+  flex: 1;
+  color: #334155;
+  font-weight: 900;
+}
+
+.student-grade-subject-chart svg {
+  color: #0f766e;
+  flex: 0 0 auto;
+}
+
+.student-grade-subject-chart em {
+  height: 8px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: #e2e8f0;
+}
+
+.student-grade-subject-chart i {
+  display: block;
+  height: 100%;
+  max-width: 100%;
+  border-radius: inherit;
+  transition: width 220ms ease;
+}
+
+.student-grade-subject-chart i.grade-tone-high { background: #0d6e5c; }
+.student-grade-subject-chart i.grade-tone-mid { background: #d4800a; }
+.student-grade-subject-chart i.grade-tone-low { background: #c0392b; }
+.student-grade-subject-chart i.grade-tone-pending { background: #cbd5e1; }
+
+.student-grade-subject-chart small {
+  color: #64748b;
+  font-weight: 800;
+}
+
+.student-grade-subject-panel {
+  display: grid;
+  gap: 14px;
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.student-subject-average {
+  min-width: 58px;
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: #f8fafc;
+  font-size: 1.35rem;
+  text-align: center;
+}
+
+.student-grade-table {
+  display: grid;
+  gap: 8px;
+}
+
+.student-grade-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 1.2fr) minmax(116px, 0.8fr) minmax(96px, 0.65fr) minmax(70px, 0.5fr) minmax(112px, 0.8fr) minmax(140px, 1.1fr);
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  border: 1px solid #d8e2ec;
+  border-radius: 8px;
+  padding: 12px;
+  background: #ffffff;
+}
+
+.student-grade-row.head {
+  border-color: transparent;
+  padding-block: 4px;
+  color: #64748b;
+  background: transparent;
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.student-grade-row span,
+.student-grade-row strong,
+.student-grade-row small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.student-grade-row span {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.student-grade-row small {
+  color: #64748b;
+  font-weight: 800;
+}
+
+.student-score {
+  font-size: 1.15rem;
+  font-weight: 900;
+}
+
 .admin-form-wide {
   grid-column: 1 / -1;
 }
@@ -2258,8 +2452,13 @@
   .gradebook-toolbar,
   .gradebook-record-row,
   .gradebook-history-row,
+  .student-grade-row,
   .student-picker-tools {
     grid-template-columns: 1fr;
+  }
+
+  .student-grade-row.head {
+    display: none;
   }
 
   .admin-toolbar {
