@@ -34,6 +34,27 @@ model User {
   submissionComments SubmissionComment[] @relation("SubmissionCommentAuthor")
   recordedAttendance Attendance[] @relation("AttendanceRecordedBy")
   updatedAttendance  Attendance[] @relation("AttendanceUpdatedBy")
+  auditLogs      AuditLog[]
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  userId      String?
+  action      String
+  entity      String
+  entityId    String
+  description String   @db.Text
+  metadata    Json?
+  ipAddress   String?
+  userAgent   String?  @db.Text
+  createdAt   DateTime @default(now())
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([action])
+  @@index([entity])
+  @@index([createdAt])
+  @@map("audit_logs")
 }
 
 model Role {

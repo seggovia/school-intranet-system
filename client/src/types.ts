@@ -641,6 +641,30 @@ export interface AdminSubjectRow {
   sections: Array<{ id: string; name: string; course: string }>;
 }
 
+export interface AuditLogRow {
+  id: string;
+  userId: string | null;
+  user: { id: string; name: string; email: string; avatar: string } | null;
+  action: string;
+  entity: string;
+  entityId: string;
+  description: string;
+  metadata: unknown;
+  ipAddress?: string | null;
+  userAgent?: string | null;
+  createdAt: string;
+}
+
+export interface AuditLogResponse {
+  rows: AuditLogRow[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
 export interface AdminBundle {
   summary: AdminSummary;
   users: AdminUserRow[];

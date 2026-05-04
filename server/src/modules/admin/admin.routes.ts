@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import { authenticate, authorizeRoles } from '../auth/auth.middleware.js';
 import { asyncHandler } from '../../shared/async-handler.js';
-import { validateBody, validateParams } from '../../shared/validate.js';
+import { validateBody, validateParams, validateQuery } from '../../shared/validate.js';
+import { auditQuerySchema } from '../audit/audit.validators.js';
 import { AdminController } from './admin.controller.js';
 import {
   createAdminUserSchema,
@@ -37,6 +38,7 @@ const academicReaders = authorizeRoles('admin', 'director', 'inspector');
 adminRoutes.use(authenticate);
 
 adminRoutes.get('/summary', managers, asyncHandler(controller.summary.bind(controller)));
+adminRoutes.get('/audit', managers, validateQuery(auditQuerySchema), asyncHandler(controller.audit.bind(controller)));
 
 adminRoutes.get('/users', managers, asyncHandler(controller.users.bind(controller)));
 adminRoutes.post('/users', managers, validateBody(createAdminUserSchema), asyncHandler(controller.createUser.bind(controller)));

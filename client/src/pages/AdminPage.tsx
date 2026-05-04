@@ -1,5 +1,6 @@
 ﻿import { AlertTriangle, BookOpen, Building2, CheckCircle2, ChevronDown, ChevronRight, ClipboardList, Edit3, Eye, EyeOff, GraduationCap, KeyRound, Link2, Plus, Search, Shield, ToggleLeft, ToggleRight, Trash2, UserRound, Users, X } from 'lucide-react';
 import { FormEvent, ReactNode, useEffect, useMemo, useState } from 'react';
+import { History } from 'lucide-react';
 import {
   assignAdminStudentSection,
   assignAdminSubjectTeacher,
@@ -18,6 +19,7 @@ import {
   deleteAdminSchedule,
   deleteAdminSection,
   linkAdminGuardianStudents,
+  loadAdminAudit,
   loadAdminBundle,
   removeAdminTeacherAssignment,
   resetAdminUserPassword,
@@ -45,9 +47,9 @@ import {
 import { normalizeApiError, shouldShowApiErrorModal, type NormalizedApiError } from '../api-error';
 import { ApiErrorModal } from '../components/ApiErrorModal';
 import { PageHeader } from '../components/PageHeader';
-import type { AdminBundle, AdminClassroomRow, AdminCourseRow, AdminGuardianRow, AdminOption, AdminScheduleRow, AdminSectionRow, AdminStudentRow, AdminSubjectRow, AdminTeacherRow, AdminUserRow, Role, User } from '../types';
+import type { AdminBundle, AdminClassroomRow, AdminCourseRow, AdminGuardianRow, AdminOption, AdminScheduleRow, AdminSectionRow, AdminStudentRow, AdminSubjectRow, AdminTeacherRow, AdminUserRow, AuditLogRow, Role, User } from '../types';
 
-type AdminTab = 'users' | 'students' | 'teachers' | 'guardians' | 'subjects' | 'academic-courses' | 'academic-sections' | 'academic-classrooms' | 'academic-schedules' | 'assignments-teachers' | 'assignments-students' | 'assignments-guardians' | 'assignments-subjects';
+type AdminTab = 'users' | 'students' | 'teachers' | 'guardians' | 'subjects' | 'audit' | 'academic-courses' | 'academic-sections' | 'academic-classrooms' | 'academic-schedules' | 'assignments-teachers' | 'assignments-students' | 'assignments-guardians' | 'assignments-subjects';
 type ModalState =
   | { type: 'user'; mode: 'create' | 'edit'; row?: AdminUserRow }
   | { type: 'student'; mode: 'create' | 'edit'; row?: AdminStudentRow }
@@ -65,7 +67,8 @@ const tabs: Array<{ id: AdminTab; label: string; icon: typeof Users }> = [
   { id: 'students', label: 'Estudiantes', icon: GraduationCap },
   { id: 'teachers', label: 'Profesores', icon: BookOpen },
   { id: 'guardians', label: 'Apoderados', icon: UserRound },
-  { id: 'subjects', label: 'Asignaturas', icon: ClipboardList }
+  { id: 'subjects', label: 'Asignaturas', icon: ClipboardList },
+  { id: 'audit', label: 'Auditoría', icon: History }
 ];
 
 const academicTabs: Array<{ id: AdminTab; label: string; icon: typeof Users }> = [
@@ -1050,6 +1053,118 @@ function AcademicSchedulesPage({ bundle, canManage, onSaved, setConfirm, onApiEr
     </div>
   );
 }
+
+const auditActionLabels: Record<string, string> = {
+  create: 'Creación',
+  update: 'Edición',
+  activate: 'Activación',
+  deactivate: 'Desactivación',
+  delete: 'Eliminación',
+  assign: 'Asignación',
+  unassign: 'Desasignación',
+  password_change: 'Cambio de contraseña'
+};
+
+const auditEntityLabels: Record<string, string> = {
+  user: 'Usuario',
+  student: 'Estudiante',
+  teacher: 'Profesor',
+  guardian: 'Apoderado',
+  course: 'Curso',
+  section: 'Sección',
+  classroom: 'Sala',
+  schedule: 'Horario',
+  subject: 'Asignatura',
+  student_section: 'Estudiante-sección',
+  teacher_assignment: 'Asignación docente',
+  guardian_students: 'Apoderado-estudiantes',
+  subject_teacher: 'Responsable asignatura'
+};
+
+function AuditPage({ users, onApiError }: { users: AdminUserRow[]; onApiError: (error: unknown) => void }) {
+  const [rows, setRows] = useState<AuditLogRow[]>([]);
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(12);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [query, setQuery] = useState('');
+  const [userId, setUserId] = useState('');
+  const [action, setAction] = useState('');
+  const [entity, setEntity] = useState('');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [detail, setDetail] = useState<AuditLogRow | null>(null);
+  const hasFilters = Boolean(query || userId || action || entity || from || to);
+
+  useEffect(() => {
+    setLoading(true);
+    loadAdminAudit({ page, pageSize, search: query || undefined, userId: userId || undefined, action: action || undefined, entity: entity || undefined, from: from || undefined, to: to || undefined })
+      .then((data) => {
+        setRows(data.rows);
+        setTotal(data.pagination.total);
+        setTotalPages(data.pagination.totalPages);
+      })
+      .catch(onApiError)
+      .finally(() => setLoading(false));
+  }, [action, entity, from, onApiError, page, pageSize, query, to, userId]);
+
+  function resetFilters() {
+    setQuery('');
+    setUserId('');
+    setAction('');
+    setEntity('');
+    setFrom('');
+    setTo('');
+    setPage(1);
+  }
+
+  return (
+    <div className="audit-page">
+      <header className="assignment-header">
+        <div><h2>Auditoría</h2><p>Revisa acciones administrativas, responsables, fechas y contexto técnico.</p></div>
+        <span className="audit-count">{total} eventos</span>
+      </header>
+      <div className="assignment-filters labelled-filters audit-filters">
+        <label className="admin-search"><span>Búsqueda</span><div><Search size={17} /><input value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder="Buscar descripción, entidad o usuario" /></div></label>
+        <label>Usuario<select value={userId} onChange={(event) => { setUserId(event.target.value); setPage(1); }}><option value="">Todos</option>{users.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+        <label>Acción<select value={action} onChange={(event) => { setAction(event.target.value); setPage(1); }}><option value="">Todas</option>{Object.entries(auditActionLabels).map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></label>
+        <label>Entidad<select value={entity} onChange={(event) => { setEntity(event.target.value); setPage(1); }}><option value="">Todas</option>{Object.entries(auditEntityLabels).map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></label>
+        <label>Desde<input type="date" value={from} onChange={(event) => { setFrom(event.target.value); setPage(1); }} /></label>
+        <label>Hasta<input type="date" value={to} onChange={(event) => { setTo(event.target.value); setPage(1); }} /></label>
+        <button type="button" className="secondary-button" onClick={resetFilters} disabled={!hasFilters}>Limpiar filtros</button>
+      </div>
+      <div className="audit-table">
+        <div className="audit-row head"><span>Fecha</span><span>Usuario</span><span>Acción</span><span>Entidad</span><span>Descripción</span><span>Detalle</span></div>
+        {rows.map((row) => <div key={row.id} className="audit-row"><span>{new Date(row.createdAt).toLocaleString('es-CL')}</span><span>{row.user?.name ?? 'Sistema'}<small>{row.user?.email ?? row.userId ?? 'Sin usuario'}</small></span><span><strong>{auditActionLabels[row.action] ?? row.action}</strong></span><span>{auditEntityLabels[row.entity] ?? row.entity}<small>{row.entityId}</small></span><span>{row.description}</span><span><button className="secondary-button" onClick={() => setDetail(row)}><Eye size={15} />Ver</button></span></div>)}
+      </div>
+      {!rows.length && <div className="admin-empty"><Search size={22} /><strong>{loading ? 'Cargando eventos' : 'Sin eventos'}</strong><span>No hay auditorías que coincidan con los filtros actuales.</span></div>}
+      <Pager page={page} total={totalPages} onPage={setPage} />
+      {detail && <AuditDetailModal row={detail} onClose={() => setDetail(null)} />}
+    </div>
+  );
+}
+
+function AuditDetailModal({ row, onClose }: { row: AuditLogRow; onClose: () => void }) {
+  return (
+    <div className="admin-modal-backdrop" role="dialog" aria-modal="true">
+      <section className="audit-detail-modal">
+        <header><div><span>Evento de auditoría</span><h2>{auditActionLabels[row.action] ?? row.action}</h2></div><button type="button" onClick={onClose} aria-label="Cerrar"><X size={18} /></button></header>
+        <div className="audit-detail-grid">
+          <span><small>Fecha</small><strong>{new Date(row.createdAt).toLocaleString('es-CL')}</strong></span>
+          <span><small>Usuario</small><strong>{row.user?.name ?? 'Sistema'}</strong></span>
+          <span><small>Entidad</small><strong>{auditEntityLabels[row.entity] ?? row.entity}</strong></span>
+          <span><small>ID entidad</small><strong>{row.entityId}</strong></span>
+          <span><small>IP</small><strong>{row.ipAddress ?? 'Sin registro'}</strong></span>
+          <span><small>Navegador</small><strong>{row.userAgent ?? 'Sin registro'}</strong></span>
+        </div>
+        <p>{row.description}</p>
+        <pre>{JSON.stringify(row.metadata ?? {}, null, 2)}</pre>
+      </section>
+    </div>
+  );
+}
+
 export function AdminPage({ user }: { user: User }) {
   const [bundle, setBundle] = useState<AdminBundle | null>(null);
   const [tab, setTab] = useState<AdminTab>('users');
@@ -1106,7 +1221,7 @@ export function AdminPage({ user }: { user: User }) {
   const visibleTabs = useMemo(() => (canInspect && !canManage ? tabs.filter((item) => ['students'].includes(item.id)) : tabs), [canInspect, canManage]);
   const isAssignmentTab = tab.startsWith('assignments-');
   const isAcademicTab = tab.startsWith('academic-');
-  const usesCustomView = isAssignmentTab || isAcademicTab;
+  const usesCustomView = isAssignmentTab || isAcademicTab || tab === 'audit';
   const filtered = useMemo(() => {
     if (!bundle) return [];
     const source = tab === 'users' ? bundle.users : tab === 'students' ? bundle.students : tab === 'teachers' ? bundle.teachers : tab === 'guardians' ? bundle.guardians : tab === 'subjects' ? bundle.subjects : [];
@@ -1255,6 +1370,7 @@ export function AdminPage({ user }: { user: User }) {
           {tab === 'academic-schedules' && <AcademicSchedulesPage bundle={bundle} canManage={canManage} onSaved={done} setConfirm={setConfirm} onApiError={handleApiError} />}
 
           {tab === 'subjects' && <AdminTable headers={['Asignatura', 'Profesores', 'Secciones', 'Acciones']} rows={filtered as AdminSubjectRow[]} render={(row) => <><div><strong>{row.name}</strong><small>{row.code}</small></div><span>{row.teachers.map((item) => item.name).join(', ') || 'Sin profesor'}</span><span>{row.sections.map((item) => `${item.course} ${item.name}`).join(', ') || 'Sin sección'}</span><div className="admin-row-actions">{canManage && <button onClick={() => setModal({ type: 'subject', mode: 'edit', row })}><Edit3 size={16} />Editar</button>}</div></>} />}
+          {tab === 'audit' && <AuditPage users={bundle.users} onApiError={handleApiError} />}
 
           {tab === 'assignments-teachers' && <AssignmentsTeachersPage bundle={bundle} onSaved={done} setConfirm={setConfirm} />}
           {tab === 'assignments-students' && <AssignmentsStudentsPage bundle={bundle} onSaved={done} setConfirm={setConfirm} />}

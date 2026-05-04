@@ -1,7 +1,16 @@
 import type { Request, Response } from 'express';
 import { AdminService } from './admin.service.js';
+import type { AuditContext, AuditQueryInput } from '../audit/audit.service.js';
 
 const service = new AdminService();
+
+function auditContext(req: Request): AuditContext {
+  return {
+    userId: req.user?.id,
+    ipAddress: req.ip,
+    userAgent: req.header('user-agent') ?? undefined
+  };
+}
 
 export class AdminController {
   summary(_req: Request, res: Response) {
@@ -13,19 +22,19 @@ export class AdminController {
   }
 
   createUser(req: Request, res: Response) {
-    return service.createUser(req.body).then((data) => res.status(201).json(data));
+    return service.createUser(req.body, auditContext(req)).then((data) => res.status(201).json(data));
   }
 
   updateUser(req: Request, res: Response) {
-    return service.updateUser(String(req.params.id), req.body).then((data) => res.json(data));
+    return service.updateUser(String(req.params.id), req.body, auditContext(req)).then((data) => res.json(data));
   }
 
   setUserStatus(req: Request, res: Response) {
-    return service.setUserStatus(String(req.params.id), req.body).then((data) => res.json(data));
+    return service.setUserStatus(String(req.params.id), req.body, auditContext(req)).then((data) => res.json(data));
   }
 
   resetUserPassword(req: Request, res: Response) {
-    return service.resetUserPassword(String(req.params.id), req.body).then((data) => res.json(data));
+    return service.resetUserPassword(String(req.params.id), req.body, auditContext(req)).then((data) => res.json(data));
   }
 
   students(_req: Request, res: Response) {
@@ -33,23 +42,23 @@ export class AdminController {
   }
 
   createStudent(req: Request, res: Response) {
-    return service.createStudent(req.body).then((data) => res.status(201).json(data));
+    return service.createStudent(req.body, auditContext(req)).then((data) => res.status(201).json(data));
   }
 
   updateStudent(req: Request, res: Response) {
-    return service.updateStudent(String(req.params.id), req.body).then((data) => res.json(data));
+    return service.updateStudent(String(req.params.id), req.body, auditContext(req)).then((data) => res.json(data));
   }
 
   setStudentStatus(req: Request, res: Response) {
-    return service.setStudentStatus(String(req.params.id), req.body).then((data) => res.json(data));
+    return service.setStudentStatus(String(req.params.id), req.body, auditContext(req)).then((data) => res.json(data));
   }
 
   assignStudentSection(req: Request, res: Response) {
-    return service.assignStudentSection(String(req.params.id), req.body).then((data) => res.json(data));
+    return service.assignStudentSection(String(req.params.id), req.body, auditContext(req)).then((data) => res.json(data));
   }
 
   clearStudentSection(req: Request, res: Response) {
-    return service.clearStudentSection(String(req.params.id)).then((data) => res.json(data));
+    return service.clearStudentSection(String(req.params.id), auditContext(req)).then((data) => res.json(data));
   }
 
   teachers(_req: Request, res: Response) {
@@ -57,19 +66,19 @@ export class AdminController {
   }
 
   createTeacher(req: Request, res: Response) {
-    return service.createTeacher(req.body).then((data) => res.status(201).json(data));
+    return service.createTeacher(req.body, auditContext(req)).then((data) => res.status(201).json(data));
   }
 
   updateTeacher(req: Request, res: Response) {
-    return service.updateTeacher(String(req.params.id), req.body).then((data) => res.json(data));
+    return service.updateTeacher(String(req.params.id), req.body, auditContext(req)).then((data) => res.json(data));
   }
 
   setTeacherStatus(req: Request, res: Response) {
-    return service.setTeacherStatus(String(req.params.id), req.body).then((data) => res.json(data));
+    return service.setTeacherStatus(String(req.params.id), req.body, auditContext(req)).then((data) => res.json(data));
   }
 
   assignTeacher(req: Request, res: Response) {
-    return service.assignTeacher(String(req.params.id), req.body).then((data) => res.json(data));
+    return service.assignTeacher(String(req.params.id), req.body, auditContext(req)).then((data) => res.json(data));
   }
 
   guardians(_req: Request, res: Response) {
@@ -77,19 +86,19 @@ export class AdminController {
   }
 
   createGuardian(req: Request, res: Response) {
-    return service.createGuardian(req.body).then((data) => res.status(201).json(data));
+    return service.createGuardian(req.body, auditContext(req)).then((data) => res.status(201).json(data));
   }
 
   updateGuardian(req: Request, res: Response) {
-    return service.updateGuardian(String(req.params.id), req.body).then((data) => res.json(data));
+    return service.updateGuardian(String(req.params.id), req.body, auditContext(req)).then((data) => res.json(data));
   }
 
   setGuardianStatus(req: Request, res: Response) {
-    return service.setGuardianStatus(String(req.params.id), req.body).then((data) => res.json(data));
+    return service.setGuardianStatus(String(req.params.id), req.body, auditContext(req)).then((data) => res.json(data));
   }
 
   linkGuardianStudents(req: Request, res: Response) {
-    return service.linkGuardianStudents(String(req.params.id), req.body).then((data) => res.json(data));
+    return service.linkGuardianStudents(String(req.params.id), req.body, auditContext(req)).then((data) => res.json(data));
   }
 
   courses(_req: Request, res: Response) {
@@ -97,15 +106,15 @@ export class AdminController {
   }
 
   createCourse(req: Request, res: Response) {
-    return service.createCourse(req.body).then((data) => res.status(201).json(data));
+    return service.createCourse(req.body, auditContext(req)).then((data) => res.status(201).json(data));
   }
 
   updateCourse(req: Request, res: Response) {
-    return service.updateCourse(String(req.params.id), req.body).then((data) => res.json(data));
+    return service.updateCourse(String(req.params.id), req.body, auditContext(req)).then((data) => res.json(data));
   }
 
   setCourseStatus(req: Request, res: Response) {
-    return service.setCourseStatus(String(req.params.id), req.body).then((data) => res.json(data));
+    return service.setCourseStatus(String(req.params.id), req.body, auditContext(req)).then((data) => res.json(data));
   }
 
   sections(_req: Request, res: Response) {
@@ -113,19 +122,19 @@ export class AdminController {
   }
 
   createSection(req: Request, res: Response) {
-    return service.createSection(req.body).then((data) => res.status(201).json(data));
+    return service.createSection(req.body, auditContext(req)).then((data) => res.status(201).json(data));
   }
 
   updateSection(req: Request, res: Response) {
-    return service.updateSection(String(req.params.id), req.body).then((data) => res.json(data));
+    return service.updateSection(String(req.params.id), req.body, auditContext(req)).then((data) => res.json(data));
   }
 
   setSectionStatus(req: Request, res: Response) {
-    return service.setSectionStatus(String(req.params.id), req.body).then((data) => res.json(data));
+    return service.setSectionStatus(String(req.params.id), req.body, auditContext(req)).then((data) => res.json(data));
   }
 
   deleteSection(req: Request, res: Response) {
-    return service.deleteSection(String(req.params.id)).then((data) => res.json(data));
+    return service.deleteSection(String(req.params.id), auditContext(req)).then((data) => res.json(data));
   }
 
   classrooms(_req: Request, res: Response) {
@@ -137,35 +146,35 @@ export class AdminController {
   }
 
   createSchedule(req: Request, res: Response) {
-    return service.createSchedule(req.body).then((data) => res.status(201).json(data));
+    return service.createSchedule(req.body, auditContext(req)).then((data) => res.status(201).json(data));
   }
 
   updateSchedule(req: Request, res: Response) {
-    return service.updateSchedule(String(req.params.id), req.body).then((data) => res.json(data));
+    return service.updateSchedule(String(req.params.id), req.body, auditContext(req)).then((data) => res.json(data));
   }
 
   setScheduleStatus(req: Request, res: Response) {
-    return service.setScheduleStatus(String(req.params.id), req.body).then((data) => res.json(data));
+    return service.setScheduleStatus(String(req.params.id), req.body, auditContext(req)).then((data) => res.json(data));
   }
 
   deleteSchedule(req: Request, res: Response) {
-    return service.deleteSchedule(String(req.params.id)).then((data) => res.json(data));
+    return service.deleteSchedule(String(req.params.id), auditContext(req)).then((data) => res.json(data));
   }
 
   createClassroom(req: Request, res: Response) {
-    return service.createClassroom(req.body).then((data) => res.status(201).json(data));
+    return service.createClassroom(req.body, auditContext(req)).then((data) => res.status(201).json(data));
   }
 
   updateClassroom(req: Request, res: Response) {
-    return service.updateClassroom(String(req.params.id), req.body).then((data) => res.json(data));
+    return service.updateClassroom(String(req.params.id), req.body, auditContext(req)).then((data) => res.json(data));
   }
 
   setClassroomStatus(req: Request, res: Response) {
-    return service.setClassroomStatus(String(req.params.id), req.body).then((data) => res.json(data));
+    return service.setClassroomStatus(String(req.params.id), req.body, auditContext(req)).then((data) => res.json(data));
   }
 
   deleteClassroom(req: Request, res: Response) {
-    return service.deleteClassroom(String(req.params.id)).then((data) => res.json(data));
+    return service.deleteClassroom(String(req.params.id), auditContext(req)).then((data) => res.json(data));
   }
 
   subjects(_req: Request, res: Response) {
@@ -173,15 +182,15 @@ export class AdminController {
   }
 
   createSubject(req: Request, res: Response) {
-    return service.createSubject(req.body).then((data) => res.status(201).json(data));
+    return service.createSubject(req.body, auditContext(req)).then((data) => res.status(201).json(data));
   }
 
   updateSubject(req: Request, res: Response) {
-    return service.updateSubject(String(req.params.id), req.body).then((data) => res.json(data));
+    return service.updateSubject(String(req.params.id), req.body, auditContext(req)).then((data) => res.json(data));
   }
 
   assignSubjectTeacher(req: Request, res: Response) {
-    return service.assignSubjectTeacher(String(req.params.id), req.body).then((data) => res.json(data));
+    return service.assignSubjectTeacher(String(req.params.id), req.body, auditContext(req)).then((data) => res.json(data));
   }
 
   assignments(_req: Request, res: Response) {
@@ -189,22 +198,26 @@ export class AdminController {
   }
 
   assignTeacherRelation(req: Request, res: Response) {
-    return service.assignTeacher(String(req.body.teacherId), req.body).then((data) => res.json(data));
+    return service.assignTeacher(String(req.body.teacherId), req.body, auditContext(req)).then((data) => res.json(data));
   }
 
   removeTeacherRelation(req: Request, res: Response) {
-    return service.removeTeacherAssignment(req.body).then((data) => res.json(data));
+    return service.removeTeacherAssignment(req.body, auditContext(req)).then((data) => res.json(data));
   }
 
   assignStudentRelation(req: Request, res: Response) {
-    return service.assignStudentSection(String(req.body.studentId), req.body).then((data) => res.json(data));
+    return service.assignStudentSection(String(req.body.studentId), req.body, auditContext(req)).then((data) => res.json(data));
   }
 
   assignGuardianRelation(req: Request, res: Response) {
-    return service.linkGuardianStudents(String(req.body.guardianId), req.body).then((data) => res.json(data));
+    return service.linkGuardianStudents(String(req.body.guardianId), req.body, auditContext(req)).then((data) => res.json(data));
   }
 
   unlinkGuardianRelation(req: Request, res: Response) {
-    return service.unlinkGuardianStudent(req.body).then((data) => res.json(data));
+    return service.unlinkGuardianStudent(req.body, auditContext(req)).then((data) => res.json(data));
+  }
+
+  audit(req: Request, res: Response) {
+    return service.audit(req.query as unknown as AuditQueryInput).then((data) => res.json(data));
   }
 }

@@ -11,6 +11,7 @@ import type {
   AdminSummary,
   AdminTeacherRow,
   AdminUserRow,
+  AuditLogResponse,
   Announcement,
   Assessment,
   AssignmentSubmissionReviewRow,
@@ -580,6 +581,11 @@ export async function loadAdminBundle(): Promise<AdminBundle> {
     api.get<AdminSubjectRow[]>('/admin/subjects').then((res) => res.data)
   ]);
   return { summary, users, students, teachers, guardians, courses, sections, classrooms, schedules, subjects };
+}
+
+export async function loadAdminAudit(input: { page?: number; pageSize?: number; userId?: string; action?: string; entity?: string; search?: string; from?: string; to?: string }) {
+  const { data } = await api.get<AuditLogResponse>('/admin/audit', { params: input });
+  return data;
 }
 
 export async function createAdminUser(input: AdminUserPayload) {
