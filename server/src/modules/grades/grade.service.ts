@@ -1,8 +1,10 @@
 import { GradeRepository } from './grade.repository.js';
 import { HttpError } from '../../shared/http-error.js';
 import type { JwtUser } from '../auth/auth.types.js';
+import { NotificationService } from '../notifications/notification.service.js';
 
 const repository = new GradeRepository();
+const notifications = new NotificationService();
 const gradeStatuses = ['con_nota', 'pendiente', 'ausente', 'eximido'] as const;
 
 function serialize(grade: Awaited<ReturnType<GradeRepository['create']>>) {
@@ -110,14 +112,26 @@ export class GradeService {
 
   async create(user: JwtUser, input: { assessmentId: string; studentId: string; enrollmentId: string; score: number }) {
     await this.assertCanWrite(user, input.enrollmentId);
-    return serialize(await repository.create(input));
+    const grade = await repository.create(input);
+    await notifications.notifyStudentNetwork(grade.studentId, {
+      title: 'Nueva calificación registrada',
+      message: `${grade.assessment.subject.name}: ${grade.score ?? 0} en ${grade.assessment.title}.`,
+      type: 'grade'
+    });
+    return serialize(grade);
   }
 
   async update(user: JwtUser, id: string, input: { score: number }) {
     const grade = await repository.findById(id);
     if (!grade) throw new HttpError(404, 'Calificacion no encontrada.');
     await this.assertCanWrite(user, grade.enrollmentId);
-    return serialize(await repository.update(id, input));
+    const updated = await repository.update(id, input);
+    await notifications.notifyStudentNetwork(updated.studentId, {
+      title: 'Calificación actualizada',
+      message: `${updated.assessment.subject.name}: ${updated.score ?? 0} en ${updated.assessment.title}.`,
+      type: 'grade'
+    });
+    return serialize(updated);
   }
 
   async context(user: JwtUser) {
@@ -215,7 +229,14 @@ export class GradeService {
         comment: record.comment?.trim() || null
       };
     });
-    await repository.bulkUpsert({ evaluationId: input.evaluationId, records });
+    const saved = await repository.bulkUpsert({ evaluationId: input.evaluationId, records });
+    await Promise.all(saved
+      .filter((grade) => grade.status === 'con_nota' && grade.score !== null)
+      .map((grade) => notifications.notifyStudentNetwork(grade.studentId, {
+        title: 'Nueva calificación registrada',
+        message: `${grade.assessment.subject.name}: ${grade.score ?? 0} en ${grade.assessment.title}.`,
+        type: 'grade'
+      })));
     return { ok: true, records: records.length };
   }
 

@@ -10,6 +10,16 @@ export class NotificationController {
     res.json(await service.listForUser(req.user.id));
   }
 
+  async markRead(req: Request, res: Response) {
+    if (!req.user?.id) throw new HttpError(401, 'Usuario autenticado requerido.');
+    res.json(await service.markRead(req.user.id, String(req.params.id)));
+  }
+
+  async markAllRead(req: Request, res: Response) {
+    if (!req.user?.id) throw new HttpError(401, 'Usuario autenticado requerido.');
+    res.json(await service.markAllRead(req.user.id));
+  }
+
   async create(req: Request, res: Response) {
     res.status(201).json(await service.create(req.body));
   }

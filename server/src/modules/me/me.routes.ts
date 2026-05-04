@@ -15,4 +15,7 @@ meRoutes.get('/schedule', asyncHandler(controller.schedule.bind(controller)));
 meRoutes.get('/grades', asyncHandler(controller.grades.bind(controller)));
 meRoutes.get('/attendance', asyncHandler(controller.attendance.bind(controller)));
 meRoutes.get('/profile', asyncHandler(controller.profile.bind(controller)));
+meRoutes.get('/notifications', asyncHandler(controller.notifications.bind(controller)));
+meRoutes.patch('/notifications/read-all', asyncHandler(controller.markAllNotificationsRead.bind(controller)));
+meRoutes.patch('/notifications/:id/read', asyncHandler(controller.markNotificationRead.bind(controller)));
 meRoutes.patch('/preferences', validateBody(userPreferencesSchema), asyncHandler(controller.updatePreferences.bind(controller)));

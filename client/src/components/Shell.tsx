@@ -1,8 +1,9 @@
-import { BarChart3, Bell, CalendarDays, ChevronDown, ClipboardCheck, FileText, GraduationCap, HelpCircle, LogOut, Menu, School, Search, Shield, Star, UserCircle, X } from 'lucide-react';
+import { BarChart3, Bell, CalendarDays, Check, CheckCheck, ChevronDown, ClipboardCheck, FileText, GraduationCap, HelpCircle, LogOut, Menu, School, Search, Shield, Star, UserCircle, X } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import clsx from 'clsx';
-import type { User } from '../types';
+import { loadMyNotifications, markAllMyNotificationsRead, markMyNotificationRead } from '../api';
+import type { User, UserNotification } from '../types';
 import { RoleBadge } from './RoleBadge';
 
 const navItems = [
@@ -18,17 +19,57 @@ const navItems = [
 export function Shell({ user, onLogout, children }: { user: User; onLogout: () => void; children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState<UserNotification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notificationsBusy, setNotificationsBusy] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
+  const notificationRef = useRef<HTMLDivElement>(null);
+
+  async function refreshNotifications() {
+    const data = await loadMyNotifications();
+    setNotifications(data.notifications);
+    setUnreadCount(data.unreadCount);
+  }
 
   useEffect(() => {
     function handlePointerDown(event: PointerEvent) {
       if (!profileMenuRef.current?.contains(event.target as Node)) {
         setProfileOpen(false);
       }
+      if (!notificationRef.current?.contains(event.target as Node)) {
+        setNotificationsOpen(false);
+      }
     }
-    if (profileOpen) document.addEventListener('pointerdown', handlePointerDown);
+    if (profileOpen || notificationsOpen) document.addEventListener('pointerdown', handlePointerDown);
     return () => document.removeEventListener('pointerdown', handlePointerDown);
-  }, [profileOpen]);
+  }, [profileOpen, notificationsOpen]);
+
+  useEffect(() => {
+    refreshNotifications().catch(() => undefined);
+    const timer = window.setInterval(() => refreshNotifications().catch(() => undefined), 60000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  async function markRead(id: string) {
+    setNotificationsBusy(true);
+    try {
+      await markMyNotificationRead(id);
+      await refreshNotifications();
+    } finally {
+      setNotificationsBusy(false);
+    }
+  }
+
+  async function markAllRead() {
+    setNotificationsBusy(true);
+    try {
+      await markAllMyNotificationsRead();
+      await refreshNotifications();
+    } finally {
+      setNotificationsBusy(false);
+    }
+  }
 
   return (
     <div className={clsx('app-shell', open && 'mobile-nav-open')}>
@@ -64,10 +105,61 @@ export function Shell({ user, onLogout, children }: { user: User; onLogout: () =
           <input placeholder="Buscar estudiantes, documentos o comunicados" />
         </div>
 
-        <div className="institution-user" ref={profileMenuRef}>
+        <div className="institution-user">
+          <div className="notification-center" ref={notificationRef}>
+            <button
+              type="button"
+              className="notification-button"
+              onClick={() => {
+                setNotificationsOpen((value) => !value);
+                setProfileOpen(false);
+                refreshNotifications().catch(() => undefined);
+              }}
+              aria-label="Abrir notificaciones"
+              aria-expanded={notificationsOpen}
+            >
+              <Bell size={19} />
+              {unreadCount > 0 && <span>{unreadCount > 99 ? '99+' : unreadCount}</span>}
+            </button>
+            {notificationsOpen && (
+              <div className="notification-dropdown">
+                <header>
+                  <div>
+                    <strong>Notificaciones</strong>
+                    <small>{unreadCount ? `${unreadCount} sin leer` : 'Todo al día'}</small>
+                  </div>
+                  <button type="button" onClick={markAllRead} disabled={!unreadCount || notificationsBusy}><CheckCheck size={16} />Marcar todas</button>
+                </header>
+                <div className="notification-list">
+                  {notifications.slice(0, 10).map((item) => (
+                    <article key={item.id} className={clsx('notification-item', !item.readAt && 'unread')}>
+                      <div>
+                        <span>{notificationTypeLabel(item.type)}</span>
+                        <strong>{item.title}</strong>
+                        <p>{item.message}</p>
+                        <small>{new Date(item.createdAt).toLocaleString('es-CL')}</small>
+                      </div>
+                      {!item.readAt && <button type="button" onClick={() => markRead(item.id)} disabled={notificationsBusy} aria-label="Marcar como leída"><Check size={16} /></button>}
+                    </article>
+                  ))}
+                  {!notifications.length && (
+                    <div className="notification-empty">
+                      <Bell size={22} />
+                      <strong>Sin notificaciones</strong>
+                      <span>No hay novedades pendientes por revisar.</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+          <div ref={profileMenuRef}>
           <button
             className="profile-menu-button"
-            onClick={() => setProfileOpen((value) => !value)}
+            onClick={() => {
+              setProfileOpen((value) => !value);
+              setNotificationsOpen(false);
+            }}
             aria-expanded={profileOpen}
             aria-haspopup="menu"
             aria-label="Abrir menu de perfil"
@@ -110,6 +202,7 @@ export function Shell({ user, onLogout, children }: { user: User; onLogout: () =
               </button>
             </div>
           )}
+          </div>
         </div>
       </header>
 
@@ -118,4 +211,12 @@ export function Shell({ user, onLogout, children }: { user: User; onLogout: () =
       </div>
     </div>
   );
+}
+
+function notificationTypeLabel(type: string) {
+  if (type === 'announcement') return 'Comunicado';
+  if (type === 'request') return 'Solicitud';
+  if (type === 'grade') return 'Calificación';
+  if (type === 'attendance') return 'Asistencia';
+  return 'Sistema';
 }

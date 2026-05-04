@@ -44,7 +44,8 @@ import type {
   Subject,
   SubjectDetailData,
   UserPreferences,
-  UserProfileData
+  UserProfileData,
+  UserNotificationResponse
 } from './types';
 
 export const sessionStorageKey = 'school-intranet-session';
@@ -344,6 +345,21 @@ export async function downloadSubmissionFile(fileId: string) {
 
 export async function loadMyProfile() {
   const { data } = await api.get<UserProfileData>('/me/profile');
+  return data;
+}
+
+export async function loadMyNotifications() {
+  const { data } = await api.get<UserNotificationResponse>('/me/notifications');
+  return data;
+}
+
+export async function markMyNotificationRead(id: string) {
+  const { data } = await api.patch<{ ok: true }>(`/me/notifications/${id}/read`);
+  return data;
+}
+
+export async function markAllMyNotificationsRead() {
+  const { data } = await api.patch<{ ok: true; count: number }>('/me/notifications/read-all');
   return data;
 }
 

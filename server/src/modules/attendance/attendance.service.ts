@@ -1,8 +1,10 @@
 import { AttendanceRepository } from './attendance.repository.js';
 import { HttpError } from '../../shared/http-error.js';
 import type { JwtUser } from '../auth/auth.types.js';
+import { NotificationService } from '../notifications/notification.service.js';
 
 const repository = new AttendanceRepository();
+const notifications = new NotificationService();
 const statuses = ['presente', 'ausente', 'atrasado', 'justificado'] as const;
 const weekdayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
@@ -147,6 +149,13 @@ export class AttendanceService {
       return { enrollmentId, studentId: record.studentId, status: record.status, note: record.note };
     });
     const saved = await repository.bulkUpsert({ sectionId: input.sectionId, subjectId: input.subjectId, date, userId: user.id, records: normalized });
+    await Promise.all(saved
+      .filter((record) => ['ausente', 'atrasado', 'justificado'].includes(record.status))
+      .map((record) => notifications.notifyStudentNetwork(record.studentId, {
+        title: 'Asistencia registrada',
+        message: `${record.student.user.name} quedó ${record.status} en ${record.subject.name} (${record.section.course.name} ${record.section.name}) el ${date.toISOString().slice(0, 10)}.`,
+        type: 'attendance'
+      })));
     return { ok: true, records: saved.length };
   }
 

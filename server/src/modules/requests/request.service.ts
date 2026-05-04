@@ -1,7 +1,9 @@
 import type { JwtUser } from '../auth/auth.types.js';
+import { NotificationService } from '../notifications/notification.service.js';
 import { RequestRepository } from './request.repository.js';
 
 const repository = new RequestRepository();
+const notifications = new NotificationService();
 
 function serialize(request: Awaited<ReturnType<RequestRepository['create']>>) {
   return {
@@ -26,6 +28,12 @@ export class RequestService {
   }
 
   async updateStatus(id: string, status: string) {
-    return serialize(await repository.updateStatus(id, status));
+    const request = await repository.updateStatus(id, status);
+    await notifications.notifyMany([request.requesterId], {
+      title: 'Solicitud actualizada',
+      message: `Tu solicitud "${request.subject}" cambió a ${status.replace(/_/g, ' ')}.`,
+      type: 'request'
+    });
+    return serialize(request);
   }
 }

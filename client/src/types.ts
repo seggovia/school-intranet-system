@@ -449,6 +449,21 @@ export interface UserProfileData {
   linkedStudents: Array<{ id: string; name: string; relationship: string }>;
 }
 
+export interface UserNotification {
+  id: string;
+  userId: string;
+  title: string;
+  message: string;
+  type: 'announcement' | 'request' | 'grade' | 'attendance' | 'system' | string;
+  readAt: string | null;
+  createdAt: string;
+}
+
+export interface UserNotificationResponse {
+  unreadCount: number;
+  notifications: UserNotification[];
+}
+
 export interface Student {
   id: string;
   name: string;

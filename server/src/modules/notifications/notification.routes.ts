@@ -10,4 +10,6 @@ export const notificationRoutes = Router();
 
 notificationRoutes.use(authenticate);
 notificationRoutes.get('/', asyncHandler(controller.list.bind(controller)));
+notificationRoutes.patch('/:id/read', asyncHandler(controller.markRead.bind(controller)));
+notificationRoutes.patch('/read-all', asyncHandler(controller.markAllRead.bind(controller)));
 notificationRoutes.post('/', authorizeRoles('admin', 'director'), authorizePermissions('communications:manage'), validateBody(createNotificationSchema), asyncHandler(controller.create.bind(controller)));

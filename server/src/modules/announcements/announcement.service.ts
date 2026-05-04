@@ -1,6 +1,8 @@
 import { AnnouncementRepository } from './announcement.repository.js';
+import { NotificationService } from '../notifications/notification.service.js';
 
 const repository = new AnnouncementRepository();
+const notifications = new NotificationService();
 
 function serialize(item: Awaited<ReturnType<AnnouncementRepository['create']>>) {
   return {
@@ -21,6 +23,8 @@ export class AnnouncementService {
   }
 
   async create(input: { title: string; audience: string; priority: string; body: string; authorId: string }) {
-    return serialize(await repository.create(input));
+    const created = await repository.create(input);
+    await notifications.notifyAnnouncement({ title: created.title, audience: created.audience, authorId: input.authorId });
+    return serialize(created);
   }
 }
