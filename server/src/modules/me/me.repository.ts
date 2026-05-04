@@ -7,11 +7,28 @@ export class MeRepository {
       where: { id: userId },
       include: {
         roles: { include: { role: true } },
+        passwordResetTokens: { orderBy: { createdAt: 'desc' }, take: 1 },
         teacher: true,
-        student: { include: { enrollments: { include: { section: { include: { course: true } } } } } },
+        student: { include: { enrollments: { include: { section: { include: { course: true } } } }, guardians: { include: { guardian: { include: { user: true } } } }, grades: true, attendance: true } },
         guardian: { include: { students: { include: { student: { include: { user: true } } } } } }
       }
     });
+  }
+
+  findUserForPassword(userId: string) {
+    return prisma.user.findUnique({ where: { id: userId }, select: { id: true, passwordHash: true } });
+  }
+
+  updateProfile(userId: string, input: { name: string; avatar: string }) {
+    return prisma.user.update({
+      where: { id: userId },
+      data: input,
+      select: { id: true, name: true, email: true, avatar: true, department: true, isActive: true }
+    });
+  }
+
+  updatePassword(userId: string, passwordHash: string) {
+    return prisma.user.update({ where: { id: userId }, data: { passwordHash }, select: { id: true } });
   }
 
   findTeacherSections(userId: string) {

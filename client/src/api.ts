@@ -348,6 +348,16 @@ export async function loadMyProfile() {
   return data;
 }
 
+export async function updateMyProfile(input: { name: string; lastName: string }) {
+  const { data } = await api.patch('/me/profile', input);
+  return data;
+}
+
+export async function changeMyPassword(input: { currentPassword: string; newPassword: string; confirmPassword: string }) {
+  const { data } = await api.patch<{ ok: true }>('/me/password', input);
+  return data;
+}
+
 export async function loadMyNotifications() {
   const { data } = await api.get<UserNotificationResponse>('/me/notifications');
   return data;

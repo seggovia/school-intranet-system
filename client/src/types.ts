@@ -442,11 +442,20 @@ export interface UserProfileData {
   avatar: string;
   department: string;
   roles: Role[];
+  roleLabels?: string[];
+  isActive?: boolean;
   timezone: string;
   lastAccess: string;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  personal?: { name: string; lastName: string };
   courses: Array<{ id: string; name: string; classroom: string; students: number }>;
   subjects: Array<{ id: string; name: string; code: string; section: string }>;
   linkedStudents: Array<{ id: string; name: string; relationship: string }>;
+  guardians?: Array<{ id: string; name: string; relationship: string }>;
+  academicSummary?: { average: number; attendance: number; courses: number; subjects: number };
+  security?: { userId: string; emailVerified: boolean; passwordManagedLocally: boolean; lastPasswordResetRequest: string | null };
+  preferences?: UserPreferences;
 }
 
 export interface UserNotification {

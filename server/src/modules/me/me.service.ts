@@ -1,6 +1,8 @@
 import type { JwtUser } from '../auth/auth.types.js';
+import bcrypt from 'bcryptjs';
+import { HttpError } from '../../shared/http-error.js';
 import { MeRepository } from './me.repository.js';
-import type { UserPreferencesInput } from './me.validators.js';
+import type { ChangePasswordInput, UpdateProfileInput, UserPreferencesInput } from './me.validators.js';
 
 const repository = new MeRepository();
 
@@ -38,6 +40,21 @@ function attendanceRate(records: { status: string }[]) {
   if (!records.length) return 100;
   const present = records.filter((item) => item.status === 'presente' || item.status === 'atrasado').length;
   return Math.round((present / records.length) * 100);
+}
+
+function initials(name: string) {
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('') || 'US';
+}
+
+function splitName(name: string) {
+  const parts = name.trim().split(' ').filter(Boolean);
+  if (parts.length <= 1) return { name: parts[0] ?? '', lastName: '' };
+  return { name: parts.slice(0, -1).join(' '), lastName: parts.at(-1) ?? '' };
 }
 
 function serializeSchedule(schedule: {
@@ -155,8 +172,13 @@ export class MeService {
       avatar: profile?.avatar ?? '',
       department: profile?.department ?? '',
       roles: user.roles,
+      roleLabels: profile?.roles.map((item) => item.role.label) ?? user.roles,
+      isActive: profile?.isActive ?? true,
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      lastAccess: new Date().toISOString(),
+      createdAt: profile?.createdAt.toISOString() ?? null,
+      updatedAt: profile?.updatedAt.toISOString() ?? null,
+      lastAccess: profile?.updatedAt.toISOString() ?? new Date().toISOString(),
+      personal: splitName(profile?.name ?? ''),
       courses: sections.map((section) => ({
         id: section.id,
         name: `${section.course.name} ${section.name}`,
@@ -164,8 +186,46 @@ export class MeService {
         students: section.enrollments.length
       })),
       subjects: Array.from(subjectMap.values()),
-      linkedStudents: profile?.guardian?.students.map((item) => ({ id: item.student.id, name: item.student.user.name, relationship: item.relationship })) ?? []
+      linkedStudents: profile?.guardian?.students.map((item) => ({ id: item.student.id, name: item.student.user.name, relationship: item.relationship })) ?? [],
+      guardians: profile?.student?.guardians.map((item) => ({ id: item.guardian.id, name: item.guardian.user.name, relationship: item.relationship })) ?? [],
+      academicSummary: {
+        average: profile?.student ? average(profile.student.grades.map((grade) => grade.score)) : average(sections.flatMap((section) => section.enrollments.flatMap((enrollment) => enrollment.student.grades.map((grade) => grade.score)))),
+        attendance: profile?.student ? attendanceRate(profile.student.attendance) : attendanceRate(sections.flatMap((section) => section.enrollments.flatMap((enrollment) => enrollment.student.attendance))),
+        courses: sections.length,
+        subjects: subjectMap.size
+      },
+      security: {
+        userId: user.id,
+        emailVerified: true,
+        passwordManagedLocally: true,
+        lastPasswordResetRequest: profile?.passwordResetTokens[0]?.createdAt.toISOString() ?? null
+      },
+      preferences: serializePreferences(profile?.preferences)
     };
+  }
+
+  async updateProfile(user: JwtUser, input: UpdateProfileInput) {
+    const fullName = `${input.name} ${input.lastName}`.trim();
+    const updated = await repository.updateProfile(user.id, { name: fullName, avatar: initials(fullName) });
+    return {
+      id: updated.id,
+      name: updated.name,
+      email: updated.email,
+      avatar: updated.avatar,
+      department: updated.department,
+      isActive: updated.isActive,
+      personal: splitName(updated.name)
+    };
+  }
+
+  async changePassword(user: JwtUser, input: ChangePasswordInput) {
+    const current = await repository.findUserForPassword(user.id);
+    if (!current) throw new HttpError(404, 'Usuario no encontrado.');
+    const valid = await bcrypt.compare(input.currentPassword, current.passwordHash);
+    if (!valid) throw new HttpError(400, 'La contraseña actual no es correcta.');
+    const passwordHash = await bcrypt.hash(input.newPassword, 12);
+    await repository.updatePassword(user.id, passwordHash);
+    return { ok: true };
   }
 
   async updatePreferences(user: JwtUser, preferences: UserPreferencesInput) {

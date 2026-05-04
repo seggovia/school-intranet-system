@@ -37,6 +37,16 @@ export class MeController {
     res.json(await service.profile(req.user));
   }
 
+  async updateProfile(req: Request, res: Response) {
+    if (!req.user) throw new HttpError(401, 'Usuario autenticado requerido.');
+    res.json(await service.updateProfile(req.user, req.body));
+  }
+
+  async changePassword(req: Request, res: Response) {
+    if (!req.user) throw new HttpError(401, 'Usuario autenticado requerido.');
+    res.json(await service.changePassword(req.user, req.body));
+  }
+
   async updatePreferences(req: Request, res: Response) {
     if (!req.user) throw new HttpError(401, 'Usuario autenticado requerido.');
     res.json(await service.updatePreferences(req.user, req.body));

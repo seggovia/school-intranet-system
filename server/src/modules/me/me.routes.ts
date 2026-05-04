@@ -3,7 +3,7 @@ import { authenticate } from '../auth/auth.middleware.js';
 import { asyncHandler } from '../../shared/async-handler.js';
 import { validateBody } from '../../shared/validate.js';
 import { MeController } from './me.controller.js';
-import { userPreferencesSchema } from './me.validators.js';
+import { changePasswordSchema, updateProfileSchema, userPreferencesSchema } from './me.validators.js';
 
 const controller = new MeController();
 export const meRoutes = Router();
@@ -15,6 +15,8 @@ meRoutes.get('/schedule', asyncHandler(controller.schedule.bind(controller)));
 meRoutes.get('/grades', asyncHandler(controller.grades.bind(controller)));
 meRoutes.get('/attendance', asyncHandler(controller.attendance.bind(controller)));
 meRoutes.get('/profile', asyncHandler(controller.profile.bind(controller)));
+meRoutes.patch('/profile', validateBody(updateProfileSchema), asyncHandler(controller.updateProfile.bind(controller)));
+meRoutes.patch('/password', validateBody(changePasswordSchema), asyncHandler(controller.changePassword.bind(controller)));
 meRoutes.get('/notifications', asyncHandler(controller.notifications.bind(controller)));
 meRoutes.patch('/notifications/read-all', asyncHandler(controller.markAllNotificationsRead.bind(controller)));
 meRoutes.patch('/notifications/:id/read', asyncHandler(controller.markNotificationRead.bind(controller)));

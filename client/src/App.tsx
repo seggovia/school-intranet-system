@@ -76,7 +76,7 @@ export function App() {
         <Route path="/documentos" element={<DocumentsPage user={auth.user!} />} />
         <Route path="/solicitudes" element={<RequestsPage user={auth.user!} />} />
         <Route path="/admin" element={<AdminPage user={auth.user!} />} />
-        <Route path="/perfil" element={<ProfilePage />} />
+        <Route path="/perfil" element={<ProfilePage onLogout={handleLogout} />} />
         <Route path="/preferencias" element={<PreferencesPage user={auth.user!} />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
