@@ -428,6 +428,11 @@ export async function loadAnnouncements() {
   return data;
 }
 
+export async function markAnnouncementRead(id: string) {
+  const { data } = await api.post<Announcement>(`/announcements/${id}/read`);
+  return data;
+}
+
 export async function loadEvents() {
   const { data } = await api.get<CalendarEvent[]>('/events');
   return data;

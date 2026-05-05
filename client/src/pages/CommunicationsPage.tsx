@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { AlertTriangle, CalendarClock, CheckCircle2, Eye, FileUp, Megaphone, Search, Send, Users, X } from 'lucide-react';
-import { loadAnnouncements, loadMyDashboard } from '../api';
+import { loadAnnouncements, loadMyDashboard, markAnnouncementRead } from '../api';
 import { PageHeader } from '../components/PageHeader';
 import { StatusBadge } from '../components/StatusBadge';
 import { EmptyState, LoadingState } from '../components/States';
@@ -18,19 +18,6 @@ type CommunicationRow = Announcement & {
   status: 'leido' | 'no_leido';
   attachments: Array<{ name: string; url: string }>;
 };
-
-function storageKey(userId: string) {
-  return `school-read-announcements:${userId}`;
-}
-
-function readSet(userId: string) {
-  const raw = localStorage.getItem(storageKey(userId));
-  return new Set(raw ? JSON.parse(raw) as string[] : []);
-}
-
-function saveReadSet(userId: string, ids: Set<string>) {
-  localStorage.setItem(storageKey(userId), JSON.stringify(Array.from(ids)));
-}
 
 function normalize(value: string) {
   return value.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '');
@@ -65,6 +52,11 @@ function formatDate(value: string) {
   return new Intl.DateTimeFormat('es-CL', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${value}T00:00:00Z`));
 }
 
+function formatDateTime(value?: string | null) {
+  if (!value) return 'Leido';
+  return `Leido ${new Intl.DateTimeFormat('es-CL', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(value))}`;
+}
+
 export function CommunicationsPage({ user }: { user: User }) {
   const announcements = useAsyncData(loadAnnouncements, [] as Announcement[]);
   const dashboard = useAsyncData(loadMyDashboard, emptyDashboard);
@@ -73,22 +65,24 @@ export function CommunicationsPage({ user }: { user: User }) {
   const [priority, setPriority] = useState('');
   const [status, setStatus] = useState('');
   const [date, setDate] = useState('');
-  const [readIds, setReadIds] = useState<Set<string>>(() => readSet(user.id));
+  const [readOverrides, setReadOverrides] = useState<Record<string, Partial<Announcement>>>({});
+  const [readingIds, setReadingIds] = useState<Set<string>>(() => new Set());
   const [selected, setSelected] = useState<CommunicationRow | null>(null);
   const canPublish = user.permissions.includes('communications:manage');
   const isAdmin = ['admin', 'director', 'inspector'].includes(user.primaryRole);
 
-  useEffect(() => saveReadSet(user.id, readIds), [readIds, user.id]);
-
   const rows: CommunicationRow[] = useMemo(() => announcements.data
     .filter((item) => audienceMatches(item, user, dashboard.data))
-    .map((item) => ({
-      ...item,
-      type: inferType(item),
-      recipients: item.audience,
-      status: readIds.has(item.id) ? 'leido' : 'no_leido',
-      attachments: []
-    })), [announcements.data, dashboard.data, readIds, user]);
+    .map((item) => {
+      const merged: Announcement = { ...item, ...readOverrides[item.id] };
+      return {
+        ...merged,
+        type: inferType(merged),
+        recipients: merged.audience,
+        status: merged.readByUser ? 'leido' : 'no_leido',
+        attachments: []
+      };
+    }), [announcements.data, dashboard.data, readOverrides, user]);
 
   const filtered = rows.filter((item) => {
     const text = normalize(query.trim());
@@ -100,14 +94,40 @@ export function CommunicationsPage({ user }: { user: User }) {
       && (!date || item.date === date);
   });
   const readRate = rows.length ? Math.round((rows.filter((item) => item.status === 'leido').length / rows.length) * 100) : 0;
+  const registeredReadRate = rows.length ? Math.round(rows.reduce((total, item) => total + (item.readPercentage ?? 0), 0) / rows.length) : 0;
 
-  function markRead(id: string) {
-    setReadIds((current) => new Set(current).add(id));
+  async function markRead(id: string) {
+    if (readingIds.has(id)) return;
+    const previous = readOverrides[id];
+    const optimisticReadAt = new Date().toISOString();
+    setReadingIds((current) => new Set(current).add(id));
+    setReadOverrides((current) => ({
+      ...current,
+      [id]: { ...current[id], readByUser: true, readAt: current[id]?.readAt ?? optimisticReadAt }
+    }));
+    try {
+      const updated = await markAnnouncementRead(id);
+      setReadOverrides((current) => ({ ...current, [id]: updated }));
+      setSelected((current) => current?.id === id ? { ...current, ...updated, status: 'leido' } : current);
+    } catch {
+      setReadOverrides((current) => {
+        const next = { ...current };
+        if (previous) next[id] = previous;
+        else delete next[id];
+        return next;
+      });
+    } finally {
+      setReadingIds((current) => {
+        const next = new Set(current);
+        next.delete(id);
+        return next;
+      });
+    }
   }
 
   function openDetail(row: CommunicationRow) {
     setSelected(row);
-    markRead(row.id);
+    if (row.status === 'no_leido') void markRead(row.id);
   }
 
   return (
@@ -123,16 +143,16 @@ export function CommunicationsPage({ user }: { user: User }) {
 
       <section className="communication-summary">
         <article><Megaphone size={19} /><strong>{rows.length}</strong><span>Visibles para tu rol</span></article>
-        <article><AlertTriangle size={19} /><strong>{rows.filter((item) => item.priority === 'critica').length}</strong><span>Críticos</span></article>
-        <article><Users size={19} /><strong>{readRate}%</strong><span>{isAdmin ? 'Lectura registrada' : 'Leídos'}</span></article>
-        <article><CalendarClock size={19} /><strong>{rows.filter((item) => item.status === 'no_leido').length}</strong><span>No leídos</span></article>
+        <article><AlertTriangle size={19} /><strong>{rows.filter((item) => item.priority === 'critica').length}</strong><span>Criticos</span></article>
+        <article><Users size={19} /><strong>{isAdmin ? registeredReadRate : readRate}%</strong><span>{isAdmin ? 'Lectura registrada' : 'Leidos'}</span></article>
+        <article><CalendarClock size={19} /><strong>{rows.filter((item) => item.status === 'no_leido').length}</strong><span>No leidos</span></article>
       </section>
 
       <section className="panel communication-filters">
-        <label className="admin-search"><Search size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar por título, destinatario, autor o contenido" /></label>
+        <label className="admin-search"><Search size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar por titulo, destinatario, autor o contenido" /></label>
         <select value={type} onChange={(event) => setType(event.target.value)}><option value="">Todos los tipos</option>{types.map((item) => <option key={item} value={item}>{item}</option>)}</select>
         <select value={priority} onChange={(event) => setPriority(event.target.value)}><option value="">Todas las prioridades</option>{priorities.map((item) => <option key={item} value={item}>{item}</option>)}</select>
-        <select value={status} onChange={(event) => setStatus(event.target.value)}><option value="">Todos los estados</option>{states.map((item) => <option key={item} value={item}>{item === 'leido' ? 'Leído' : 'No leído'}</option>)}</select>
+        <select value={status} onChange={(event) => setStatus(event.target.value)}><option value="">Todos los estados</option>{states.map((item) => <option key={item} value={item}>{item === 'leido' ? 'Leido' : 'No leido'}</option>)}</select>
         <input type="date" value={date} onChange={(event) => setDate(event.target.value)} aria-label="Fecha" />
       </section>
 
@@ -150,24 +170,26 @@ export function CommunicationsPage({ user }: { user: User }) {
             <div className="communication-meta">
               <span><Users size={15} />{row.recipients}</span>
               <span><CalendarClock size={15} />{formatDate(row.date)}</span>
-              <span><CheckCircle2 size={15} />{row.status === 'leido' ? 'Leído' : 'No leído'}</span>
-              {isAdmin && <span><Eye size={15} />{readRate}% lectura</span>}
+              <span><CheckCircle2 size={15} />{row.status === 'leido' ? formatDateTime(row.readAt) : 'No leido'}</span>
+              {isAdmin && <span><Eye size={15} />{row.readPercentage ?? 0}% lectura</span>}
             </div>
             <footer>
               <button className="secondary-button" type="button" onClick={() => openDetail(row)}><Eye size={16} />Ver detalle</button>
-              {row.status === 'no_leido' && <button className="primary-button" type="button" onClick={() => markRead(row.id)}><CheckCircle2 size={16} />Marcar leído</button>}
+              {row.status === 'leido'
+                ? <span className="badge badge-normal"><CheckCircle2 size={15} />Leido</span>
+                : <button className="primary-button" type="button" onClick={() => void markRead(row.id)} disabled={readingIds.has(row.id)}><CheckCircle2 size={16} />Marcar leido</button>}
             </footer>
           </article>
         ))}
         {!filtered.length && <section className="panel"><EmptyState title="Sin comunicados" description="No hay comunicados que coincidan con tu rol o con los filtros seleccionados." /></section>}
       </section>
 
-      {selected && <CommunicationDetailModal row={selected} isAdmin={isAdmin} readRate={readRate} onClose={() => setSelected(null)} />}
+      {selected && <CommunicationDetailModal row={selected} isAdmin={isAdmin} onClose={() => setSelected(null)} />}
     </div>
   );
 }
 
-function CommunicationDetailModal({ row, isAdmin, readRate, onClose }: { row: CommunicationRow; isAdmin: boolean; readRate: number; onClose: () => void }) {
+function CommunicationDetailModal({ row, isAdmin, onClose }: { row: CommunicationRow; isAdmin: boolean; onClose: () => void }) {
   return (
     <div className="modal-backdrop" role="presentation" onClick={onClose}>
       <section className="communication-detail-modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
@@ -179,7 +201,8 @@ function CommunicationDetailModal({ row, isAdmin, readRate, onClose }: { row: Co
           <span><Users size={16} /><strong>Destinatarios</strong>{row.recipients}</span>
           <span><CalendarClock size={16} /><strong>Fecha</strong>{formatDate(row.date)}</span>
           <span><AlertTriangle size={16} /><strong>Prioridad</strong>{row.priority}</span>
-          {isAdmin && <span><Eye size={16} /><strong>Lectura</strong>{readRate}% registrada</span>}
+          {isAdmin && <span><Eye size={16} /><strong>Lectura</strong>{row.readPercentage ?? 0}% registrada</span>}
+          <span><CheckCircle2 size={16} /><strong>Estado</strong>{row.status === 'leido' ? formatDateTime(row.readAt) : 'No leido'}</span>
         </div>
         <p>{row.body}</p>
         <section className="communication-attachments">
