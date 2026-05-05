@@ -3,9 +3,11 @@ import { HttpError } from '../../shared/http-error.js';
 import { NotificationService } from '../notifications/notification.service.js';
 import { RequestRepository } from './request.repository.js';
 import { requestStatusSchema } from './request.validators.js';
+import { AuditService, type AuditContext } from '../audit/audit.service.js';
 
 const repository = new RequestRepository();
 const notifications = new NotificationService();
+const auditService = new AuditService();
 
 type RequestListItem = Awaited<ReturnType<RequestRepository['create']>>;
 type RequestDetail = NonNullable<Awaited<ReturnType<RequestRepository['getById']>>>;
@@ -61,6 +63,16 @@ function serializeDetail(request: RequestDetail) {
 }
 
 export class RequestService {
+  private recordAudit(ctx: AuditContext | undefined, input: { action: string; entity: string; entityId: string; description: string; metadata?: Record<string, string> }) {
+    return auditService.log({
+      userId: ctx?.userId,
+      ipAddress: ctx?.ipAddress,
+      userAgent: ctx?.userAgent,
+      ...input,
+      metadata: input.metadata ?? {}
+    }).catch(() => undefined);
+  }
+
   async listForUser(user: JwtUser) {
     const canSeeAll = canManage(user) || user.permissions.includes('requests:manage');
     const requests = canSeeAll ? await repository.listAll() : await repository.listByRequester(user.id);
@@ -78,7 +90,7 @@ export class RequestService {
     return serialize(await repository.create(input));
   }
 
-  async updateStatus(user: JwtUser, id: string, status: string) {
+  async updateStatus(user: JwtUser, id: string, status: string, ctx?: AuditContext) {
     const parsed = requestStatusSchema.safeParse(status);
     if (!parsed.success) throw new HttpError(400, 'Estado de solicitud invalido.');
     if (!canManage(user)) throw new HttpError(403, 'No tienes permisos para cambiar estados.');
@@ -89,6 +101,13 @@ export class RequestService {
       title: 'Solicitud actualizada',
       message: `Tu solicitud "${request.subject}" cambio a ${parsed.data.replace(/_/g, ' ')}.`,
       type: 'request'
+    });
+    await this.recordAudit(ctx, {
+      action: 'REQUEST_STATUS_CHANGED',
+      entity: 'Request',
+      entityId: id,
+      description: `Solicitud "${request.subject}" cambio de ${current.status} a ${parsed.data}.`,
+      metadata: { fromStatus: current.status, toStatus: parsed.data }
     });
     return serialize(request);
   }

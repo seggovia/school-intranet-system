@@ -2,9 +2,11 @@ import { GradeRepository } from './grade.repository.js';
 import { HttpError } from '../../shared/http-error.js';
 import type { JwtUser } from '../auth/auth.types.js';
 import { NotificationService } from '../notifications/notification.service.js';
+import { AuditService, type AuditContext } from '../audit/audit.service.js';
 
 const repository = new GradeRepository();
 const notifications = new NotificationService();
+const auditService = new AuditService();
 const gradeStatuses = ['con_nota', 'pendiente', 'ausente', 'eximido'] as const;
 
 function serialize(grade: Awaited<ReturnType<GradeRepository['create']>>) {
@@ -91,6 +93,16 @@ function serializeHistory(grades: Array<Awaited<ReturnType<GradeRepository['list
 }
 
 export class GradeService {
+  private recordAudit(ctx: AuditContext | undefined, input: { action: string; entity: string; entityId: string; description: string; metadata?: Record<string, string | number> }) {
+    return auditService.log({
+      userId: ctx?.userId,
+      ipAddress: ctx?.ipAddress,
+      userAgent: ctx?.userAgent,
+      ...input,
+      metadata: input.metadata ?? {}
+    }).catch(() => undefined);
+  }
+
   async list() {
     const grades = await repository.list();
     return grades.map(serialize);
@@ -212,7 +224,7 @@ export class GradeService {
     };
   }
 
-  async bulk(user: JwtUser, input: { evaluationId: string; records: Array<{ studentId: string; status: string; score?: number | null; comment?: string | null }> }) {
+  async bulk(user: JwtUser, input: { evaluationId: string; records: Array<{ studentId: string; status: string; score?: number | null; comment?: string | null }> }, ctx?: AuditContext) {
     const evaluation = await repository.findEvaluation(input.evaluationId);
     if (!evaluation) throw new HttpError(404, 'Evaluacion no encontrada.');
     await this.assertCanManageEvaluation(user, evaluation.sectionId, evaluation.subjectId);
@@ -237,6 +249,13 @@ export class GradeService {
         message: `${grade.assessment.subject.name}: ${grade.score ?? 0} en ${grade.assessment.title}.`,
         type: 'grade'
       })));
+    await this.recordAudit(ctx, {
+      action: 'GRADE_BULK_UPDATED',
+      entity: 'Grade',
+      entityId: input.evaluationId,
+      description: `Calificaciones masivas actualizadas para ${evaluation.title}.`,
+      metadata: { evaluationId: input.evaluationId, recordCount: records.length }
+    });
     return { ok: true, records: records.length };
   }
 
