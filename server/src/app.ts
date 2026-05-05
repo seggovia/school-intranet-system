@@ -9,6 +9,7 @@ import { errorHandler, notFoundHandler } from './middlewares/error.middleware.js
 import { announcementRoutes } from './modules/announcements/announcement.routes.js';
 import { assessmentRoutes } from './modules/assessments/assessment.routes.js';
 import { attendanceRoutes } from './modules/attendance/attendance.routes.js';
+import { auditRoutes } from './modules/audit/audit.routes.js';
 import { authRoutes } from './modules/auth/auth.routes.js';
 import { adminRoutes } from './modules/admin/admin.routes.js';
 import { calendarRoutes } from './modules/calendar/calendar.routes.js';
@@ -49,6 +50,7 @@ app.get('/api/health', async (_req, res) => {
 
 app.use('/api/auth/login', loginLimiter);
 app.use('/api/auth', authRoutes);
+app.use('/api', auditRoutes);
 app.use('/api/me', meRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/materials', materialRoutes);

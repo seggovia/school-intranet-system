@@ -46,6 +46,7 @@ import {
 } from '../api';
 import { normalizeApiError, shouldShowApiErrorModal, type NormalizedApiError } from '../api-error';
 import { ApiErrorModal } from '../components/ApiErrorModal';
+import { DataTable, type Column } from '../components/DataTable';
 import { PageHeader } from '../components/PageHeader';
 import type { AdminBundle, AdminClassroomRow, AdminCourseRow, AdminGuardianRow, AdminOption, AdminScheduleRow, AdminSectionRow, AdminStudentRow, AdminSubjectRow, AdminTeacherRow, AdminUserRow, AuditLogRow, Role, User } from '../types';
 
@@ -1055,6 +1056,11 @@ function AcademicSchedulesPage({ bundle, canManage, onSaved, setConfirm, onApiEr
 }
 
 const auditActionLabels: Record<string, string> = {
+  LOGIN_SUCCESS: 'Login exitoso',
+  LOGIN_FAILED: 'Login fallido',
+  LOGOUT: 'Logout',
+  GRADE_BULK_UPDATED: 'Notas masivas',
+  REQUEST_STATUS_CHANGED: 'Cambio solicitud',
   create: 'Creación',
   update: 'Edición',
   activate: 'Activación',
@@ -1066,6 +1072,9 @@ const auditActionLabels: Record<string, string> = {
 };
 
 const auditEntityLabels: Record<string, string> = {
+  User: 'Usuario',
+  Grade: 'Calificación',
+  Request: 'Solicitud',
   user: 'Usuario',
   student: 'Estudiante',
   teacher: 'Profesor',
@@ -1080,6 +1089,30 @@ const auditEntityLabels: Record<string, string> = {
   guardian_students: 'Apoderado-estudiantes',
   subject_teacher: 'Responsable asignatura'
 };
+
+function auditActionTone(action: string) {
+  if (action.startsWith('LOGIN')) return { background: '#dbeafe', color: '#1d4ed8' };
+  if (action.startsWith('GRADE')) return { background: '#ccfbf1', color: '#0f766e' };
+  if (action.startsWith('REQUEST')) return { background: '#fef3c7', color: '#92400e' };
+  if (action.includes('DELETE') || action === 'delete') return { background: '#fee2e2', color: '#991b1b' };
+  return { background: '#e7eef5', color: '#334155' };
+}
+
+function AuditActionBadge({ action }: { action: string }) {
+  return <span className="badge" style={auditActionTone(action)}>{auditActionLabels[action] ?? action}</span>;
+}
+
+function AuditUserCell({ row }: { row: AuditLogRow }) {
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+      {row.user?.avatar ? <img src={row.user.avatar} alt="" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', flex: '0 0 auto' }} /> : <span style={{ width: 32, height: 32, borderRadius: '50%', display: 'inline-grid', placeItems: 'center', background: '#e7eef5', color: '#334155', fontWeight: 900, flex: '0 0 auto' }}>{(row.user?.name ?? 'S').slice(0, 1)}</span>}
+      <span style={{ display: 'grid', minWidth: 0 }}>
+        <strong>{row.user?.name ?? 'Sistema'}</strong>
+        <small>{row.user?.email ?? row.userId ?? 'Sin usuario'}</small>
+      </span>
+    </span>
+  );
+}
 
 function AuditPage({ users, onApiError }: { users: AdminUserRow[]; onApiError: (error: unknown) => void }) {
   const [rows, setRows] = useState<AuditLogRow[]>([]);
@@ -1096,6 +1129,15 @@ function AuditPage({ users, onApiError }: { users: AdminUserRow[]; onApiError: (
   const [loading, setLoading] = useState(false);
   const [detail, setDetail] = useState<AuditLogRow | null>(null);
   const hasFilters = Boolean(query || userId || action || entity || from || to);
+  const columns: Column<AuditLogRow>[] = [
+    { header: 'Timestamp', render: (row) => new Date(row.createdAt).toLocaleString('es-CL') },
+    { header: 'Usuario', render: (row) => <AuditUserCell row={row} /> },
+    { header: 'Acción', render: (row) => <AuditActionBadge action={row.action} /> },
+    { header: 'Entidad', render: (row) => <span>{auditEntityLabels[row.entity] ?? row.entity}<small>{row.entityId}</small></span> },
+    { header: 'Descripción', render: (row) => row.description },
+    { header: 'IP', render: (row) => row.ipAddress ?? 'Sin registro' },
+    { header: 'Detalle', render: (row) => <button className="secondary-button" onClick={() => setDetail(row)}><Eye size={15} />Ver</button> }
+  ];
 
   useEffect(() => {
     setLoading(true);
@@ -1126,19 +1168,15 @@ function AuditPage({ users, onApiError }: { users: AdminUserRow[]; onApiError: (
         <span className="audit-count">{total} eventos</span>
       </header>
       <div className="assignment-filters labelled-filters audit-filters">
-        <label className="admin-search"><span>Búsqueda</span><div><Search size={17} /><input value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder="Buscar descripción, entidad o usuario" /></div></label>
-        <label>Usuario<select value={userId} onChange={(event) => { setUserId(event.target.value); setPage(1); }}><option value="">Todos</option>{users.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+        <label className="admin-search"><span>Búsqueda</span><div><Search size={17} /><input value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder="Buscar por email, acción, entidad o descripción" /></div></label>
+        <label>Usuario<select value={userId} onChange={(event) => { setUserId(event.target.value); setPage(1); }}><option value="">Todos</option>{users.map((item) => <option key={item.id} value={item.id}>{item.name} · {item.email}</option>)}</select></label>
         <label>Acción<select value={action} onChange={(event) => { setAction(event.target.value); setPage(1); }}><option value="">Todas</option>{Object.entries(auditActionLabels).map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></label>
         <label>Entidad<select value={entity} onChange={(event) => { setEntity(event.target.value); setPage(1); }}><option value="">Todas</option>{Object.entries(auditEntityLabels).map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></label>
         <label>Desde<input type="date" value={from} onChange={(event) => { setFrom(event.target.value); setPage(1); }} /></label>
         <label>Hasta<input type="date" value={to} onChange={(event) => { setTo(event.target.value); setPage(1); }} /></label>
         <button type="button" className="secondary-button" onClick={resetFilters} disabled={!hasFilters}>Limpiar filtros</button>
       </div>
-      <div className="audit-table">
-        <div className="audit-row head"><span>Fecha</span><span>Usuario</span><span>Acción</span><span>Entidad</span><span>Descripción</span><span>Detalle</span></div>
-        {rows.map((row) => <div key={row.id} className="audit-row"><span>{new Date(row.createdAt).toLocaleString('es-CL')}</span><span>{row.user?.name ?? 'Sistema'}<small>{row.user?.email ?? row.userId ?? 'Sin usuario'}</small></span><span><strong>{auditActionLabels[row.action] ?? row.action}</strong></span><span>{auditEntityLabels[row.entity] ?? row.entity}<small>{row.entityId}</small></span><span>{row.description}</span><span><button className="secondary-button" onClick={() => setDetail(row)}><Eye size={15} />Ver</button></span></div>)}
-      </div>
-      {!rows.length && <div className="admin-empty"><Search size={22} /><strong>{loading ? 'Cargando eventos' : 'Sin eventos'}</strong><span>No hay auditorías que coincidan con los filtros actuales.</span></div>}
+      <DataTable rows={rows} columns={columns} pageSize={Math.max(rows.length, 1)} emptyLabel={loading ? 'Cargando eventos' : 'Sin eventos'} />
       <Pager page={page} total={totalPages} onPage={setPage} />
       {detail && <AuditDetailModal row={detail} onClose={() => setDetail(null)} />}
     </div>

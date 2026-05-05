@@ -7,9 +7,11 @@ import { HttpError } from '../../shared/http-error.js';
 import { AuthRepository } from './auth.repository.js';
 import { EmailService } from './email.service.js';
 import type { JwtUser, PublicUser } from './auth.types.js';
+import { AuditService, type AuditContext } from '../audit/audit.service.js';
 
 const repository = new AuthRepository();
 const emailService = new EmailService();
+const auditService = new AuditService();
 const resetTokenMinutes = 30;
 
 function hashToken(token: string) {
@@ -43,20 +45,36 @@ function signRefreshToken(userId: string) {
 }
 
 export class AuthService {
-  async login(email: string, password: string) {
+  private recordAudit(ctx: AuditContext | undefined, input: { userId?: string; action: string; entity: string; entityId: string; description: string; metadata?: Record<string, string | boolean | undefined> }) {
+    return auditService.log({
+      userId: input.userId,
+      ipAddress: ctx?.ipAddress,
+      userAgent: ctx?.userAgent,
+      action: input.action,
+      entity: input.entity,
+      entityId: input.entityId,
+      description: input.description,
+      metadata: input.metadata ?? {}
+    }).catch(() => undefined);
+  }
+
+  async login(email: string, password: string, ctx?: AuditContext) {
     const user = await repository.findUserByEmail(email);
     if (!user) {
-      throw new HttpError(401, 'Correo o contraseña incorrectos');
+      await this.recordAudit(ctx, { action: 'LOGIN_FAILED', entity: 'User', entityId: email, description: `Login fallido para ${email}.`, metadata: { email, reason: 'not_found' } });
+      throw new HttpError(401, 'Correo o contrasena incorrectos');
     }
 
     if (!user.isActive) {
-      throw new HttpError(403, 'Usuario desactivado. Contacte administración.');
+      await this.recordAudit(ctx, { userId: user.id, action: 'LOGIN_FAILED', entity: 'User', entityId: user.id, description: `Login fallido para usuario desactivado ${email}.`, metadata: { email, reason: 'inactive' } });
+      throw new HttpError(403, 'Usuario desactivado. Contacte administracion.');
     }
 
     const passwordOk = await bcrypt.compare(password, user.passwordHash);
     if (!passwordOk) {
       console.warn(`Login fallido para ${email}`);
-      throw new HttpError(401, 'Correo o contraseña incorrectos');
+      await this.recordAudit(ctx, { userId: user.id, action: 'LOGIN_FAILED', entity: 'User', entityId: user.id, description: `Login fallido para ${email}.`, metadata: { email, reason: 'bad_password' } });
+      throw new HttpError(401, 'Correo o contrasena incorrectos');
     }
 
     const publicUser = toPublicUser(user);
@@ -71,6 +89,7 @@ export class AuthService {
 
     await repository.createRefreshToken({ tokenHash: hashToken(refreshToken), userId: user.id, expiresAt });
     console.info(`Login exitoso para ${email}`);
+    await this.recordAudit(ctx, { userId: user.id, action: 'LOGIN_SUCCESS', entity: 'User', entityId: user.id, description: `Login exitoso para ${email}.`, metadata: { email } });
 
     return { user: publicUser, accessToken, refreshToken };
   }
@@ -110,14 +129,17 @@ export class AuthService {
     return { user: publicUser, accessToken, refreshToken: nextRefreshToken };
   }
 
-  async logout(refreshToken: string) {
-    await repository.revokeRefreshToken(hashToken(refreshToken));
+  async logout(refreshToken: string, ctx?: AuditContext) {
+    const tokenHash = hashToken(refreshToken);
+    const stored = await repository.findRefreshToken(tokenHash);
+    await repository.revokeRefreshToken(tokenHash);
+    await this.recordAudit(ctx, { userId: stored?.userId, action: 'LOGOUT', entity: 'User', entityId: stored?.userId ?? 'refreshToken', description: 'Sesion cerrada.', metadata: { tokenFound: Boolean(stored) } });
     return { ok: true };
   }
 
   async forgotPassword(email: string) {
     const safeResponse: { message: string; resetUrl?: string } = {
-      message: 'Si el correo existe, enviaremos instrucciones para restablecer la contraseña.'
+      message: 'Si el correo existe, enviaremos instrucciones para restablecer la contrasena.'
     };
     const user = await repository.findUserByEmail(email);
     if (!user || !user.isActive) return safeResponse;
@@ -146,6 +168,6 @@ export class AuthService {
     await repository.markPasswordResetTokenUsed(stored.id);
     await repository.revokeRefreshTokensForUser(stored.userId);
 
-    return { ok: true, message: 'Contraseña actualizada correctamente.' };
+    return { ok: true, message: 'Contrasena actualizada correctamente.' };
   }
 }
