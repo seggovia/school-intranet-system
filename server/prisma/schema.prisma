@@ -25,6 +25,7 @@ model User {
   guardian       Guardian?
   staff          Staff?
   announcements  Announcement[] @relation("AnnouncementAuthor")
+  announcementReads AnnouncementRead[]
   notifications  Notification[]
   requests       SchoolRequest[] @relation("RequestRequester")
   documents      Document[]      @relation("DocumentOwner")
@@ -483,8 +484,22 @@ model Announcement {
   authorId  String
   createdAt DateTime @default(now())
   author    User     @relation("AnnouncementAuthor", fields: [authorId], references: [id])
+  reads     AnnouncementRead[]
 
   @@map("announcements")
+}
+
+model AnnouncementRead {
+  id             String       @id @default(cuid())
+  announcementId String
+  userId         String
+  readAt         DateTime     @default(now())
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([announcementId, userId])
+  @@index([userId])
+  @@map("announcement_reads")
 }
 
 model Notification {

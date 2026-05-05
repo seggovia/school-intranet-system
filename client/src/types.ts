@@ -491,6 +491,10 @@ export interface Announcement {
   date: string;
   priority: 'normal' | 'alta' | 'critica';
   body: string;
+  readByUser?: boolean;
+  readAt?: string | null;
+  readCount?: number;
+  readPercentage?: number;
 }
 
 export interface CalendarEvent {
