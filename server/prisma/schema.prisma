@@ -28,6 +28,8 @@ model User {
   announcementReads AnnouncementRead[]
   notifications  Notification[]
   requests       SchoolRequest[] @relation("RequestRequester")
+  requestComments RequestComment[]
+  requestStatusLogs RequestStatusLog[]
   documents      Document[]      @relation("DocumentOwner")
   unitMaterials  UnitMaterial[]  @relation("UnitMaterialOwner")
   submissions    AssignmentSubmission[] @relation("SubmissionAuthor")
@@ -527,14 +529,48 @@ model RequestType {
 model SchoolRequest {
   id          String      @id @default(cuid())
   subject     String
+  description String?     @db.Text
+  priority    String      @default("normal")
   requesterId String
   typeId      String
   status      String      @default("nuevo")
+  closedAt    DateTime?
   createdAt   DateTime    @default(now())
   requester   User        @relation("RequestRequester", fields: [requesterId], references: [id])
   type        RequestType @relation(fields: [typeId], references: [id])
+  comments    RequestComment[]
+  statusLogs  RequestStatusLog[]
 
   @@map("school_requests")
+}
+
+model RequestComment {
+  id        String        @id @default(cuid())
+  requestId String
+  authorId  String
+  body      String        @db.Text
+  createdAt DateTime      @default(now())
+  request   SchoolRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  author    User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([requestId])
+  @@index([authorId])
+  @@map("request_comments")
+}
+
+model RequestStatusLog {
+  id          String        @id @default(cuid())
+  requestId   String
+  changedById String
+  fromStatus  String
+  toStatus    String
+  createdAt   DateTime      @default(now())
+  request     SchoolRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  changedBy   User          @relation(fields: [changedById], references: [id], onDelete: Cascade)
+
+  @@index([requestId])
+  @@index([changedById])
+  @@map("request_status_logs")
 }
 
 model DocumentCategory {
