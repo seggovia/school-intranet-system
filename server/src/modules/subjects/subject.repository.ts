@@ -77,7 +77,7 @@ export class SubjectRepository {
           },
           orderBy: { order: 'asc' }
         },
-        assessments: { include: { grades: true }, orderBy: { date: 'asc' } }
+        assessments: { include: { grades: true, period: true }, orderBy: { date: 'asc' } }
       }
     });
   }

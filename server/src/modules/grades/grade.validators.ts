@@ -22,7 +22,8 @@ export const gradebookContextQuerySchema = z.object({});
 
 export const gradebookEvaluationsQuerySchema = z.object({
   sectionId: z.string().trim().min(1).optional(),
-  subjectId: z.string().trim().min(1).optional()
+  subjectId: z.string().trim().min(1).optional(),
+  periodId: z.string().trim().min(1).optional()
 });
 
 export const createEvaluationSchema = z.object({
@@ -32,7 +33,8 @@ export const createEvaluationSchema = z.object({
   date: z.coerce.date(),
   weight: z.coerce.number().min(0).max(100).default(0),
   type: evaluationTypeSchema,
-  description: z.string().trim().max(1000).optional().or(z.literal('').transform(() => undefined))
+  description: z.string().trim().max(1000).optional().or(z.literal('').transform(() => undefined)),
+  periodId: z.string().trim().min(1).optional().or(z.literal('').transform(() => undefined))
 });
 
 export const updateEvaluationSchema = createEvaluationSchema.partial();
@@ -42,7 +44,8 @@ export const evaluationIdParamSchema = z.object({
 });
 
 export const gradebookRecordsQuerySchema = z.object({
-  evaluationId: z.string().trim().min(1)
+  evaluationId: z.string().trim().min(1),
+  periodId: z.string().trim().min(1).optional()
 });
 
 export const bulkGradeRecordsSchema = z.object({

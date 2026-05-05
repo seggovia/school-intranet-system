@@ -253,7 +253,7 @@ export class SubjectService {
           classroom: schedule.classroom.name
         }))
       })),
-      assessments: canViewStaffData(user) ? subject.assessments.map((assessment) => ({ id: assessment.id, title: assessment.title, date: assessment.date.toISOString().slice(0, 10), grades: assessment.grades.length })) : [],
+      assessments: canViewStaffData(user) ? subject.assessments.map((assessment) => ({ id: assessment.id, title: assessment.title, date: assessment.date.toISOString().slice(0, 10), grades: assessment.grades.length, periodId: assessment.periodId, period: assessment.period ? { id: assessment.period.id, name: assessment.period.name } : null })) : [],
       materials: materials.map((document) => ({
         id: document.id,
         title: document.title,

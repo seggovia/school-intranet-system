@@ -36,7 +36,7 @@ export class GradeController {
 
   async evaluations(req: Request, res: Response) {
     if (!req.user) throw new HttpError(401, 'Usuario autenticado requerido.');
-    res.json(await service.evaluations(req.user, req.query as { sectionId?: string; subjectId?: string }));
+    res.json(await service.evaluations(req.user, req.query as { sectionId?: string; subjectId?: string; periodId?: string }));
   }
 
   async createEvaluation(req: Request, res: Response) {
@@ -56,7 +56,7 @@ export class GradeController {
 
   async records(req: Request, res: Response) {
     if (!req.user) throw new HttpError(401, 'Usuario autenticado requerido.');
-    res.json(await service.records(req.user, String(req.query.evaluationId)));
+    res.json(await service.records(req.user, String(req.query.evaluationId), req.query.periodId ? String(req.query.periodId) : undefined));
   }
 
   async bulk(req: Request, res: Response) {

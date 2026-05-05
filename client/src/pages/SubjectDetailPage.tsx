@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { BookOpen, CalendarDays, ChevronLeft, ChevronRight, ClipboardCheck, Clock, Download, Edit3, ExternalLink, FileArchive, FileSpreadsheet, FileText, Inbox, Link as LinkIcon, MapPin, Megaphone, MessageSquare, PencilRuler, Plus, Presentation, Trash2, Upload, UserRound, Users } from 'lucide-react';
-import { addAssignmentComment, addSubmissionComment, createSubjectUnit, createUnitAssignment, deleteAssignmentSubmission, deleteSubmissionComment, deleteSubmissionFiles, deleteSubjectUnit, deleteUnitAssignment, deleteUnitMaterial, downloadAssignmentSubmission, downloadSubmissionFile as downloadSubmissionFileApi, downloadUnitMaterial, loadAssignmentSubmissions, loadSubjectDetail, reviewAssignmentSubmission, updateSubjectUnit, updateUnitAssignment, updateUnitAssignmentStatus, uploadAssignmentSubmissionFiles, uploadUnitMaterial } from '../api';
+import { addAssignmentComment, addSubmissionComment, api, createSubjectUnit, createUnitAssignment, deleteAssignmentSubmission, deleteSubmissionComment, deleteSubmissionFiles, deleteSubjectUnit, deleteUnitAssignment, deleteUnitMaterial, downloadAssignmentSubmission, downloadSubmissionFile as downloadSubmissionFileApi, downloadUnitMaterial, loadAssignmentSubmissions, loadSubjectDetail, reviewAssignmentSubmission, updateSubjectUnit, updateUnitAssignment, updateUnitAssignmentStatus, uploadAssignmentSubmissionFiles, uploadUnitMaterial } from '../api';
 import { EmptyState, ErrorState, LoadingState } from '../components/States';
 import { useAsyncData } from '../hooks';
 import type { AssignmentSubmissionReviewRow, DocumentItem, SubjectDetailData, SubjectUnit, UnitAssignment, UnitContentItem, User } from '../types';
@@ -22,6 +22,8 @@ type ModalState =
 type ConfirmState =
   | { title: string; message: string; confirmLabel: string; tone?: 'danger' | 'primary'; onConfirm: () => Promise<void> }
   | null;
+type AcademicPeriodOption = { id: string; name: string; year: number; startDate: string; endDate: string; isActive: boolean };
+type SubjectAssessmentWithPeriod = SubjectDetailData['assessments'][number] & { periodId?: string | null; period?: { id: string; name: string } | null };
 
 const emptySubjectDetail: SubjectDetailData = {
   subject: { id: '', name: '', code: '' },
@@ -956,6 +958,8 @@ export function SubjectDetailPage({ user }: { user: User }) {
   const [saving, setSaving] = useState(false);
   const [indexCollapsed, setIndexCollapsed] = useState(true);
   const [activeIndexTarget, setActiveIndexTarget] = useState('course-start');
+  const [periods, setPeriods] = useState<AcademicPeriodOption[]>([]);
+  const [assessmentPeriod, setAssessmentPeriod] = useState('');
   const canManageCourse = ['admin', 'director', 'teacher'].includes(user.primaryRole);
   const canEditCourse = canManageCourse && editMode;
   const canReviewCourse = canManageCourse;
@@ -969,6 +973,16 @@ export function SubjectDetailPage({ user }: { user: User }) {
       return true;
     });
   }, [subject.sections]);
+  const filteredAssessments = useMemo(() => {
+    const assessments = subject.assessments as SubjectAssessmentWithPeriod[];
+    return assessments.filter((assessment) => !assessmentPeriod || assessment.periodId === assessmentPeriod);
+  }, [assessmentPeriod, subject.assessments]);
+
+  useEffect(() => {
+    api.get<AcademicPeriodOption[]>('/periods').then((response) => {
+      setPeriods(response.data.filter((item) => item.isActive));
+    }).catch(() => undefined);
+  }, []);
 
   function showNotice(message: string) {
     setNotice(message);
@@ -1556,17 +1570,24 @@ export function SubjectDetailPage({ user }: { user: User }) {
           {activeTab === 'calificaciones' && (
             <article className="classroom-unit-card">
               <header><div><span className="eyebrow">Seguimiento</span><h2>Calificaciones</h2></div></header>
+              <label className="classroom-filter-label">Periodo
+                <select value={assessmentPeriod} onChange={(event) => setAssessmentPeriod(event.target.value)}>
+                  <option value="">Todos</option>
+                  {periods.map((periodItem) => <option key={periodItem.id} value={periodItem.id}>{periodItem.name}</option>)}
+                </select>
+              </label>
               {subject.assessments.length ? (
                 <div className="grade-list">
-                  {subject.assessments.map((assessment) => (
+                  {filteredAssessments.map((assessment) => (
                     <span key={assessment.id}>
                       <ClipboardCheck size={18} />
                       <strong>{assessment.title}</strong>
-                      <small>{assessment.date} · {assessment.grades} notas registradas</small>
+                      <small>{assessment.date} · {assessment.period?.name ?? 'Sin periodo'} · {assessment.grades} notas registradas</small>
                     </span>
                   ))}
                 </div>
               ) : <EmptyState title="Sin calificaciones visibles" description="Las evaluaciones apareceran cuando el docente las publique." />}
+              {subject.assessments.length > 0 && !filteredAssessments.length && <EmptyState title="Sin evaluaciones en este periodo" />}
             </article>
           )}
 
