@@ -1,39 +1,108 @@
 import type { JwtUser } from '../auth/auth.types.js';
+import { HttpError } from '../../shared/http-error.js';
 import { NotificationService } from '../notifications/notification.service.js';
 import { RequestRepository } from './request.repository.js';
+import { requestStatusSchema } from './request.validators.js';
 
 const repository = new RequestRepository();
 const notifications = new NotificationService();
 
-function serialize(request: Awaited<ReturnType<RequestRepository['create']>>) {
+type RequestListItem = Awaited<ReturnType<RequestRepository['create']>>;
+type RequestDetail = NonNullable<Awaited<ReturnType<RequestRepository['getById']>>>;
+
+function canManage(user: JwtUser) {
+  return user.roles.some((role) => ['admin', 'director', 'inspector'].includes(role));
+}
+
+function canAccess(user: JwtUser, request: { requesterId: string }) {
+  return canManage(user) || request.requesterId === user.id;
+}
+
+function serialize(request: RequestListItem) {
   return {
     id: request.id,
     subject: request.subject,
+    description: request.description,
+    priority: request.priority,
     requester: request.requester.name,
     area: request.type.area,
     status: request.status,
+    closedAt: request.closedAt?.toISOString() ?? null,
+    commentsCount: request._count?.comments ?? 0,
     createdAt: request.createdAt.toISOString().slice(0, 10)
+  };
+}
+
+function serializeDetail(request: RequestDetail) {
+  return {
+    id: request.id,
+    subject: request.subject,
+    description: request.description,
+    priority: request.priority,
+    requester: request.requester.name,
+    area: request.type.area,
+    status: request.status,
+    closedAt: request.closedAt?.toISOString() ?? null,
+    createdAt: request.createdAt.toISOString().slice(0, 10),
+    comments: request.comments.map((comment) => ({
+      id: comment.id,
+      author: comment.author.name,
+      body: comment.body,
+      createdAt: comment.createdAt.toISOString()
+    })),
+    statusLogs: request.statusLogs.map((log) => ({
+      id: log.id,
+      fromStatus: log.fromStatus,
+      toStatus: log.toStatus,
+      changedBy: log.changedBy.name,
+      createdAt: log.createdAt.toISOString()
+    }))
   };
 }
 
 export class RequestService {
   async listForUser(user: JwtUser) {
-    const canSeeAll = user.roles.some((role) => ['admin', 'director', 'inspector'].includes(role)) || user.permissions.includes('requests:manage');
+    const canSeeAll = canManage(user) || user.permissions.includes('requests:manage');
     const requests = canSeeAll ? await repository.listAll() : await repository.listByRequester(user.id);
     return requests.map(serialize);
   }
 
-  async create(input: { subject: string; area: string; requesterId: string }) {
+  async getDetail(user: JwtUser, id: string) {
+    const request = await repository.getById(id);
+    if (!request) throw new HttpError(404, 'Solicitud no encontrada.');
+    if (!canAccess(user, request)) throw new HttpError(403, 'No tienes permisos para ver esta solicitud.');
+    return serializeDetail(request);
+  }
+
+  async create(input: { subject: string; area: string; requesterId: string; description?: string; priority: string }) {
     return serialize(await repository.create(input));
   }
 
-  async updateStatus(id: string, status: string) {
-    const request = await repository.updateStatus(id, status);
+  async updateStatus(user: JwtUser, id: string, status: string) {
+    const parsed = requestStatusSchema.safeParse(status);
+    if (!parsed.success) throw new HttpError(400, 'Estado de solicitud invalido.');
+    if (!canManage(user)) throw new HttpError(403, 'No tienes permisos para cambiar estados.');
+    const current = await repository.getById(id);
+    if (!current) throw new HttpError(404, 'Solicitud no encontrada.');
+    const request = await repository.updateStatus(id, current.status, parsed.data, user.id);
     await notifications.notifyMany([request.requesterId], {
       title: 'Solicitud actualizada',
-      message: `Tu solicitud "${request.subject}" cambió a ${status.replace(/_/g, ' ')}.`,
+      message: `Tu solicitud "${request.subject}" cambio a ${parsed.data.replace(/_/g, ' ')}.`,
       type: 'request'
     });
     return serialize(request);
+  }
+
+  async addComment(user: JwtUser, id: string, body: string) {
+    const request = await repository.getById(id);
+    if (!request) throw new HttpError(404, 'Solicitud no encontrada.');
+    if (!canAccess(user, request)) throw new HttpError(403, 'No tienes permisos para comentar esta solicitud.');
+    const comment = await repository.addComment(id, user.id, body);
+    return {
+      id: comment.id,
+      author: comment.author.name,
+      body: comment.body,
+      createdAt: comment.createdAt.toISOString()
+    };
   }
 }
