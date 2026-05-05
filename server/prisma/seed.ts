@@ -253,6 +253,18 @@ async function main() {
   }
 
   const math = await prisma.subject.findUniqueOrThrow({ where: { code: 'MAT' } });
+  const academicPeriods = [
+    { id: 'period-2026-t1', name: '1er Trimestre 2026', year: 2026, startDate: new Date('2026-03-01'), endDate: new Date('2026-05-31') },
+    { id: 'period-2026-t2', name: '2do Trimestre 2026', year: 2026, startDate: new Date('2026-06-01'), endDate: new Date('2026-08-31') },
+    { id: 'period-2026-t3', name: '3er Trimestre 2026', year: 2026, startDate: new Date('2026-09-01'), endDate: new Date('2026-11-30') }
+  ];
+  for (const period of academicPeriods) {
+    await prisma.academicPeriod.upsert({
+      where: { id: period.id },
+      update: period,
+      create: period
+    });
+  }
   await prisma.classSchedule.deleteMany({
     where: { subjectId: math.id, sectionId: { in: [section.id, section2.id] } }
   });
@@ -277,8 +289,8 @@ async function main() {
 
   const assessment = await prisma.assessment.upsert({
     where: { id: 'assessment-mat-1' },
-    update: { title: 'Prueba unidades y proporcionalidad', subjectId: math.id, sectionId: section.id, date: new Date('2026-04-18'), type: 'prueba', description: 'Evaluacion diagnostica de contenidos iniciales.' },
-    create: { id: 'assessment-mat-1', title: 'Prueba unidades y proporcionalidad', subjectId: math.id, sectionId: section.id, date: new Date('2026-04-18'), weight: 1, type: 'prueba', description: 'Evaluacion diagnostica de contenidos iniciales.' }
+    update: { title: 'Prueba unidades y proporcionalidad', subjectId: math.id, sectionId: section.id, periodId: 'period-2026-t1', date: new Date('2026-04-18'), type: 'prueba', description: 'Evaluacion diagnostica de contenidos iniciales.' },
+    create: { id: 'assessment-mat-1', title: 'Prueba unidades y proporcionalidad', subjectId: math.id, sectionId: section.id, periodId: 'period-2026-t1', date: new Date('2026-04-18'), weight: 1, type: 'prueba', description: 'Evaluacion diagnostica de contenidos iniciales.' }
   });
   await prisma.grade.upsert({
     where: { assessmentId_studentId: { assessmentId: assessment.id, studentId: student.id } },

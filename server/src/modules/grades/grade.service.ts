@@ -3,8 +3,10 @@ import { HttpError } from '../../shared/http-error.js';
 import type { JwtUser } from '../auth/auth.types.js';
 import { NotificationService } from '../notifications/notification.service.js';
 import { AuditService, type AuditContext } from '../audit/audit.service.js';
+import { PeriodRepository } from '../periods/period.repository.js';
 
 const repository = new GradeRepository();
+const periodRepository = new PeriodRepository();
 const notifications = new NotificationService();
 const auditService = new AuditService();
 const gradeStatuses = ['con_nota', 'pendiente', 'ausente', 'eximido'] as const;
@@ -46,6 +48,14 @@ function serializeEvaluation(evaluation: Awaited<ReturnType<GradeRepository['cre
     weight: evaluation.weight,
     type: evaluation.type,
     description: evaluation.description,
+    periodId: evaluation.periodId,
+    period: evaluation.period ? {
+      id: evaluation.period.id,
+      name: evaluation.period.name,
+      year: evaluation.period.year,
+      startDate: toDate(evaluation.period.startDate),
+      endDate: toDate(evaluation.period.endDate)
+    } : null,
     grades: evaluation.grades.length
   };
 }
@@ -157,7 +167,7 @@ export class GradeService {
     };
   }
 
-  async evaluations(user: JwtUser, input: { sectionId?: string; subjectId?: string }) {
+  async evaluations(user: JwtUser, input: { sectionId?: string; subjectId?: string; periodId?: string }) {
     if (input.sectionId && input.subjectId) await this.assertCanManageEvaluation(user, input.sectionId, input.subjectId, false);
     const evaluations = await repository.listEvaluations(input);
     const visible = [];
@@ -172,13 +182,14 @@ export class GradeService {
     return visible.map(serializeEvaluation);
   }
 
-  async createEvaluation(user: JwtUser, input: { title: string; subjectId: string; sectionId: string; date: Date; weight: number; type: string; description?: string }) {
+  async createEvaluation(user: JwtUser, input: { title: string; subjectId: string; sectionId: string; date: Date; weight: number; type: string; description?: string; periodId?: string }) {
     await this.assertCanManageEvaluation(user, input.sectionId, input.subjectId);
     if (!await repository.findSubjectSection(input.sectionId, input.subjectId)) throw new HttpError(400, 'La asignatura no esta asociada a la seccion.');
-    return serializeEvaluation(await repository.createEvaluation(input));
+    const periodId = input.periodId ?? (await periodRepository.findPeriodForDate(input.date))?.id ?? null;
+    return serializeEvaluation(await repository.createEvaluation({ ...input, periodId }));
   }
 
-  async updateEvaluation(user: JwtUser, id: string, input: Partial<{ title: string; subjectId: string; sectionId: string; date: Date; weight: number; type: string; description?: string }>) {
+  async updateEvaluation(user: JwtUser, id: string, input: Partial<{ title: string; subjectId: string; sectionId: string; date: Date; weight: number; type: string; description?: string; periodId?: string }>) {
     const current = await repository.findEvaluation(id);
     if (!current) throw new HttpError(404, 'Evaluacion no encontrada.');
     const sectionId = input.sectionId ?? current.sectionId;
@@ -186,8 +197,10 @@ export class GradeService {
     await this.assertCanManageEvaluation(user, current.sectionId, current.subjectId);
     await this.assertCanManageEvaluation(user, sectionId, subjectId);
     if (!await repository.findSubjectSection(sectionId, subjectId)) throw new HttpError(400, 'La asignatura no esta asociada a la seccion.');
-    const data = { ...input } as Partial<{ title: string; subjectId: string; sectionId: string; date: Date; weight: number; type: string; description?: string | null }>;
+    const data = { ...input } as Partial<{ title: string; subjectId: string; sectionId: string; date: Date; weight: number; type: string; description?: string | null; periodId?: string | null }>;
     if ('description' in input) data.description = input.description ?? null;
+    if ('periodId' in input) data.periodId = input.periodId ?? null;
+    else if (input.date) data.periodId = (await periodRepository.findPeriodForDate(input.date))?.id ?? null;
     return serializeEvaluation(await repository.updateEvaluation(id, data));
   }
 
@@ -200,9 +213,10 @@ export class GradeService {
     return { ok: true };
   }
 
-  async records(user: JwtUser, evaluationId: string) {
+  async records(user: JwtUser, evaluationId: string, periodId?: string) {
     const evaluation = await repository.findEvaluation(evaluationId);
     if (!evaluation) throw new HttpError(404, 'Evaluacion no encontrada.');
+    if (periodId && evaluation.periodId !== periodId) throw new HttpError(404, 'Evaluacion no encontrada para el periodo seleccionado.');
     await this.assertCanManageEvaluation(user, evaluation.sectionId, evaluation.subjectId, false);
     const gradesByStudent = new Map(evaluation.grades.map((grade) => [grade.studentId, grade]));
     return {

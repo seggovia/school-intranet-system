@@ -447,6 +447,7 @@ model Assessment {
   id        String   @id @default(cuid())
   subjectId String
   sectionId String
+  periodId  String?
   title     String
   date      DateTime
   weight    Float    @default(1)
@@ -454,9 +455,24 @@ model Assessment {
   description String? @db.Text
   subject   Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   section   Section  @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  period    AcademicPeriod? @relation(fields: [periodId], references: [id], onDelete: SetNull)
   grades    Grade[]
 
+  @@index([periodId])
   @@map("assessments")
+}
+
+model AcademicPeriod {
+  id          String       @id @default(cuid())
+  name        String
+  year        Int
+  startDate   DateTime
+  endDate     DateTime
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  assessments Assessment[]
+
+  @@map("academic_periods")
 }
 
 model Grade {

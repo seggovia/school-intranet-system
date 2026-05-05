@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, BookOpen, CalendarDays, ClipboardList, Clock, FileText, Plus, Save, Star, UserCheck } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
+  api,
   deleteGradebookEvaluation,
   loadGradebookContext,
   loadGradebookEvaluations,
@@ -13,7 +14,7 @@ import {
   saveGradebookRecords
 } from '../api';
 import { EvaluationModal } from '../components/EvaluationModal';
-import { GradebookStats } from '../components/GradebookStats';
+import { GradebookStats, getGradebookStats } from '../components/GradebookStats';
 import { GradebookTable } from '../components/GradebookTable';
 import { PageHeader } from '../components/PageHeader';
 import { EmptyState } from '../components/States';
@@ -40,16 +41,6 @@ const statusLabels: Record<GradeStatus, string> = {
 
 function formatAverage(value: number | null) {
   return value === null ? '-' : value.toFixed(1);
-}
-
-function periodKey(date: string) {
-  return date.slice(0, 7);
-}
-
-function periodLabel(value: string) {
-  if (!value) return 'Todos';
-  const [year, month] = value.split('-');
-  return `${month}/${year}`;
 }
 
 function formatDate(value: string) {
@@ -158,6 +149,20 @@ type SubjectGradeGroup = {
   absent: number;
   exempt: number;
   rows: GradebookHistoryItem[];
+};
+
+type AcademicPeriodOption = {
+  id: string;
+  name: string;
+  year: number;
+  startDate: string;
+  endDate: string;
+  isActive: boolean;
+};
+
+type PeriodEvaluation = GradebookEvaluation & {
+  periodId?: string | null;
+  period?: Pick<AcademicPeriodOption, 'id' | 'name' | 'year' | 'startDate' | 'endDate'> | null;
 };
 
 function buildSubjectGroups(summary: MyGradebookResponse['summary'], history: GradebookHistoryItem[]): SubjectGradeGroup[] {
@@ -283,6 +288,7 @@ function StaffGradebookView({ user }: { user: User }) {
   const hasUrlSelection = Boolean(sectionParam && subjectParam);
   const [context, setContext] = useState<GradebookContext | null>(null);
   const [evaluations, setEvaluations] = useState<GradebookEvaluation[]>([]);
+  const [periods, setPeriods] = useState<AcademicPeriodOption[]>([]);
   const [students, setStudents] = useState<SectionStudent[]>([]);
   const [recordsByEvaluation, setRecordsByEvaluation] = useState<Record<string, GradebookRecord[]>>({});
   const [summary, setSummary] = useState<GradebookAdminSummary | null>(null);
@@ -300,9 +306,10 @@ function StaffGradebookView({ user }: { user: User }) {
   const [loadingGradebook, setLoadingGradebook] = useState(false);
   const section = context?.sections.find((item) => item.id === sectionId);
   const selectedSubject = section?.subjects.find((item) => item.id === subjectId);
-  const periodOptions = useMemo(() => Array.from(new Set(evaluations.map((item) => periodKey(item.date)))).sort().reverse(), [evaluations]);
-  const filteredEvaluations = useMemo(() => evaluations.filter((item) => !period || periodKey(item.date) === period), [evaluations, period]);
+  const filteredEvaluations = useMemo(() => evaluations.filter((item) => !period || (item as PeriodEvaluation).periodId === period), [evaluations, period]);
   const gradebookRows = useMemo(() => buildGradebookRows(students, filteredEvaluations, recordsByEvaluation), [filteredEvaluations, recordsByEvaluation, students]);
+  const selectedPeriod = periods.find((item) => item.id === period);
+  const periodAverage = selectedPeriod ? getGradebookStats(gradebookRows).courseAverage : null;
   const riskCount = useMemo(() => gradebookRows.filter((row) => row.academicRisk).length, [gradebookRows]);
   const visibleGradebookRows = useMemo(() => riskOnly ? gradebookRows.filter((row) => row.academicRisk) : gradebookRows, [gradebookRows, riskOnly]);
 
@@ -316,6 +323,9 @@ function StaffGradebookView({ user }: { user: User }) {
       setSubjectId((requestedSubject ?? initialSection?.subjects[0])?.id ?? '');
     });
     if (['admin', 'director', 'inspector'].includes(user.primaryRole)) loadGradebookSummary().then(setSummary);
+    api.get<AcademicPeriodOption[]>('/periods').then((response) => {
+      setPeriods(response.data.filter((item) => item.isActive));
+    }).catch(() => undefined);
   }, [sectionParam, subjectParam, user.primaryRole]);
 
   useEffect(() => {
@@ -327,6 +337,7 @@ function StaffGradebookView({ user }: { user: User }) {
   useEffect(() => {
     if (!sectionId || !subjectId) return;
     let active = true;
+    setPeriod('');
     setLoadingGradebook(true);
     setError('');
     Promise.all([loadSectionStudents(sectionId), loadGradebookEvaluations({ sectionId, subjectId })]).then(async ([sectionStudents, items]) => {
@@ -488,7 +499,7 @@ function StaffGradebookView({ user }: { user: User }) {
         <label>Período
           <select value={period} onChange={(event) => setPeriod(event.target.value)}>
             <option value="">Todos</option>
-            {periodOptions.map((item) => <option key={item} value={item}>{periodLabel(item)}</option>)}
+            {periods.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
           </select>
         </label>
         {canWrite && <button className="primary-button" onClick={() => setModalEvaluation(null)}><Plus size={17} />Nueva evaluación</button>}
@@ -500,6 +511,7 @@ function StaffGradebookView({ user }: { user: User }) {
         <div className="gradebook-table-heading">
           <div>
             <strong>{gradebookRows.length} estudiantes</strong>
+            {selectedPeriod && <span>Promedio {selectedPeriod.name}: {formatAverage(periodAverage)}</span>}
             {riskCount > 0 && <span className="gradebook-risk-count">⚠ {riskCount} en riesgo (&lt; 4.0)</span>}
             <span className="gradebook-color-legend"><i className="legend-high" />≥ 5.0 <i className="legend-mid" />4.0-4.9 <i className="legend-low" />&lt; 4.0</span>
           </div>

@@ -1,7 +1,7 @@
 import { prisma } from '../../config/db.js';
 
 const gradeInclude = {
-  assessment: { include: { subject: true, section: { include: { course: true } } } },
+  assessment: { include: { subject: true, section: { include: { course: true } }, period: true } },
   student: { include: { user: true } },
   enrollment: { include: { section: { include: { course: true } } } }
 } as const;
@@ -94,10 +94,10 @@ export class GradeRepository {
     });
   }
 
-  listEvaluations(input: { sectionId?: string; subjectId?: string }) {
+  listEvaluations(input: { sectionId?: string; subjectId?: string; periodId?: string }) {
     return prisma.assessment.findMany({
-      where: { sectionId: input.sectionId, subjectId: input.subjectId },
-      include: { subject: true, section: { include: { course: true } }, grades: true },
+      where: { sectionId: input.sectionId, subjectId: input.subjectId, periodId: input.periodId },
+      include: { subject: true, section: { include: { course: true } }, period: true, grades: true },
       orderBy: [{ date: 'desc' }, { title: 'asc' }]
     });
   }
@@ -105,16 +105,16 @@ export class GradeRepository {
   findEvaluation(id: string) {
     return prisma.assessment.findUnique({
       where: { id },
-      include: { subject: true, section: { include: { course: true, enrollments: { where: { status: 'activo' }, include: { student: { include: { user: true } } } } } }, grades: { include: { student: { include: { user: true } }, enrollment: true } } }
+      include: { subject: true, section: { include: { course: true, enrollments: { where: { status: 'activo' }, include: { student: { include: { user: true } } } } } }, period: true, grades: { include: { student: { include: { user: true } }, enrollment: true } } }
     });
   }
 
-  createEvaluation(input: { title: string; subjectId: string; sectionId: string; date: Date; weight: number; type: string; description?: string }) {
-    return prisma.assessment.create({ data: input, include: { subject: true, section: { include: { course: true } }, grades: true } });
+  createEvaluation(input: { title: string; subjectId: string; sectionId: string; date: Date; weight: number; type: string; description?: string; periodId?: string | null }) {
+    return prisma.assessment.create({ data: input, include: { subject: true, section: { include: { course: true } }, period: true, grades: true } });
   }
 
-  updateEvaluation(id: string, input: Partial<{ title: string; subjectId: string; sectionId: string; date: Date; weight: number; type: string; description?: string | null }>) {
-    return prisma.assessment.update({ where: { id }, data: input, include: { subject: true, section: { include: { course: true } }, grades: true } });
+  updateEvaluation(id: string, input: Partial<{ title: string; subjectId: string; sectionId: string; date: Date; weight: number; type: string; description?: string | null; periodId?: string | null }>) {
+    return prisma.assessment.update({ where: { id }, data: input, include: { subject: true, section: { include: { course: true } }, period: true, grades: true } });
   }
 
   deleteEvaluation(id: string) {
@@ -149,7 +149,7 @@ export class GradeRepository {
       include: {
         course: true,
         enrollments: { where: { status: 'activo' }, include: { student: { include: { user: true, grades: { include: { assessment: { include: { subject: true } } } } } } } },
-        assessments: { include: { subject: true, section: { include: { course: true } }, grades: true }, orderBy: { date: 'desc' } }
+        assessments: { include: { subject: true, section: { include: { course: true } }, period: true, grades: true }, orderBy: { date: 'desc' } }
       },
       orderBy: [{ course: { name: 'asc' } }, { name: 'asc' }]
     });

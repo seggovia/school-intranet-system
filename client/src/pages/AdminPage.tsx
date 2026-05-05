@@ -41,6 +41,7 @@ import {
   updateAdminTeacher,
   updateAdminUser,
   unlinkAdminGuardianStudent,
+  api,
   type AdminSchedulePayload,
   type AdminUserPayload
 } from '../api';
@@ -50,7 +51,7 @@ import { DataTable, type Column } from '../components/DataTable';
 import { PageHeader } from '../components/PageHeader';
 import type { AdminBundle, AdminClassroomRow, AdminCourseRow, AdminGuardianRow, AdminOption, AdminScheduleRow, AdminSectionRow, AdminStudentRow, AdminSubjectRow, AdminTeacherRow, AdminUserRow, AuditLogRow, Role, User } from '../types';
 
-type AdminTab = 'users' | 'students' | 'teachers' | 'guardians' | 'subjects' | 'audit' | 'academic-courses' | 'academic-sections' | 'academic-classrooms' | 'academic-schedules' | 'assignments-teachers' | 'assignments-students' | 'assignments-guardians' | 'assignments-subjects';
+type AdminTab = 'users' | 'students' | 'teachers' | 'guardians' | 'subjects' | 'audit' | 'academic-courses' | 'academic-sections' | 'academic-classrooms' | 'academic-schedules' | 'academic-periods' | 'assignments-teachers' | 'assignments-students' | 'assignments-guardians' | 'assignments-subjects';
 type ModalState =
   | { type: 'user'; mode: 'create' | 'edit'; row?: AdminUserRow }
   | { type: 'student'; mode: 'create' | 'edit'; row?: AdminStudentRow }
@@ -76,7 +77,8 @@ const academicTabs: Array<{ id: AdminTab; label: string; icon: typeof Users }> =
   { id: 'academic-courses', label: 'Cursos', icon: Building2 },
   { id: 'academic-sections', label: 'Secciones', icon: GraduationCap },
   { id: 'academic-classrooms', label: 'Salas', icon: ClipboardList },
-  { id: 'academic-schedules', label: 'Horarios', icon: ClipboardList }
+  { id: 'academic-schedules', label: 'Horarios', icon: ClipboardList },
+  { id: 'academic-periods', label: 'Períodos', icon: ClipboardList }
 ];
 
 const weekdayOptions = [
@@ -909,6 +911,93 @@ function AcademicClassroomsPage({ bundle, canManage, setModal, setConfirm, onSav
   return <div className="course-admin-view"><header className="assignment-header"><div><h2>Salas</h2><p>Administra espacios físicos, piso, capacidad y tipo.</p></div>{canManage && <button className="primary-button" onClick={() => setModal({ type: 'classroom', mode: 'create' })}><Plus size={17} />Crear sala</button>}</header><div className="assignment-filters labelled-filters classroom-filters"><label className="admin-search"><span>Buscar sala</span><div><Search size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Nombre, tipo o capacidad" /></div></label><label>Tipo<select value={type} onChange={(event) => setType(event.target.value)}><option value="">Todos los tipos</option><option value="aula">Aula</option><option value="laboratorio">Laboratorio</option><option value="biblioteca">Biblioteca</option><option value="gimnasio">Gimnasio</option><option value="otro">Otro</option></select></label><label>Piso<select value={floor} onChange={(event) => setFloor(event.target.value)}><option value="">Todos los pisos</option>{floorOptions.map((item) => <option key={item} value={item}>Piso {item}</option>)}</select></label><label>Estado<select value={status} onChange={(event) => setStatus(event.target.value as typeof status)}><option value="all">Todos</option><option value="active">Activas</option><option value="inactive">Inactivas</option></select></label><label>Capacidad mínima<input type="number" min="1" value={minCapacity} onChange={(event) => setMinCapacity(event.target.value)} placeholder="Ej: 30" /></label></div><div className="classroom-table"><div className="classroom-row head"><span>Sala</span><span>Tipo</span><span>Piso</span><span>Capacidad</span><span>Secciones asociadas</span><span>Estado</span><span>Acciones</span></div>{visible.map((classroom) => <div key={classroom.id} className="classroom-row"><span><strong>{classroom.name}</strong><small>{classroom.schedules} horarios</small></span><span>{classroom.type}</span><span>Piso {classroom.floor}</span><span>{classroom.capacity} cupos</span><span>{classroom.sections}</span><StatusBadge active={classroom.isActive} />{canManage && <div className="admin-row-actions"><button onClick={() => setModal({ type: 'classroom', mode: 'edit', row: classroom })}><Edit3 size={15} />Editar</button><button className={classroom.isActive ? 'danger-button' : 'secondary-button'} onClick={() => toggle(classroom)}>{classroom.isActive ? 'Desactivar' : 'Activar'}</button><button className="danger-button" onClick={() => remove(classroom)}><Trash2 size={15} />Eliminar</button></div>}</div>)}</div>{!rows.length && <div className="admin-empty"><Search size={22} /><strong>Sin salas</strong><span>No se encontraron salas con esos filtros.</span></div>}<Pager page={page} total={total} onPage={setPage} /></div>;
 }
 
+type AcademicPeriodRow = { id: string; name: string; year: number; startDate: string; endDate: string; isActive: boolean; assessments: number; createdAt: string };
+
+function AcademicPeriodsPage({ canManage, setConfirm, onSaved, onApiError }: { canManage: boolean; setConfirm: (confirm: ConfirmState | null) => void; onSaved: (message: string) => void; onApiError: (error: unknown) => void }) {
+  const [rows, setRows] = useState<AcademicPeriodRow[]>([]);
+  const [query, setQuery] = useState('');
+  const [editing, setEditing] = useState<AcademicPeriodRow | null>(null);
+  const [creating, setCreating] = useState(false);
+  const filtered = rows.filter((period) => textIncludes([period.name, period.year, period.startDate, period.endDate, period.isActive ? 'activo' : 'inactivo'], query));
+  const { page, total, setPage, visible } = usePagedRows(filtered, 10);
+
+  async function reload() {
+    const { data } = await api.get<AcademicPeriodRow[]>('/periods');
+    setRows(data);
+  }
+
+  useEffect(() => { reload().catch(onApiError); }, []);
+
+  function remove(period: AcademicPeriodRow) {
+    confirmAction(setConfirm, {
+      title: 'Eliminar periodo',
+      message: period.assessments ? `El periodo ${period.name} tiene ${period.assessments} evaluaciones asociadas y el backend bloqueara la eliminacion.` : `Confirma que quieres eliminar ${period.name}.`,
+      danger: true,
+      action: async () => {
+        await api.delete(`/periods/${period.id}`);
+        await reload();
+        onSaved('Periodo eliminado correctamente.');
+      }
+    });
+  }
+
+  return (
+    <div className="course-admin-view">
+      <header className="assignment-header"><div><h2>Periodos academicos</h2><p>Define trimestres o periodos para filtrar evaluaciones y promedios.</p></div>{canManage && <button className="primary-button" onClick={() => setCreating(true)}><Plus size={17} />Crear periodo</button>}</header>
+      <div className="assignment-filters labelled-filters"><label className="admin-search"><span>Buscar periodo</span><div><Search size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Nombre, año o estado" /></div></label></div>
+      <div className="section-list standalone"><div className="section-row head"><span>Periodo</span><span>Año</span><span>Inicio</span><span>Termino</span><span>Evaluaciones</span><span>Estado</span><span>Acciones</span></div>{visible.map((period) => <div key={period.id} className="section-row"><span><strong>{period.name}</strong><small>Periodo academico</small></span><span>{period.year}</span><span>{period.startDate}</span><span>{period.endDate}</span><span>{period.assessments}</span><StatusBadge active={period.isActive} />{canManage && <div className="admin-row-actions"><button onClick={() => setEditing(period)}><Edit3 size={15} />Editar</button><button className="danger-button" onClick={() => remove(period)}><Trash2 size={15} />Eliminar</button></div>}</div>)}</div>
+      {!filtered.length && <div className="admin-empty"><Search size={22} /><strong>Sin periodos</strong><span>No se encontraron periodos academicos.</span></div>}
+      <Pager page={page} total={total} onPage={setPage} />
+      {(creating || editing) && <PeriodModal row={editing ?? undefined} onClose={() => { setCreating(false); setEditing(null); }} onSaved={async (message) => { setCreating(false); setEditing(null); await reload(); onSaved(message); }} onApiError={onApiError} />}
+    </div>
+  );
+}
+
+function PeriodModal({ row, onClose, onSaved, onApiError }: { row?: AcademicPeriodRow; onClose: () => void; onSaved: (message: string) => void; onApiError: (error: unknown) => void }) {
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError('');
+    const fd = new FormData(event.currentTarget);
+    const payload = {
+      name: String(fd.get('name') ?? '').trim(),
+      year: Number(fd.get('year') ?? new Date().getFullYear()),
+      startDate: String(fd.get('startDate') ?? ''),
+      endDate: String(fd.get('endDate') ?? ''),
+      isActive: fd.get('isActive') === 'on'
+    };
+    if (!payload.name || !payload.startDate || !payload.endDate) return setError('Completa nombre, inicio y termino.');
+    try {
+      setSaving(true);
+      row ? await api.patch(`/periods/${row.id}`, payload) : await api.post('/periods', payload);
+      onSaved(row ? 'Periodo actualizado correctamente.' : 'Periodo creado correctamente.');
+    } catch (err) {
+      const apiError = normalizeApiError(err);
+      if (apiError.kind === 'validation') setError(apiError.message);
+      else onApiError(apiError);
+    } finally {
+      setSaving(false);
+    }
+  }
+  return (
+    <div className="admin-modal-backdrop" role="dialog" aria-modal="true" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) onClose(); }}>
+      <form className="admin-modal" onSubmit={submit} noValidate>
+        <header><div><span>Gestion academica</span><h2>{row ? 'Editar periodo' : 'Crear periodo'}</h2></div><button type="button" onClick={onClose} disabled={saving}>x</button></header>
+        <div className="admin-form-grid">
+          <label>Nombre<input name="name" defaultValue={row?.name ?? ''} placeholder="1er Trimestre 2026" required /></label>
+          <label>Año<input name="year" type="number" min="2000" max="2100" defaultValue={row?.year ?? 2026} required /></label>
+          <label>Inicio<input name="startDate" type="date" defaultValue={row?.startDate ?? ''} required /></label>
+          <label>Termino<input name="endDate" type="date" defaultValue={row?.endDate ?? ''} required /></label>
+          <label className="checkbox-option"><input name="isActive" type="checkbox" defaultChecked={row?.isActive ?? true} /><span>Activo</span></label>
+        </div>
+        {error && <p className="admin-modal-error">{error}</p>}
+        <footer><button type="button" className="secondary-button" onClick={onClose} disabled={saving}>Cancelar</button><button className="primary-button" disabled={saving}>{saving ? 'Guardando...' : 'Guardar periodo'}</button></footer>
+      </form>
+    </div>
+  );
+}
+
 function ScheduleModal({ row, bundle, onClose, onSaved, onApiError, setConfirm }: { row?: AdminScheduleRow; bundle: AdminBundle; onClose: () => void; onSaved: (message: string) => void; onApiError: (error: unknown) => void; setConfirm: (confirm: ConfirmState | null) => void }) {
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -1406,6 +1495,7 @@ export function AdminPage({ user }: { user: User }) {
           {tab === 'academic-sections' && <AcademicSectionsPage bundle={bundle} canManage={canManage} setModal={setModal} setConfirm={setConfirm} onSaved={done} />}
           {tab === 'academic-classrooms' && <AcademicClassroomsPage bundle={bundle} canManage={canManage} setModal={setModal} setConfirm={setConfirm} onSaved={done} />}
           {tab === 'academic-schedules' && <AcademicSchedulesPage bundle={bundle} canManage={canManage} onSaved={done} setConfirm={setConfirm} onApiError={handleApiError} />}
+          {tab === 'academic-periods' && <AcademicPeriodsPage canManage={canManage} setConfirm={setConfirm} onSaved={done} onApiError={handleApiError} />}
 
           {tab === 'subjects' && <AdminTable headers={['Asignatura', 'Profesores', 'Secciones', 'Acciones']} rows={filtered as AdminSubjectRow[]} render={(row) => <><div><strong>{row.name}</strong><small>{row.code}</small></div><span>{row.teachers.map((item) => item.name).join(', ') || 'Sin profesor'}</span><span>{row.sections.map((item) => `${item.course} ${item.name}`).join(', ') || 'Sin sección'}</span><div className="admin-row-actions">{canManage && <button onClick={() => setModal({ type: 'subject', mode: 'edit', row })}><Edit3 size={16} />Editar</button>}</div></>} />}
           {tab === 'audit' && <AuditPage users={bundle.users} onApiError={handleApiError} />}
