@@ -23,4 +23,9 @@ export class NotificationController {
   async create(req: Request, res: Response) {
     res.status(201).json(await service.create(req.body));
   }
+
+  async stream(req: Request, res: Response) {
+    if (!req.user?.id) throw new HttpError(401, 'Usuario autenticado requerido.');
+    service.stream(req.user.id, res);
+  }
 }

@@ -14,6 +14,11 @@ export class NotificationRepository {
     return prisma.notification.createMany({ data: inputs, skipDuplicates: true });
   }
 
+  createManyWithRows(inputs: Array<{ userId: string; title: string; message: string; type?: string }>) {
+    if (!inputs.length) return Promise.resolve([]);
+    return prisma.$transaction(inputs.map((input) => prisma.notification.create({ data: input })));
+  }
+
   markRead(input: { userId: string; id: string }) {
     return prisma.notification.updateMany({ where: { id: input.id, userId: input.userId, readAt: null }, data: { readAt: new Date() } });
   }

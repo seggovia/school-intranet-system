@@ -2,8 +2,8 @@ import { BarChart3, Bell, CalendarDays, Check, CheckCheck, ChevronDown, Clipboar
 import { NavLink } from 'react-router-dom';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import clsx from 'clsx';
-import { loadMyNotifications, markAllMyNotificationsRead, markMyNotificationRead } from '../api';
-import type { User, UserNotification } from '../types';
+import { useNotifications } from '../hooks';
+import type { User } from '../types';
 import { RoleBadge } from './RoleBadge';
 
 const navItems = [
@@ -20,17 +20,10 @@ export function Shell({ user, onLogout, children }: { user: User; onLogout: () =
   const [open, setOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [notifications, setNotifications] = useState<UserNotification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [notificationsBusy, setNotificationsBusy] = useState(false);
+  const { notifications, unreadCount, busy: notificationsBusy, lastRealtimeNotification, refresh, markRead, markAllRead } = useNotifications();
+  const [notificationToast, setNotificationToast] = useState('');
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const notificationRef = useRef<HTMLDivElement>(null);
-
-  async function refreshNotifications() {
-    const data = await loadMyNotifications();
-    setNotifications(data.notifications);
-    setUnreadCount(data.unreadCount);
-  }
 
   useEffect(() => {
     function handlePointerDown(event: PointerEvent) {
@@ -46,30 +39,11 @@ export function Shell({ user, onLogout, children }: { user: User; onLogout: () =
   }, [profileOpen, notificationsOpen]);
 
   useEffect(() => {
-    refreshNotifications().catch(() => undefined);
-    const timer = window.setInterval(() => refreshNotifications().catch(() => undefined), 60000);
-    return () => window.clearInterval(timer);
-  }, []);
-
-  async function markRead(id: string) {
-    setNotificationsBusy(true);
-    try {
-      await markMyNotificationRead(id);
-      await refreshNotifications();
-    } finally {
-      setNotificationsBusy(false);
-    }
-  }
-
-  async function markAllRead() {
-    setNotificationsBusy(true);
-    try {
-      await markAllMyNotificationsRead();
-      await refreshNotifications();
-    } finally {
-      setNotificationsBusy(false);
-    }
-  }
+    if (!lastRealtimeNotification) return undefined;
+    setNotificationToast(lastRealtimeNotification.title);
+    const timer = window.setTimeout(() => setNotificationToast(''), 3600);
+    return () => window.clearTimeout(timer);
+  }, [lastRealtimeNotification]);
 
   return (
     <div className={clsx('app-shell', open && 'mobile-nav-open')}>
@@ -113,7 +87,7 @@ export function Shell({ user, onLogout, children }: { user: User; onLogout: () =
               onClick={() => {
                 setNotificationsOpen((value) => !value);
                 setProfileOpen(false);
-                refreshNotifications().catch(() => undefined);
+                refresh().catch(() => undefined);
               }}
               aria-label="Abrir notificaciones"
               aria-expanded={notificationsOpen}
@@ -205,6 +179,7 @@ export function Shell({ user, onLogout, children }: { user: User; onLogout: () =
           </div>
         </div>
       </header>
+      {notificationToast && <div className="admin-notice success" onClick={() => setNotificationToast('')}>Nueva notificación: {notificationToast}</div>}
 
       <div className="main-area">
         <main className="content">{children}</main>
