@@ -30,6 +30,7 @@ model User {
   requests       SchoolRequest[] @relation("RequestRequester")
   requestComments RequestComment[]
   requestStatusLogs RequestStatusLog[]
+  studentObservations StudentObservation[] @relation("ObservationAuthor")
   documents      Document[]      @relation("DocumentOwner")
   unitMaterials  UnitMaterial[]  @relation("UnitMaterialOwner")
   submissions    AssignmentSubmission[] @relation("SubmissionAuthor")
@@ -158,6 +159,7 @@ model Section {
   subjects    SubjectSection[]
   attendance  Attendance[]
   assessments Assessment[]
+  observations StudentObservation[]
 
   @@unique([courseId, name])
   @@map("sections")
@@ -347,8 +349,29 @@ model Student {
   attendance  Attendance[]
   grades      Grade[]
   submissions AssignmentSubmission[]
+  observations StudentObservation[]
 
   @@map("students")
+}
+
+model StudentObservation {
+  id        String   @id @default(cuid())
+  studentId String
+  authorId  String
+  sectionId String?
+  body      String   @db.Text
+  type      String   @default("neutral")
+  date      DateTime @default(now())
+  isVisible Boolean  @default(true)
+  createdAt DateTime @default(now())
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  author    User     @relation("ObservationAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  section   Section? @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+
+  @@index([studentId])
+  @@index([sectionId])
+  @@index([authorId])
+  @@map("student_observations")
 }
 
 model Guardian {

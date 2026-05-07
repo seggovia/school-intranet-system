@@ -13,6 +13,7 @@ import type { AttendanceHistoryItem, GradebookHistoryItem, MyAttendanceResponse,
 
 const emptyDashboard: RoleDashboard = { role: 'student', profile: { id: '', name: '', email: '', roles: [] }, stats: [], sections: [], linkedStudents: [], announcements: [], documents: [] };
 const icons = [Users, ClipboardCheck, GraduationCap, HelpCircle, TrendingUp, AlertTriangle];
+type DashboardObservation = { id: string; studentId: string; student?: string; author: string; section: string | null; body: string; type: 'positiva' | 'negativa' | 'neutral'; date: string; isVisible: boolean; createdAt: string };
 
 function dashboardCopy(role: string) {
   if (role === 'teacher') return ['Panel docente', 'Cursos, asistencia, evaluaciones y comunicaciones en una vista operativa.'];
@@ -66,6 +67,7 @@ function StudentPortal({ dashboard, schedule }: { dashboard: RoleDashboard; sche
     .flatMap((subject) => subject.materials.map((material) => ({ ...material, subject: subject.name })))
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
     .slice(0, 5);
+  const observations = ((dashboard as RoleDashboard & { observations?: DashboardObservation[] }).observations ?? []).slice(0, 5);
   const alerts = [
     ...(grades.data?.summary.average !== null && grades.data?.summary.average !== undefined && grades.data.summary.average < 4 ? [`Promedio general bajo 4.0 (${grades.data.summary.average.toFixed(1)}).`] : []),
     ...((grades.data?.summary.subjects ?? []).filter((subject) => subject.average !== null && subject.average < 4).slice(0, 3).map((subject) => `${subject.subject}: promedio ${subject.average?.toFixed(1)}.`)),
@@ -137,6 +139,16 @@ function StudentPortal({ dashboard, schedule }: { dashboard: RoleDashboard; sche
             </article>
           ))}
         </DashboardList>
+
+        <DashboardList title="Observaciones" icon={<AlertTriangle size={20} />} empty="Sin observaciones visibles">
+          {observations.map((item) => (
+            <article key={item.id} className="student-list-row">
+              <strong>{item.body}</strong>
+              <span className={`priority-badge ${item.type === 'positiva' ? 'normal' : item.type === 'negativa' ? 'urgente' : 'alta'}`}>{item.type}</span>
+              <small>{formatDate(item.date)} · {item.author}</small>
+            </article>
+          ))}
+        </DashboardList>
       </section>
 
       <section className="student-dashboard-grid">
@@ -181,6 +193,7 @@ export function DashboardPage() {
   const schedule = useAsyncData(loadMySchedule, [] as ScheduleCalendarEvent[]);
   const [title, description] = dashboardCopy(dashboard.data.role);
   const sections = dashboard.data.sections;
+  const observations = ((dashboard.data as RoleDashboard & { observations?: DashboardObservation[] }).observations ?? []).slice(0, 5);
   const lowCoverage = sections.filter((section) => section.students === 0 || !section.subjects.length);
 
   return (
@@ -298,7 +311,8 @@ export function DashboardPage() {
           <div className="activity-list">
             {dashboard.data.announcements.slice(0, 4).map((announcement) => <span key={announcement.id}><Bell size={16} /> {announcement.title}</span>)}
             {dashboard.data.documents.slice(0, 3).map((document) => <span key={document.id}><FileText size={16} /> {document.title}</span>)}
-            {!dashboard.data.announcements.length && !dashboard.data.documents.length && <EmptyState title="Sin actividad reciente" />}
+            {dashboard.data.role === 'guardian' && observations.map((observation) => <span key={observation.id}><AlertTriangle size={16} /> {observation.student ? `${observation.student}: ` : ''}{observation.body}</span>)}
+            {!dashboard.data.announcements.length && !dashboard.data.documents.length && !(dashboard.data.role === 'guardian' && observations.length) && <EmptyState title="Sin actividad reciente" />}
           </div>
           <div className="quick-actions">
             <Link to="/asistencia"><ClipboardCheck size={16} /> Asistencia</Link>

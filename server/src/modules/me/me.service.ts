@@ -148,6 +148,21 @@ function serializeDocument(document: { id: string; title: string; status: string
   };
 }
 
+function serializeObservation(observation: { id: string; studentId: string; student?: { user: { name: string } }; author: { name: string }; section: { course: { name: string }; name: string } | null; body: string; type: string; date: Date; isVisible: boolean; createdAt: Date }) {
+  return {
+    id: observation.id,
+    studentId: observation.studentId,
+    student: observation.student?.user.name,
+    author: observation.author.name,
+    section: observation.section ? `${observation.section.course.name} ${observation.section.name}` : null,
+    body: observation.body,
+    type: observation.type,
+    date: observation.date.toISOString().slice(0, 10),
+    isVisible: observation.isVisible,
+    createdAt: observation.createdAt.toISOString()
+  };
+}
+
 export class MeService {
   async profile(user: JwtUser) {
     const [profile, sections] = await Promise.all([
@@ -244,6 +259,9 @@ export class MeService {
     const students = sections.flatMap((section) => section.enrollments.map((enrollment) => enrollment.student));
     const grades = students.flatMap((student) => student.grades.map((grade) => grade.score));
     const attendance = students.flatMap((student) => student.attendance);
+    const observations = user.roles.includes('guardian')
+      ? (profile?.guardian?.students.flatMap((item) => item.student.observations.map((observation) => serializeObservation({ ...observation, student: item.student }))) ?? [])
+      : (profile?.student?.observations.map((observation) => serializeObservation(observation)) ?? []);
 
     return {
       role: user.roles[0] ?? 'student',
@@ -268,6 +286,7 @@ export class MeService {
         subjects: section.subjects.map((item) => item.subject.name)
       })),
       linkedStudents: profile?.guardian?.students.map((item) => ({ id: item.student.id, name: item.student.user.name, relationship: item.relationship })) ?? [],
+      observations: observations.slice(0, 8),
       announcements: announcements.map((announcement) => ({ id: announcement.id, title: announcement.title, priority: announcement.priority })),
       documents: documents.map(serializeDocument)
     };
