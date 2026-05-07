@@ -9,8 +9,8 @@ export class MeRepository {
         roles: { include: { role: true } },
         passwordResetTokens: { orderBy: { createdAt: 'desc' }, take: 1 },
         teacher: true,
-        student: { include: { enrollments: { include: { section: { include: { course: true } } } }, guardians: { include: { guardian: { include: { user: true } } } }, grades: true, attendance: true } },
-        guardian: { include: { students: { include: { student: { include: { user: true } } } } } }
+        student: { include: { enrollments: { include: { section: { include: { course: true } } } }, guardians: { include: { guardian: { include: { user: true } } } }, grades: true, attendance: true, observations: { where: { isVisible: true }, include: { author: true, section: { include: { course: true } } }, orderBy: [{ date: 'desc' }, { createdAt: 'desc' }], take: 8 } } },
+        guardian: { include: { students: { include: { student: { include: { user: true, observations: { where: { isVisible: true }, include: { author: true, section: { include: { course: true } } }, orderBy: [{ date: 'desc' }, { createdAt: 'desc' }], take: 8 } } } } } } }
       }
     });
   }

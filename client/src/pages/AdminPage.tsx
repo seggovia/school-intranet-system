@@ -63,6 +63,7 @@ type ModalState =
   | { type: 'subject'; mode: 'create' | 'edit'; row?: AdminSubjectRow };
 type ConfirmState = { title: string; message: string; action: () => Promise<void>; danger?: boolean };
 type ResetPasswordTarget = { id: string; name: string } | null;
+type StudentObservationRow = { id: string; studentId: string; student?: string; author: string; section: string | null; body: string; type: 'positiva' | 'negativa' | 'neutral'; date: string; isVisible: boolean; createdAt: string };
 
 const tabs: Array<{ id: AdminTab; label: string; icon: typeof Users }> = [
   { id: 'users', label: 'Usuarios', icon: Users },
@@ -672,6 +673,87 @@ function ResetPasswordModal({ target, onClose, onSaved, setConfirm, onApiError }
         </div>
         <footer><button type="button" className="secondary-button" onClick={requestClose}>Cancelar</button><button className="primary-button" disabled={saving}>{saving ? 'Guardando...' : 'Guardar nueva contraseña'}</button></footer>
       </form>
+    </div>
+  );
+}
+
+function StudentObservationsModal({ student, onClose, onApiError }: { student: AdminStudentRow; onClose: () => void; onApiError: (error: unknown) => void }) {
+  const [rows, setRows] = useState<StudentObservationRow[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  async function reload() {
+    const { data } = await api.get<StudentObservationRow[]>('/observations', { params: { studentId: student.id } });
+    setRows(data);
+  }
+
+  useEffect(() => { reload().catch(onApiError); }, [student.id]);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError('');
+    const form = new FormData(event.currentTarget);
+    const payload = {
+      studentId: student.id,
+      sectionId: student.sectionId || undefined,
+      body: String(form.get('body') ?? '').trim(),
+      type: String(form.get('type') ?? 'neutral'),
+      date: String(form.get('date') ?? new Date().toISOString().slice(0, 10)),
+      isVisible: form.get('isVisible') === 'on'
+    };
+    if (payload.body.length < 5) return setError('La anotación debe tener al menos 5 caracteres.');
+    try {
+      setSaving(true);
+      await api.post('/observations', payload);
+      event.currentTarget.reset();
+      await reload();
+    } catch (err) {
+      const apiError = normalizeApiError(err);
+      if (apiError.kind === 'validation') setError(apiError.message);
+      else onApiError(apiError);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function remove(id: string) {
+    try {
+      await api.delete(`/observations/${id}`);
+      await reload();
+    } catch (err) {
+      onApiError(err);
+    }
+  }
+
+  return (
+    <div className="admin-modal-backdrop" role="dialog" aria-modal="true" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) onClose(); }}>
+      <section className="admin-modal">
+        <header><div><span>Estudiante</span><h2>Anotaciones de {student.name}</h2></div><button type="button" onClick={onClose} disabled={saving}>x</button></header>
+        <div className="admin-form-grid">
+          <form className="full-span admin-form-grid" onSubmit={submit} noValidate>
+            <label>Tipo<select name="type" defaultValue="neutral"><option value="positiva">Positiva</option><option value="negativa">Negativa</option><option value="neutral">Neutral</option></select></label>
+            <label>Fecha<input name="date" type="date" defaultValue={new Date().toISOString().slice(0, 10)} max={new Date().toISOString().slice(0, 10)} /></label>
+            <label className="checkbox-option"><input name="isVisible" type="checkbox" defaultChecked /><span>Visible para estudiante/apoderado</span></label>
+            <label className="full-span">Nueva anotación<textarea name="body" rows={4} maxLength={500} placeholder="Describe la observación del estudiante" required /></label>
+            {error && <p className="admin-modal-error full-span">{error}</p>}
+            <footer className="full-span"><button type="submit" className="primary-button" disabled={saving}>{saving ? 'Guardando...' : 'Nueva anotación'}</button></footer>
+          </form>
+        </div>
+        <div className="notification-list">
+          {rows.map((row) => (
+            <article key={row.id} className="notification-item">
+              <div>
+                <span className={`priority-badge ${row.type === 'positiva' ? 'normal' : row.type === 'negativa' ? 'urgente' : 'alta'}`}>{row.type}</span>
+                <strong>{row.author}</strong>
+                <p>{row.body}</p>
+                <small>{row.date} · {row.section ?? student.section} · {row.isVisible ? 'Visible' : 'Interna'}</small>
+              </div>
+              <button type="button" onClick={() => remove(row.id)} disabled={saving} aria-label="Eliminar anotación"><Trash2 size={16} /></button>
+            </article>
+          ))}
+          {!rows.length && <div className="notification-empty"><ClipboardList size={22} /><strong>Sin anotaciones</strong><span>No hay anotaciones registradas para este estudiante.</span></div>}
+        </div>
+      </section>
     </div>
   );
 }
@@ -1307,6 +1389,7 @@ export function AdminPage({ user }: { user: User }) {
   const [modal, setModal] = useState<ModalState | null>(null);
   const [confirm, setConfirm] = useState<ConfirmState | null>(null);
   const [resetTarget, setResetTarget] = useState<ResetPasswordTarget>(null);
+  const [observationStudent, setObservationStudent] = useState<AdminStudentRow | null>(null);
   const [academicOpen, setAcademicOpen] = useState(true);
   const [assignmentsOpen, setAssignmentsOpen] = useState(true);
   const [notice, setNotice] = useState<string | null>(null);
@@ -1485,7 +1568,7 @@ export function AdminPage({ user }: { user: User }) {
 
           {tab === 'users' && <AdminTable headers={['Usuario', 'Rol', 'Estado', 'Acciones']} rows={filtered as AdminUserRow[]} render={(row) => <><div><strong>{row.name}</strong><small>{row.email}</small></div><span>{roleLabels[row.role]}</span><StatusBadge active={row.isActive} /><div className="admin-row-actions">{canManage && <><button onClick={() => editUserRow(row)}><Edit3 size={16} />Editar</button><button onClick={() => statusAction('usuario', row.name, row.isActive, () => setAdminUserStatus(row.id, !row.isActive))}>{row.isActive ? <ToggleRight /> : <ToggleLeft />} {row.isActive ? 'Desactivar' : 'Activar'}</button><button onClick={() => setResetTarget({ id: row.id, name: row.name })}><KeyRound size={16} />Restablecer contraseña</button></>}</div></>} />}
 
-          {tab === 'students' && <AdminTable headers={['Estudiante', 'Curso / Sección', 'Apoderado', 'Estado', 'Acciones']} rows={filtered as AdminStudentRow[]} render={(row) => <><div><strong>{row.name}</strong><small>{row.email}</small></div><span>{row.course} · {row.section}</span><span>{row.guardians.length ? row.guardians.map((item) => item.name).join(', ') : 'Sin apoderado'}</span><StatusBadge active={row.isActive} /><div className="admin-row-actions">{canManage && <><button onClick={() => setModal({ type: 'student', mode: 'edit', row })}><Edit3 size={16} />Editar</button><button onClick={() => statusAction('estudiante', row.name, row.isActive, () => setAdminStudentStatus(row.id, !row.isActive))}>{row.isActive ? 'Desactivar' : 'Activar'}</button></>}</div></>} />}
+          {tab === 'students' && <AdminTable headers={['Estudiante', 'Curso / Sección', 'Apoderado', 'Estado', 'Acciones']} rows={filtered as AdminStudentRow[]} render={(row) => <><div><strong>{row.name}</strong><small>{row.email}</small></div><span>{row.course} · {row.section}</span><span>{row.guardians.length ? row.guardians.map((item) => item.name).join(', ') : 'Sin apoderado'}</span><StatusBadge active={row.isActive} /><div className="admin-row-actions">{canManage && <><button onClick={() => setObservationStudent(row)}><ClipboardList size={16} />Anotaciones</button><button onClick={() => setModal({ type: 'student', mode: 'edit', row })}><Edit3 size={16} />Editar</button><button onClick={() => statusAction('estudiante', row.name, row.isActive, () => setAdminStudentStatus(row.id, !row.isActive))}>{row.isActive ? 'Desactivar' : 'Activar'}</button></>}</div></>} />}
 
           {tab === 'teachers' && <AdminTable headers={['Profesor', 'Área', 'Asignaturas', 'Estado', 'Acciones']} rows={filtered as AdminTeacherRow[]} render={(row) => <><div><strong>{row.name}</strong><small>{row.email}</small></div><span>{row.specialty}</span><span>{row.subjects.map((item) => item.name).join(', ') || 'Sin asignaturas'}</span><StatusBadge active={row.isActive} /><div className="admin-row-actions">{canManage && <><button onClick={() => setModal({ type: 'teacher', mode: 'edit', row })}><Edit3 size={16} />Editar</button><button onClick={() => statusAction('profesor', row.name, row.isActive, () => setAdminTeacherStatus(row.id, !row.isActive))}>{row.isActive ? 'Desactivar' : 'Activar'}</button></>}</div></>} />}
 
@@ -1509,6 +1592,7 @@ export function AdminPage({ user }: { user: User }) {
 
       {modal && <EntityModal modal={modal} options={options} students={bundle.students} onClose={() => setModal(null)} onSaved={done} setConfirm={setConfirm} onApiError={handleApiError} onResetPassword={setResetTarget} />}
       {resetTarget && <ResetPasswordModal target={resetTarget} onClose={() => setResetTarget(null)} onSaved={(message) => { setResetTarget(null); done(message); }} setConfirm={setConfirm} onApiError={handleApiError} />}
+      {observationStudent && <StudentObservationsModal student={observationStudent} onClose={() => setObservationStudent(null)} onApiError={handleApiError} />}
       {confirm && <ConfirmDialog confirm={confirm} onClose={() => setConfirm(null)} onApiError={handleApiError} />}
       {apiError && <ApiErrorModal error={apiError} onClose={() => setApiError(null)} />}
     </div>
