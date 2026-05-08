@@ -172,10 +172,8 @@ export function ProfilePage({ onLogout }: { onLogout: () => void }) {
         <section className="section-card profile-section">
           <header><h2>Seguridad</h2></header>
           <div className="security-list">
-            <span><b>ID de usuario</b>{profile.security?.userId}</span>
-            <span><b>Correo verificado</b>{profile.security?.emailVerified ? 'Sí' : 'Pendiente'}</span>
-            <span><b>Contraseña local</b>{profile.security?.passwordManagedLocally ? 'Activa' : 'No disponible'}</span>
-            <span><b>Última solicitud de recuperación</b>{profile.security?.lastPasswordResetRequest ? new Date(profile.security.lastPasswordResetRequest).toLocaleString('es-CL') : 'Sin solicitudes recientes'}</span>
+            <span><b>Cuenta verificada</b>{profile.security?.emailVerified ? '✓' : 'Pendiente'}</span>
+            <span><b>Contraseña establecida</b>{profile.security?.passwordManagedLocally ? '✓' : 'No disponible'}</span>
           </div>
         </section>
       </section>

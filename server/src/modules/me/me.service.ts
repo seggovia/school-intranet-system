@@ -210,10 +210,8 @@ export class MeService {
         subjects: subjectMap.size
       },
       security: {
-        userId: user.id,
         emailVerified: true,
-        passwordManagedLocally: true,
-        lastPasswordResetRequest: profile?.passwordResetTokens[0]?.createdAt.toISOString() ?? null
+        passwordManagedLocally: true
       },
       preferences: serializePreferences(profile?.preferences)
     };

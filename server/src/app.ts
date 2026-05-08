@@ -34,12 +34,21 @@ app.use(cors({ origin: env.CLIENT_URL, credentials: true }));
 app.use(express.json({ limit: '1mb' }));
 app.use(morgan(env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 
-const loginLimiter = rateLimit({
+const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 20,
+  limit: 100,
   standardHeaders: true,
   legacyHeaders: false
 });
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+app.use(globalLimiter);
 
 app.get('/api/health', async (_req, res) => {
   try {
@@ -50,7 +59,8 @@ app.get('/api/health', async (_req, res) => {
   }
 });
 
-app.use('/api/auth/login', loginLimiter);
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/forgot-password', authLimiter);
 app.use('/api/auth', authRoutes);
 app.use('/api', auditRoutes);
 app.use('/api/me', meRoutes);

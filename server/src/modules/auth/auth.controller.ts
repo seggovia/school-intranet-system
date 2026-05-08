@@ -5,9 +5,10 @@ import type { AuditContext } from '../audit/audit.service.js';
 const service = new AuthService();
 
 function auditContext(req: Request): AuditContext {
+  const ip = req.ip;
   const userAgent = req.headers['user-agent'];
   return {
-    ipAddress: req.ip,
+    ipAddress: ip,
     userAgent: Array.isArray(userAgent) ? userAgent.join(', ') : userAgent
   };
 }

@@ -59,37 +59,37 @@ export class AuthService {
   }
 
   async login(email: string, password: string, ctx?: AuditContext) {
-    const user = await repository.findUserByEmail(email);
-    if (!user) {
-      await this.recordAudit(ctx, { action: 'LOGIN_FAILED', entity: 'User', entityId: email, description: `Login fallido para ${email}.`, metadata: { email, reason: 'not_found' } });
+    const foundUser = await repository.findUserByEmail(email);
+    if (!foundUser) {
+      await this.recordAudit(ctx, { action: 'LOGIN_FAILED', entity: 'User', entityId: 'unknown', description: 'Failed login for email', metadata: { email, reason: 'not_found' } });
       throw new HttpError(401, 'Correo o contrasena incorrectos');
     }
 
-    if (!user.isActive) {
-      await this.recordAudit(ctx, { userId: user.id, action: 'LOGIN_FAILED', entity: 'User', entityId: user.id, description: `Login fallido para usuario desactivado ${email}.`, metadata: { email, reason: 'inactive' } });
+    if (!foundUser.isActive) {
+      await this.recordAudit(ctx, { userId: foundUser.id, action: 'LOGIN_FAILED', entity: 'User', entityId: foundUser.id, description: 'Failed login for email', metadata: { email, reason: 'inactive' } });
       throw new HttpError(403, 'Usuario desactivado. Contacte administracion.');
     }
 
-    const passwordOk = await bcrypt.compare(password, user.passwordHash);
+    const passwordOk = await bcrypt.compare(password, foundUser.passwordHash);
     if (!passwordOk) {
       console.warn(`Login fallido para ${email}`);
-      await this.recordAudit(ctx, { userId: user.id, action: 'LOGIN_FAILED', entity: 'User', entityId: user.id, description: `Login fallido para ${email}.`, metadata: { email, reason: 'bad_password' } });
+      await this.recordAudit(ctx, { userId: foundUser.id, action: 'LOGIN_FAILED', entity: 'User', entityId: foundUser.id, description: 'Failed login for email', metadata: { email, reason: 'bad_password' } });
       throw new HttpError(401, 'Correo o contrasena incorrectos');
     }
 
-    const publicUser = toPublicUser(user);
+    const publicUser = toPublicUser(foundUser);
     const accessToken = signAccessToken({
-      id: user.id,
-      email: user.email,
+      id: foundUser.id,
+      email: foundUser.email,
       roles: publicUser.roles,
       permissions: publicUser.permissions
     });
-    const refreshToken = signRefreshToken(user.id);
+    const refreshToken = signRefreshToken(foundUser.id);
     const expiresAt = new Date(Date.now() + env.REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000);
 
-    await repository.createRefreshToken({ tokenHash: hashToken(refreshToken), userId: user.id, expiresAt });
+    await repository.createRefreshToken({ tokenHash: hashToken(refreshToken), userId: foundUser.id, expiresAt });
     console.info(`Login exitoso para ${email}`);
-    await this.recordAudit(ctx, { userId: user.id, action: 'LOGIN_SUCCESS', entity: 'User', entityId: user.id, description: `Login exitoso para ${email}.`, metadata: { email } });
+    await this.recordAudit(ctx, { userId: foundUser.id, action: 'LOGIN_SUCCESS', entity: 'User', entityId: foundUser.id, description: 'Successful login for email', metadata: { email } });
 
     return { user: publicUser, accessToken, refreshToken };
   }
