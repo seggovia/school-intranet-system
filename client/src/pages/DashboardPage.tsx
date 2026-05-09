@@ -1,7 +1,7 @@
 import { Activity, AlertTriangle, Bell, BookOpen, CalendarDays, CheckCircle2, ClipboardCheck, Clock, FileText, GraduationCap, HelpCircle, TrendingUp, Users } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { loadAttendanceMe, loadGradebookMe, loadMyDashboard, loadMySchedule, loadMySubjects } from '../api';
+import { api, loadAttendanceMe, loadGradebookMe, loadMyDashboard, loadMySchedule, loadMySubjects } from '../api';
 import { PageHeader } from '../components/PageHeader';
 import { RoleBadge } from '../components/RoleBadge';
 import { InstitutionalScheduleSummary, PersonalScheduleCards } from '../components/ScheduleCalendar';
@@ -14,6 +14,7 @@ import type { AttendanceHistoryItem, GradebookHistoryItem, MyAttendanceResponse,
 const emptyDashboard: RoleDashboard = { role: 'student', profile: { id: '', name: '', email: '', roles: [] }, stats: [], sections: [], linkedStudents: [], announcements: [], documents: [] };
 const icons = [Users, ClipboardCheck, GraduationCap, HelpCircle, TrendingUp, AlertTriangle];
 type DashboardObservation = { id: string; studentId: string; student?: string; author: string; section: string | null; body: string; type: 'positiva' | 'negativa' | 'neutral'; date: string; isVisible: boolean; createdAt: string };
+type AcademicPeriodOption = { id: string; name: string; year: number; startDate: string; endDate: string; isActive: boolean };
 type GuardianStudentDashboard = {
   id: string;
   name: string;
@@ -65,6 +66,9 @@ function StudentPortal({ dashboard, schedule }: { dashboard: RoleDashboard; sche
   const subjects = useAsyncData(loadMySubjects, [] as MySubject[]);
   const grades = useAsyncData(loadGradebookMe, null as MyGradebookResponse | null);
   const attendance = useAsyncData(loadAttendanceMe, null as MyAttendanceResponse | null);
+  const [periods, setPeriods] = useState<AcademicPeriodOption[]>([]);
+  const [reportPeriod, setReportPeriod] = useState('');
+  const [downloadingReport, setDownloadingReport] = useState(false);
   const upcomingClass = nextClass(schedule);
   const upcomingAssessments = subjects.data
     .flatMap((subject) => subject.assessments.map((assessment) => ({ ...assessment, subject: subject.name, section: subject.section })))
@@ -85,6 +89,34 @@ function StudentPortal({ dashboard, schedule }: { dashboard: RoleDashboard; sche
     ...(attendance.data && attendance.data.summary.percentage < 85 ? [`Asistencia general bajo 85% (${attendance.data.summary.percentage}%).`] : [])
   ].slice(0, 5);
 
+  useEffect(() => {
+    api.get<AcademicPeriodOption[]>('/periods').then((response) => {
+      const activePeriods = response.data.filter((item) => item.isActive);
+      setPeriods(activePeriods);
+      setReportPeriod((current) => current || activePeriods[0]?.id || '');
+    }).catch(() => undefined);
+  }, []);
+
+  async function downloadReportCard() {
+    setDownloadingReport(true);
+    try {
+      const response = await api.get<Blob>('/reports/student/me/report-card', {
+        params: reportPeriod ? { periodId: reportPeriod } : undefined,
+        responseType: 'blob'
+      });
+      const disposition = response.headers['content-disposition'] ?? '';
+      const filename = /filename="?([^"]+)"?/i.exec(disposition)?.[1] ?? 'boletin.pdf';
+      const url = URL.createObjectURL(response.data);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      link.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setDownloadingReport(false);
+    }
+  }
+
   return (
     <>
       <section className="student-dashboard-actions">
@@ -92,6 +124,14 @@ function StudentPortal({ dashboard, schedule }: { dashboard: RoleDashboard; sche
         <Link to="/calificaciones"><GraduationCap size={17} />Ver calificaciones</Link>
         <Link to="/asistencia"><ClipboardCheck size={17} />Ver asistencia</Link>
         <Link to="/documentos"><FileText size={17} />Ver materiales</Link>
+        {periods.length > 1 && (
+          <select value={reportPeriod} onChange={(event) => setReportPeriod(event.target.value)} aria-label="Periodo del boletin">
+            {periods.map((period) => <option key={period.id} value={period.id}>{period.name}</option>)}
+          </select>
+        )}
+        <a href="/api/reports/student/me/report-card" onClick={(event) => { event.preventDefault(); void downloadReportCard(); }} aria-disabled={downloadingReport}>
+          <FileText size={17} />{downloadingReport ? 'Generando PDF' : 'Boletin PDF'}
+        </a>
       </section>
 
       <section className="student-dashboard-grid">
