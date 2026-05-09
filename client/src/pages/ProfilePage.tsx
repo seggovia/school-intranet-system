@@ -1,11 +1,12 @@
 import { BookOpen, CalendarDays, CheckCircle2, GraduationCap, KeyRound, LogOut, Mail, Shield, UserRound, Users } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
-import { changeMyPassword, loadMyProfile, updateMyPreferences, updateMyProfile } from '../api';
+import { api, changeMyPassword, loadMyProfile, updateMyPreferences, updateMyProfile } from '../api';
 import { EmptyState, ErrorState, LoadingState } from '../components/States';
 import { useAsyncData } from '../hooks';
 import type { UserProfileData } from '../types';
 
 type FieldErrors = Partial<Record<'name' | 'lastName' | 'currentPassword' | 'newPassword' | 'confirmPassword', string>>;
+type AcademicPeriodOption = { id: string; name: string; year: number; startDate: string; endDate: string; isActive: boolean };
 
 const emptyProfile: UserProfileData = {
   id: '',
@@ -39,6 +40,9 @@ export function ProfilePage({ onLogout }: { onLogout: () => void }) {
   const [notice, setNotice] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
+  const [downloadingReport, setDownloadingReport] = useState(false);
+  const [periods, setPeriods] = useState<AcademicPeriodOption[]>([]);
+  const [reportPeriod, setReportPeriod] = useState('');
   const [quickPrefs, setQuickPrefs] = useState({ email: true, academic: true, tickets: true });
 
   useEffect(() => {
@@ -50,6 +54,15 @@ export function ProfilePage({ onLogout }: { onLogout: () => void }) {
       tickets: profile.preferences?.notifications.tickets ?? true
     });
   }, [profile]);
+
+  useEffect(() => {
+    if (!profile.roles.includes('student')) return;
+    api.get<AcademicPeriodOption[]>('/periods').then((response) => {
+      const activePeriods = response.data.filter((item) => item.isActive);
+      setPeriods(activePeriods);
+      setReportPeriod((current) => current || activePeriods[0]?.id || '');
+    }).catch(() => undefined);
+  }, [profile.roles]);
 
   if (loading) return <LoadingState label="Cargando perfil..." />;
   if (error) return <ErrorState />;
@@ -109,6 +122,29 @@ export function ProfilePage({ onLogout }: { onLogout: () => void }) {
     await updateMyPreferences({ theme: profile.preferences?.theme ?? 'system', language: profile.preferences?.language ?? 'es', notifications: next }).catch(() => undefined);
   }
 
+  async function downloadReportCard() {
+    setDownloadingReport(true);
+    try {
+      const response = await api.get<Blob>('/reports/student/me/report-card', {
+        params: reportPeriod ? { periodId: reportPeriod } : undefined,
+        responseType: 'blob'
+      });
+      const disposition = response.headers['content-disposition'] ?? '';
+      const filename = /filename="?([^"]+)"?/i.exec(disposition)?.[1] ?? 'boletin.pdf';
+      const url = URL.createObjectURL(response.data);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      link.click();
+      URL.revokeObjectURL(url);
+      setNotice('Boletin descargado correctamente.');
+    } catch {
+      setNotice('No se pudo descargar el boletin.');
+    } finally {
+      setDownloadingReport(false);
+    }
+  }
+
   return (
     <div className="page-stack profile-page">
       {notice && <div className="admin-notice success" onClick={() => setNotice('')}><span>{notice}</span></div>}
@@ -152,6 +188,22 @@ export function ProfilePage({ onLogout }: { onLogout: () => void }) {
         <article className="profile-info-card"><Users size={20} /><span>Cursos/secciones</span><strong>{profile.academicSummary?.courses ?? profile.courses.length}</strong></article>
         <article className="profile-info-card"><BookOpen size={20} /><span>Asignaturas</span><strong>{profile.academicSummary?.subjects ?? profile.subjects.length}</strong></article>
       </section>
+
+      {profile.roles.includes('student') && (
+        <section className="section-card profile-section">
+          <header><h2>Boletin academico</h2><GraduationCap size={20} /></header>
+          {periods.length > 1 && (
+            <label>Periodo
+              <select value={reportPeriod} onChange={(event) => setReportPeriod(event.target.value)}>
+                {periods.map((period) => <option key={period.id} value={period.id}>{period.name}</option>)}
+              </select>
+            </label>
+          )}
+          <button type="button" className="primary-button" onClick={downloadReportCard} disabled={downloadingReport}>
+            {downloadingReport ? 'Descargando...' : 'Descargar boletin'}
+          </button>
+        </section>
+      )}
 
       <section className="profile-layout">
         <ProfileList title="Curso / sección" empty="Sin curso o sección asociada" rows={profile.courses.map((course) => `${course.name} · ${course.classroom} · ${course.students} estudiantes`)} />
