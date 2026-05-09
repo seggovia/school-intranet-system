@@ -71,6 +71,7 @@ async function main() {
   const director = await createUser({ name: 'Morgan Carter', email: 'director@school-intranet.test', avatar: 'MC', department: 'Direccion', role: 'director' });
   const teacherUser = await createUser({ name: 'Taylor Rivera', email: 'teacher@school-intranet.test', avatar: 'TR', department: 'Matematica', role: 'teacher' });
   const teacherUser2 = await createUser({ name: 'Valentina Soto', email: 'teacher2@school-intranet.test', avatar: 'VS', department: 'Lenguaje', role: 'teacher' });
+  const cristianUser = await createUser({ name: 'Cristian Segovia', email: 'cristian.segovia@school-intranet.test', avatar: 'CS', department: 'Matematica', role: 'teacher' });
   const guardianUser = await createUser({ name: 'Jordan Lee', email: 'guardian@school-intranet.test', avatar: 'JL', department: 'Familias', role: 'guardian' });
   const guardianUser2 = await createUser({ name: 'Mariana Torres', email: 'guardian2@school-intranet.test', avatar: 'MT', department: 'Familias', role: 'guardian' });
   const studentUser = await createUser({ name: 'Alex Morgan', email: 'student@school-intranet.test', avatar: 'AM', department: '8 Basico A', role: 'student' });
@@ -97,6 +98,11 @@ async function main() {
     where: { userId: teacherUser2.id },
     update: { employeeCode: 'PROF-002' },
     create: { userId: teacherUser2.id, employeeCode: 'PROF-002' }
+  });
+  const cristianTeacher = await prisma.teacher.upsert({
+    where: { userId: cristianUser.id },
+    update: { employeeCode: 'PROF-003' },
+    create: { userId: cristianUser.id, employeeCode: 'PROF-003' }
   });
 
   const guardian = await prisma.guardian.upsert({
@@ -190,6 +196,16 @@ async function main() {
     update: { teacherId: teacher2.id, classroomId: classroom2.id },
     create: { courseId: course2.id, name: 'B', teacherId: teacher2.id, classroomId: classroom2.id }
   });
+  const classroom3 = await prisma.classroom.upsert({
+    where: { name: 'Sala 210' },
+    update: { capacity: 30 },
+    create: { name: 'Sala 210', capacity: 30 }
+  });
+  const section3 = await prisma.section.upsert({
+    where: { courseId_name: { courseId: course2.id, name: 'A' } },
+    update: { teacherId: cristianTeacher.id, classroomId: classroom3.id },
+    create: { courseId: course2.id, name: 'A', teacherId: cristianTeacher.id, classroomId: classroom3.id }
+  });
 
   const subjects = [
     { name: 'Lenguaje', code: 'LEN' },
@@ -215,6 +231,11 @@ async function main() {
       update: {},
       create: { teacherId: teacher2.id, subjectId: subject.id }
     });
+    await prisma.teacherSubject.upsert({
+      where: { teacherId_subjectId: { teacherId: cristianTeacher.id, subjectId: subject.id } },
+      update: {},
+      create: { teacherId: cristianTeacher.id, subjectId: subject.id }
+    });
     await prisma.courseSubject.upsert({
       where: { courseId_subjectId: { courseId: course8.id, subjectId: subject.id } },
       update: {},
@@ -235,6 +256,11 @@ async function main() {
       update: {},
       create: { sectionId: section2.id, subjectId: subject.id }
     });
+    await prisma.subjectSection.upsert({
+      where: { sectionId_subjectId: { sectionId: section3.id, subjectId: subject.id } },
+      update: {},
+      create: { sectionId: section3.id, subjectId: subject.id }
+    });
   }
 
   const enrollment = await prisma.enrollment.upsert({
@@ -244,7 +270,11 @@ async function main() {
   });
   const enrollments = [enrollment];
   for (const [index, currentStudent] of extraStudents.entries()) {
-    const targetSection = index < 4 ? section : section2;
+    const targetSection = index < 4 ? section : index < 6 ? section2 : section3;
+    await prisma.enrollment.updateMany({
+      where: { studentId: currentStudent.id, year: 2026, NOT: { sectionId: targetSection.id } },
+      data: { status: 'trasladado' }
+    });
     enrollments.push(await prisma.enrollment.upsert({
       where: { studentId_sectionId_year: { studentId: currentStudent.id, sectionId: targetSection.id, year: 2026 } },
       update: { status: 'activo' },
@@ -252,7 +282,12 @@ async function main() {
     }));
   }
 
-  const math = await prisma.subject.findUniqueOrThrow({ where: { code: 'MAT' } });
+  const seededSubjects = await prisma.subject.findMany({
+    where: { code: { in: subjects.map((item) => item.code) } },
+    orderBy: { code: 'asc' }
+  });
+  const subjectByCode = new Map(seededSubjects.map((subject) => [subject.code, subject]));
+  const math = subjectByCode.get('MAT') ?? await prisma.subject.findUniqueOrThrow({ where: { code: 'MAT' } });
   const academicPeriods = [
     { id: 'period-2026-t1', name: '1er Trimestre 2026', year: 2026, startDate: new Date('2026-03-01'), endDate: new Date('2026-05-31') },
     { id: 'period-2026-t2', name: '2do Trimestre 2026', year: 2026, startDate: new Date('2026-06-01'), endDate: new Date('2026-08-31') },
@@ -265,44 +300,137 @@ async function main() {
       create: period
     });
   }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const monday = new Date(today);
+  const mondayOffset = today.getDay() === 0 ? -6 : 1 - today.getDay();
+  monday.setDate(today.getDate() + mondayOffset);
+  const currentWeekdays = Array.from({ length: 5 }, (_, index) => {
+    const day = new Date(monday);
+    day.setDate(monday.getDate() + index);
+    return day.getDay();
+  });
+
+  const sectionContexts = [
+    { section, classroom, teacher, teacherUser, slug: '8ba' },
+    { section: section2, classroom: classroom2, teacher: teacher2, teacherUser: teacherUser2, slug: '2mb' },
+    { section: section3, classroom: classroom3, teacher: cristianTeacher, teacherUser: cristianUser, slug: '2ma' }
+  ];
+  const scheduleTemplates = [
+    { code: 'MAT', dayIndex: 0, startsAt: '08:15', endsAt: '09:45' },
+    { code: 'LEN', dayIndex: 1, startsAt: '10:00', endsAt: '11:30' },
+    { code: 'CIE', dayIndex: 2, startsAt: '08:15', endsAt: '09:45' },
+    { code: 'HIS', dayIndex: 3, startsAt: '10:00', endsAt: '11:30' },
+    { code: 'ING', dayIndex: 4, startsAt: '11:45', endsAt: '13:15' }
+  ];
+
   await prisma.classSchedule.deleteMany({
-    where: { subjectId: math.id, sectionId: { in: [section.id, section2.id] } }
-  });
-  await prisma.classSchedule.createMany({
-    data: [
-      { sectionId: section.id, subjectId: math.id, teacherId: teacher.id, classroomId: classroom.id, weekday: 1, startsAt: '08:15', endsAt: '09:45' },
-      { sectionId: section.id, subjectId: math.id, teacherId: teacher.id, classroomId: classroom.id, weekday: 3, startsAt: '10:00', endsAt: '11:30' },
-      { sectionId: section2.id, subjectId: math.id, teacherId: teacher2.id, classroomId: classroom2.id, weekday: 2, startsAt: '08:15', endsAt: '09:45' },
-      { sectionId: section2.id, subjectId: math.id, teacherId: teacher2.id, classroomId: classroom2.id, weekday: 4, startsAt: '11:45', endsAt: '13:15' }
-    ],
-    skipDuplicates: true
+    where: { sectionId: { in: sectionContexts.map((item) => item.section.id) } }
   });
 
-  await prisma.attendance.createMany({
-    data: enrollments.flatMap((item, index) => [
-      { enrollmentId: item.id, studentId: item.studentId, sectionId: item.sectionId, subjectId: math.id, date: new Date('2026-04-20'), status: index % 5 === 0 ? 'ausente' : 'presente', recordedById: teacherUser.id, updatedById: teacherUser.id },
-      { enrollmentId: item.id, studentId: item.studentId, sectionId: item.sectionId, subjectId: math.id, date: new Date('2026-04-21'), status: index % 4 === 0 ? 'atrasado' : 'presente', note: index % 4 === 0 ? 'Ingreso posterior al inicio de clase' : undefined, recordedById: teacherUser.id, updatedById: teacherUser.id },
-      { enrollmentId: item.id, studentId: item.studentId, sectionId: item.sectionId, subjectId: math.id, date: new Date('2026-04-22'), status: index % 6 === 0 ? 'justificado' : 'presente', recordedById: teacherUser.id, updatedById: teacherUser.id }
-    ]),
-    skipDuplicates: true
+  const scheduleRows = sectionContexts.flatMap((context, sectionIndex) =>
+    scheduleTemplates.map((template) => {
+      const subject = subjectByCode.get(template.code);
+      if (!subject) throw new Error(`Missing subject ${template.code}`);
+      return {
+        sectionId: context.section.id,
+        subjectId: subject.id,
+        teacherId: context.teacher.id,
+        classroomId: context.classroom.id,
+        weekday: currentWeekdays[template.dayIndex],
+        startsAt: sectionIndex === 1 && template.dayIndex < 2 ? '14:00' : template.startsAt,
+        endsAt: sectionIndex === 1 && template.dayIndex < 2 ? '15:30' : template.endsAt
+      };
+    })
+  );
+  await prisma.classSchedule.createMany({ data: scheduleRows });
+
+  const attendanceStart = new Date(monday);
+  attendanceStart.setDate(monday.getDate() - 21);
+  const attendanceEnd = new Date(monday);
+  attendanceEnd.setDate(monday.getDate() - 1);
+  await prisma.attendance.deleteMany({
+    where: {
+      sectionId: { in: sectionContexts.map((item) => item.section.id) },
+      date: { gte: attendanceStart, lte: attendanceEnd }
+    }
   });
 
-  const assessment = await prisma.assessment.upsert({
-    where: { id: 'assessment-mat-1' },
-    update: { title: 'Prueba unidades y proporcionalidad', subjectId: math.id, sectionId: section.id, periodId: 'period-2026-t1', date: new Date('2026-04-18'), type: 'prueba', description: 'Evaluacion diagnostica de contenidos iniciales.' },
-    create: { id: 'assessment-mat-1', title: 'Prueba unidades y proporcionalidad', subjectId: math.id, sectionId: section.id, periodId: 'period-2026-t1', date: new Date('2026-04-18'), weight: 1, type: 'prueba', description: 'Evaluacion diagnostica de contenidos iniciales.' }
+  const activeEnrollments = enrollments.filter((item) => item.status === 'activo');
+  const attendanceRows = activeEnrollments.flatMap((item, enrollmentIndex) => {
+    const context = sectionContexts.find((sectionContext) => sectionContext.section.id === item.sectionId);
+    if (!context) return [];
+    const sectionSchedules = scheduleRows.filter((schedule) => schedule.sectionId === item.sectionId);
+    return [1, 2, 3].flatMap((weekOffset) =>
+      sectionSchedules.map((schedule, scheduleIndex) => {
+        const date = new Date(monday);
+        date.setDate(monday.getDate() - weekOffset * 7 + (schedule.weekday === 0 ? 6 : schedule.weekday - 1));
+        const bucket = (enrollmentIndex * 17 + scheduleIndex * 11 + weekOffset * 7) % 100;
+        const status = bucket < 90 ? 'presente' : bucket < 96 ? 'ausente' : 'atrasado';
+        return {
+          enrollmentId: item.id,
+          studentId: item.studentId,
+          sectionId: item.sectionId,
+          subjectId: schedule.subjectId,
+          date,
+          status,
+          note: status === 'atrasado' ? 'Ingreso posterior al inicio de clase' : undefined,
+          recordedById: context.teacherUser.id,
+          updatedById: context.teacherUser.id
+        };
+      })
+    );
   });
-  await prisma.grade.upsert({
-    where: { assessmentId_studentId: { assessmentId: assessment.id, studentId: student.id } },
-    update: { score: 6.4, status: 'con_nota' },
-    create: { assessmentId: assessment.id, studentId: student.id, enrollmentId: enrollment.id, score: 6.4, status: 'con_nota' }
+  await prisma.attendance.createMany({ data: attendanceRows, skipDuplicates: true });
+
+  await prisma.assessment.deleteMany({
+    where: {
+      sectionId: { in: sectionContexts.map((item) => item.section.id) },
+      subjectId: { in: seededSubjects.map((item) => item.id) }
+    }
   });
-  for (const [index, item] of enrollments.entries()) {
-    await prisma.grade.upsert({
-      where: { assessmentId_studentId: { assessmentId: assessment.id, studentId: item.studentId } },
-      update: { score: Number((4.8 + (index % 5) * 0.4).toFixed(1)), status: 'con_nota' },
-      create: { assessmentId: assessment.id, studentId: item.studentId, enrollmentId: item.id, score: Number((4.8 + (index % 5) * 0.4).toFixed(1)), status: 'con_nota' }
-    });
+
+  const assessmentTitles = ['Diagnostico', 'Trabajo practico', 'Control de contenidos', 'Proyecto aplicado', 'Prueba de cierre'];
+  const assessmentsToGrade = [];
+  for (const context of sectionContexts) {
+    for (const [subjectIndex, subject] of seededSubjects.entries()) {
+      for (const [assessmentIndex, title] of assessmentTitles.entries()) {
+        const date = new Date('2026-04-01');
+        date.setDate(date.getDate() + subjectIndex * 3 + assessmentIndex * 7);
+        const assessment = await prisma.assessment.create({
+          data: {
+            id: `assessment-${context.slug}-${subject.code.toLowerCase()}-${assessmentIndex + 1}`,
+            title: `${title} ${subject.name}`,
+            subjectId: subject.id,
+            sectionId: context.section.id,
+            periodId: 'period-2026-t1',
+            date,
+            weight: assessmentIndex === 4 ? 1.5 : 1,
+            type: assessmentIndex === 1 || assessmentIndex === 3 ? 'trabajo' : 'prueba',
+            description: `Evaluacion ${assessmentIndex + 1} de ${subject.name} para ${context.section.name}.`
+          }
+        });
+        assessmentsToGrade.push({ assessment, sectionId: context.section.id, subjectIndex, assessmentIndex });
+      }
+    }
+  }
+
+  for (const [enrollmentIndex, item] of activeEnrollments.entries()) {
+    const sectionAssessments = assessmentsToGrade.filter((entry) => entry.sectionId === item.sectionId);
+    for (const entry of sectionAssessments) {
+      const rawScore = 4.2 + ((enrollmentIndex * 0.35 + entry.subjectIndex * 0.25 + entry.assessmentIndex * 0.3) % 2.8);
+      const score = Math.min(7, Math.max(3.5, Number(rawScore.toFixed(1))));
+      await prisma.grade.create({
+        data: {
+          assessmentId: entry.assessment.id,
+          studentId: item.studentId,
+          enrollmentId: item.id,
+          score,
+          status: 'con_nota'
+        }
+      });
+    }
   }
 
   const seededAnnouncements = [
