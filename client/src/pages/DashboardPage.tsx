@@ -14,6 +14,16 @@ import type { AttendanceHistoryItem, GradebookHistoryItem, MyAttendanceResponse,
 const emptyDashboard: RoleDashboard = { role: 'student', profile: { id: '', name: '', email: '', roles: [] }, stats: [], sections: [], linkedStudents: [], announcements: [], documents: [] };
 const icons = [Users, ClipboardCheck, GraduationCap, HelpCircle, TrendingUp, AlertTriangle];
 type DashboardObservation = { id: string; studentId: string; student?: string; author: string; section: string | null; body: string; type: 'positiva' | 'negativa' | 'neutral'; date: string; isVisible: boolean; createdAt: string };
+type GuardianStudentDashboard = {
+  id: string;
+  name: string;
+  section: string;
+  course: string;
+  attendanceSummary: { presente: number; ausente: number; atrasado: number; percentage: number };
+  recentGrades: Array<{ subject: string; assessment: string; score: number | null; date: string }>;
+  recentObservations: Array<{ type: 'positiva' | 'negativa' | 'neutral' | string; body: string; date: string }>;
+  upcomingAssessments: Array<{ subject: string; title: string; date: string }>;
+};
 
 function dashboardCopy(role: string) {
   if (role === 'teacher') return ['Panel docente', 'Cursos, asistencia, evaluaciones y comunicaciones en una vista operativa.'];
@@ -175,6 +185,93 @@ function StudentPortal({ dashboard, schedule }: { dashboard: RoleDashboard; sche
   );
 }
 
+function GuardianPortal({ dashboard }: { dashboard: RoleDashboard }) {
+  const students = ((dashboard as RoleDashboard & { students?: GuardianStudentDashboard[] }).students ?? []);
+  return (
+    <>
+      <section className="student-dashboard-actions">
+        <Link to="/calificaciones"><GraduationCap size={17} />Ver todas las notas</Link>
+        <Link to="/asistencia"><ClipboardCheck size={17} />Ver asistencia</Link>
+        <Link to="/comunicaciones"><Bell size={17} />Ver comunicados</Link>
+      </section>
+
+      {!students.length ? (
+        <article className="panel">
+          <EmptyState title="No tienes estudiantes vinculados. Contacta secretaría." />
+        </article>
+      ) : (
+        <section className="student-dashboard-grid three">
+          {students.map((student) => <GuardianStudentCard key={student.id} student={student} />)}
+        </section>
+      )}
+    </>
+  );
+}
+
+function GuardianStudentCard({ student }: { student: GuardianStudentDashboard }) {
+  const percentage = Math.max(0, Math.min(100, student.attendanceSummary.percentage));
+  const nextAssessment = [...student.upcomingAssessments].sort((a, b) => a.date.localeCompare(b.date))[0] ?? null;
+  const negativeObservations = student.recentObservations.filter((item) => item.type === 'negativa');
+  const ringStyle = {
+    background: `conic-gradient(#16a34a ${percentage * 3.6}deg, #e5e7eb 0deg)`
+  };
+
+  return (
+    <article className="panel student-dashboard-list">
+      <div className="panel-title-row">
+        <div>
+          <span className="eyebrow">{student.course} {student.section}</span>
+          <h2>{student.name}</h2>
+        </div>
+        <Users size={20} />
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '88px 1fr', gap: 16, alignItems: 'center', marginBottom: 16 }}>
+        <div style={{ ...ringStyle, width: 82, height: 82, borderRadius: '50%', display: 'grid', placeItems: 'center' }} aria-label={`${percentage}% presente`}>
+          <strong style={{ width: 62, height: 62, borderRadius: '50%', background: '#fff', display: 'grid', placeItems: 'center', color: '#0f172a' }}>{percentage}%</strong>
+        </div>
+        <div className="compact-list">
+          <span><CheckCircle2 size={16} /> {student.attendanceSummary.presente} presente</span>
+          <span><AlertTriangle size={16} /> {student.attendanceSummary.ausente} ausente</span>
+          <span><Clock size={16} /> {student.attendanceSummary.atrasado} atrasado</span>
+        </div>
+      </div>
+
+      <div className="student-list-body">
+        <div className="student-list-row">
+          <strong>Últimas notas</strong>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+            {student.recentGrades.slice(0, 3).map((grade) => (
+              <span key={`${grade.subject}-${grade.assessment}-${grade.date}`} className={`attendance-badge ${grade.score !== null && grade.score >= 4 ? 'presente' : 'ausente'}`}>
+                {grade.subject}: {scoreLabel(grade.score)}
+              </span>
+            ))}
+            {!student.recentGrades.length && <small>Sin notas registradas</small>}
+          </div>
+        </div>
+
+        <div className="student-list-row">
+          <strong>Próxima evaluación</strong>
+          {nextAssessment ? (
+            <>
+              <span>{nextAssessment.title}</span>
+              <small>{nextAssessment.subject} · {formatDate(nextAssessment.date)}</small>
+            </>
+          ) : <small>Sin evaluaciones próximas</small>}
+        </div>
+
+        <div className="student-list-row">
+          <strong>Observaciones negativas pendientes</strong>
+          {negativeObservations.slice(0, 2).map((observation) => (
+            <span key={`${observation.date}-${observation.body}`} className="priority-badge critica">{formatDate(observation.date)} · {observation.body}</span>
+          ))}
+          {!negativeObservations.length && <small>Sin observaciones negativas visibles</small>}
+        </div>
+      </div>
+    </article>
+  );
+}
+
 function DashboardList({ title, icon, empty, children }: { title: string; icon: ReactNode; empty: string; children: ReactNode }) {
   const items = Array.isArray(children) ? children.filter(Boolean) : children;
   const hasItems = Array.isArray(items) ? items.length > 0 : Boolean(items);
@@ -209,8 +306,9 @@ export function DashboardPage() {
       {dashboard.loading && <LoadingState label="Cargando panel institucional..." />}
 
       {!dashboard.loading && dashboard.data.role === 'student' && <StudentPortal dashboard={dashboard.data} schedule={schedule.data} />}
+      {!dashboard.loading && dashboard.data.role === 'guardian' && <GuardianPortal dashboard={dashboard.data} />}
 
-      {dashboard.data.role !== 'student' && (
+      {!['student', 'guardian'].includes(dashboard.data.role) && (
         <>
 
       <section className="kpi-grid">

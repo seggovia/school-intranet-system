@@ -1,10 +1,14 @@
 import type { JwtUser } from '../auth/auth.types.js';
 import bcrypt from 'bcryptjs';
 import { HttpError } from '../../shared/http-error.js';
+import { AttendanceRepository } from '../attendance/attendance.repository.js';
 import { MeRepository } from './me.repository.js';
+import { GradeRepository } from '../grades/grade.repository.js';
 import type { ChangePasswordInput, UpdateProfileInput, UserPreferencesInput } from './me.validators.js';
 
 const repository = new MeRepository();
+const gradeRepository = new GradeRepository();
+const attendanceRepository = new AttendanceRepository();
 
 const weekdayNames = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'];
 
@@ -40,6 +44,14 @@ function attendanceRate(records: { status: string }[]) {
   if (!records.length) return 100;
   const present = records.filter((item) => item.status === 'presente' || item.status === 'atrasado').length;
   return Math.round((present / records.length) * 100);
+}
+
+function guardianAttendanceSummary(records: { status: string }[]) {
+  const presente = records.filter((item) => item.status === 'presente').length;
+  const ausente = records.filter((item) => item.status === 'ausente').length;
+  const atrasado = records.filter((item) => item.status === 'atrasado').length;
+  const total = records.length || 1;
+  return { presente, ausente, atrasado, percentage: Math.round((presente / total) * 100) };
 }
 
 function initials(name: string) {
@@ -286,8 +298,60 @@ export class MeService {
       linkedStudents: profile?.guardian?.students.map((item) => ({ id: item.student.id, name: item.student.user.name, relationship: item.relationship })) ?? [],
       observations: observations.slice(0, 8),
       announcements: announcements.map((announcement) => ({ id: announcement.id, title: announcement.title, priority: announcement.priority })),
-      documents: documents.map(serializeDocument)
+      documents: documents.map(serializeDocument),
+      ...(user.roles.includes('guardian') ? { students: await this.guardianStudentsDashboard(user.id, profile, sections) } : {})
     };
+  }
+
+  private async guardianStudentsDashboard(userId: string, profile: Awaited<ReturnType<MeRepository['findUserProfile']>>, sections: Awaited<ReturnType<MeRepository['findGuardianStudentSections']>>) {
+    const [gradeData, attendanceData] = await Promise.all([
+      gradeRepository.findGuardianStudentGrades(userId),
+      attendanceRepository.findGuardianStudentAttendance(userId)
+    ]);
+    const gradesByStudent = new Map(gradeData?.students.map((link) => [link.student.id, link.student.grades]) ?? []);
+    const attendanceByStudent = new Map(attendanceData?.students.map((link) => [link.student.id, link.student.attendance]) ?? []);
+    const sectionByStudent = new Map<string, { section: string; course: string }>();
+    const upcomingByStudent = new Map<string, Array<{ subject: string; title: string; date: string }>>();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    sections.forEach((section) => {
+      section.enrollments.forEach((enrollment) => {
+        sectionByStudent.set(enrollment.student.id, { section: section.name, course: section.course.name });
+        const upcoming = section.subjects
+          .flatMap((item) => item.subject.assessments
+            .filter((assessment) => assessment.sectionId === section.id && assessment.date >= today)
+            .map((assessment) => ({ subject: item.subject.name, title: assessment.title, date: assessment.date.toISOString().slice(0, 10) })))
+          .sort((a, b) => a.date.localeCompare(b.date))
+          .slice(0, 3);
+        upcomingByStudent.set(enrollment.student.id, upcoming);
+      });
+    });
+
+    return profile?.guardian?.students.map((link) => {
+      const grades = gradesByStudent.get(link.student.id) ?? [];
+      const attendance = attendanceByStudent.get(link.student.id) ?? [];
+      const section = sectionByStudent.get(link.student.id);
+      return {
+        id: link.student.id,
+        name: link.student.user.name,
+        section: section?.section ?? 'Sin seccion',
+        course: section?.course ?? 'Sin curso',
+        attendanceSummary: guardianAttendanceSummary(attendance),
+        recentGrades: grades.slice(0, 5).map((grade) => ({
+          subject: grade.assessment.subject.name,
+          assessment: grade.assessment.title,
+          score: grade.score,
+          date: grade.assessment.date.toISOString().slice(0, 10)
+        })),
+        recentObservations: link.student.observations.map((observation) => ({
+          type: observation.type,
+          body: observation.body,
+          date: observation.date.toISOString().slice(0, 10)
+        })),
+        upcomingAssessments: upcomingByStudent.get(link.student.id) ?? []
+      };
+    }) ?? [];
   }
 
   async subjects(user: JwtUser) {
