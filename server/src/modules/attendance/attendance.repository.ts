@@ -77,6 +77,10 @@ export class AttendanceRepository {
     });
   }
 
+  findGuardianStudentAttendance(userId: string) {
+    return this.findGuardianByUser(userId);
+  }
+
   listSummary(date: Date) {
     return prisma.section.findMany({
       include: {

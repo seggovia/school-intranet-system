@@ -144,6 +144,10 @@ export class GradeRepository {
     });
   }
 
+  findGuardianStudentGrades(userId: string) {
+    return this.findGuardianByUser(userId);
+  }
+
   listSummary() {
     return prisma.section.findMany({
       include: {
