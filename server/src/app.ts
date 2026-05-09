@@ -37,14 +37,14 @@ app.use(morgan(env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 100,
+  limit: env.NODE_ENV === 'development' ? 2000 : 100,
   standardHeaders: true,
   legacyHeaders: false
 });
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 10,
+  limit: env.NODE_ENV === 'development' ? 50 : 10,
   standardHeaders: true,
   legacyHeaders: false
 });

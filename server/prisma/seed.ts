@@ -56,7 +56,7 @@ async function main() {
   const createUser = async (input: { name: string; email: string; avatar: string; department: string; role: string }) => {
     const user = await prisma.user.upsert({
       where: { email: input.email },
-      update: { name: input.name, avatar: input.avatar, department: input.department, passwordHash },
+      update: { name: input.name, avatar: input.avatar, department: input.department, passwordHash, isActive: true },
       create: { name: input.name, email: input.email, avatar: input.avatar, department: input.department, passwordHash }
     });
     const role = await prisma.role.findUniqueOrThrow({ where: { name: input.role } });
@@ -384,10 +384,18 @@ async function main() {
   });
   await prisma.attendance.createMany({ data: attendanceRows, skipDuplicates: true });
 
+  const seededAssessmentScope = {
+    sectionId: { in: sectionContexts.map((item) => item.section.id) },
+    subjectId: { in: seededSubjects.map((item) => item.id) }
+  };
+  await prisma.grade.deleteMany({
+    where: {
+      assessment: seededAssessmentScope
+    }
+  });
   await prisma.assessment.deleteMany({
     where: {
-      sectionId: { in: sectionContexts.map((item) => item.section.id) },
-      subjectId: { in: seededSubjects.map((item) => item.id) }
+      ...seededAssessmentScope
     }
   });
 

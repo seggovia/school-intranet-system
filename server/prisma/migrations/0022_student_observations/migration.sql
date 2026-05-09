@@ -21,7 +21,7 @@ ALTER TABLE `student_observations`
 
 ALTER TABLE `student_observations`
   ADD CONSTRAINT `student_observations_authorId_fkey`
-  FOREIGN KEY (`authorId`) REFERENCES `users`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+  FOREIGN KEY (`authorId`) REFERENCES `User`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 ALTER TABLE `student_observations`
   ADD CONSTRAINT `student_observations_sectionId_fkey`
