@@ -1,251 +1,126 @@
 # Sistema de Intranet Escolar
 
-Sistema de intranet escolar desarrollado con arquitectura full‑stack,
-diseñado para gestionar procesos académicos, comunicación institucional
-y acceso diferenciado por roles.
+Plataforma de gestión académica institucional para colegios. Incluye gestión de notas, asistencia, comunicados, tickets administrativos, horarios, notificaciones en tiempo real y generación de boletines PDF.
 
-------------------------------------------------------------------------
+## Stack técnico
 
-# Estado del proyecto
+| Capa | Tecnología |
+|------|-----------|
+| Frontend | React 18 + TypeScript + Vite |
+| Backend | Node.js + Express + TypeScript |
+| ORM | Prisma |
+| Base de datos | MySQL / MariaDB |
+| Autenticación | JWT + Refresh Tokens |
+| Tiempo real | Server-Sent Events (SSE) |
+| PDF | PDFKit |
+| Contenedores | Docker Compose |
 
-🚧 Proyecto en desarrollo.
+## Roles del sistema
 
-Actualmente incluye:
+| Rol | Acceso principal |
+|-----|----------------|
+| Administrador | Gestión total de usuarios, estructura escolar y auditoría |
+| Director | Supervisión académica y reportes institucionales |
+| Inspector | Control de asistencia y tickets |
+| Docente | Libro de calificaciones, asistencia y materiales |
+| Estudiante | Portal personal con notas, horario y comunicados |
+| Apoderado | Seguimiento académico de hijos vinculados |
 
--   Autenticación con JWT y refresh tokens rotativos
--   Sistema de roles y permisos (RBAC)
--   Paneles diferenciados por rol
--   Gestión de cursos, asignaturas y secciones
--   Asistencia y calificaciones
--   Comunicados y documentos
--   Sistema de solicitudes
--   Calendario escolar
--   Docker Compose con frontend, backend y base de datos
+## Módulos implementados
 
-## Mejoras futuras
+- **Autenticación** — Login, refresh tokens, recuperación de contraseña por email
+- **Panel institucional** — Dashboard diferenciado por rol con indicadores en tiempo real
+- **Libro de calificaciones** — Evaluaciones con peso, bulk upsert, promedio ponderado y alertas
+- **Asistencia** — Registro diario por sección/asignatura con tendencia semanal
+- **Horario institucional** — Vista por bloques con detección de conflictos
+- **Comunicados** — Mensajes segmentados por rol con tracking de lectura real
+- **Tickets administrativos** — Solicitudes con comentarios, historial de estados y notificaciones
+- **Períodos académicos** — Trimestres/semestres con filtro en el gradebook
+- **Anotaciones de estudiantes** — Observaciones positivas/negativas/neutrales con notificación
+- **Portal del apoderado** — Vista consolidada de notas y asistencia por hijo/a
+- **Boletín PDF** — Informe de calificaciones descargable por período
+- **Notificaciones SSE** — Push en tiempo real sin WebSocket
+- **Auditoría** — Log de acciones críticas con IP, userAgent y filtros
+- **Administración** — CRUD de usuarios, estudiantes, profesores, cursos, secciones, salas y horarios
+- **Materiales** — Unidades, materiales y tareas por asignatura
 
--   Subida real de archivos para materiales
--   Descarga de documentos desde almacenamiento persistente
--   Formularios completos para crear evaluaciones y materiales
--   Mejor organización visual por unidades de asignatura
--   Pruebas automatizadas backend
--   Documentación API con Swagger/OpenAPI
+## Cómo levantar el proyecto localmente
 
-------------------------------------------------------------------------
+### Requisitos
+- Node.js 20+
+- Docker y Docker Compose
 
-# Stack Tecnológico
+### Pasos
 
-## Frontend
+```bash
+# 1. Clonar el repositorio
+git clone https://github.com/tu-usuario/school-intranet-system.git
+cd school-intranet-system
 
--   React
--   Vite
--   TypeScript
--   React Router
--   Recharts
--   Axios
+# 2. Configurar variables de entorno
+cp server/.env.example server/.env
+# Editar server/.env con tus valores
 
-## Backend
+# 3. Levantar la base de datos
+docker compose up -d
 
--   Node.js
--   Express
--   TypeScript
--   Prisma ORM
--   MySQL
+# 4. Instalar dependencias
+cd server && npm install
+cd ../client && npm install
 
-## Autenticación
+# 5. Ejecutar migraciones
+cd ../server && npx prisma migrate deploy
 
--   JWT
--   Refresh tokens rotativos
--   bcrypt
--   RBAC (Role Based Access Control)
+# 6. Cargar datos de demostración
+npx prisma db seed
 
-## Infraestructura
+# 7. Iniciar servidores de desarrollo
+# Terminal 1 (backend):
+cd server && npm run dev
 
--   Docker
--   Docker Compose
-
-------------------------------------------------------------------------
-
-# Arquitectura
-
-Los módulos backend siguen una estructura por capas:
-
-routes -\> controller -\> service -\> repository -\> Prisma/MySQL
-
-Principios:
-
--   Los controladores manejan solo request/response.
--   Los servicios contienen la lógica de negocio.
--   Los repositorios son la única capa que accede a Prisma.
--   Las entradas se validan con Zod.
--   Las rutas usan autenticación, roles y permisos.
-
-------------------------------------------------------------------------
-
-## Estructura del proyecto
-
-```text
-school-intranet-system
-│
-├── client        # Frontend React
-│
-├── server        # Backend Node + Express
-│   ├── modules
-│   ├── prisma
-│   └── middlewares
-│
-├── docker-compose.yml
-└── README.md
+# Terminal 2 (frontend):
+cd client && npm run dev
 ```
 
+La aplicación estará disponible en http://localhost:5173
 
-------------------------------------------------------------------------
+## Credenciales demo
 
-# Docker
+Todos los usuarios usan la contraseña: `demo1234`
 
-Ejecutar el sistema completo:
+| Rol | Email |
+|-----|-------|
+| Administrador | admin@school-intranet.test |
+| Director | director@school-intranet.test |
+| Inspector | inspector@school-intranet.test |
+| Docente | teacher@school-intranet.test |
+| Estudiante | student@school-intranet.test |
+| Apoderado | guardian@school-intranet.test |
 
-docker compose up --build
+## Arquitectura backend
+Cliente React
+│
+▼ HTTP REST
+Express Router
+│
+▼
+Controller  ←  valida con Zod
+│
+▼
+Service     ←  lógica de negocio + permisos
+│
+▼
+Repository  ←  queries Prisma
+│
+▼
+MySQL / MariaDB
 
-Servicios:
+## Seguridad
 
--   school-intranet-mysql
--   school-intranet-backend
--   school-intranet-frontend
+- JWT access token (15min) + refresh token (7 días) con rotación
+- Tokens hasheados en base de datos
+- Rate limiting: 100 req/15min global, 10 req/15min en endpoints de auth
+- Helmet para headers de seguridad HTTP
+- Auditoría de LOGIN_SUCCESS, LOGIN_FAILED y acciones críticas con IP, userAgent y filtros
 
-Base de datos:
-
-MySQL: school_intranet
-
-Accesos:
-
-Backend http://localhost:4000\
-Frontend http://localhost:5173
-
-------------------------------------------------------------------------
-
-# Cuentas Demo
-
-Todas las cuentas usan la clave:
-
-demo1234
-
-  Rol             Correo
-  --------------- --------------------------------
-  Administrador   admin@school-intranet.test
-  Director        director@school-intranet.test
-  Docente         teacher@school-intranet.test
-  Estudiante      student@school-intranet.test
-  Apoderado       guardian@school-intranet.test
-  Inspector       inspector@school-intranet.test
-
-------------------------------------------------------------------------
-
-# Funcionalidades por rol
-
-## Administrador / Director
-
--   Gestión de usuarios y roles
--   Gestión de cursos, secciones y asignaturas
--   Comunicados institucionales
--   Documentos
--   Calendario institucional
--   Indicadores del sistema
-
-## Docente
-
--   Cursos asignados
--   Nómina de estudiantes
--   Registro de asistencia
--   Ingreso de calificaciones
--   Evaluaciones
--   Materiales de asignatura
-
-## Estudiante
-
--   Asignaturas
--   Horario
--   Calificaciones
--   Asistencia
--   Materiales
--   Documentos
--   Calendario escolar
-
-## Apoderado
-
--   Estudiantes vinculados
--   Calificaciones
--   Asistencia
--   Comunicados
--   Documentos
--   Solicitudes
-
-## Inspector
-
--   Seguimiento de asistencia
--   Registro de estudiantes
--   Solicitudes
--   Calendario
-
-------------------------------------------------------------------------
-
-# Resumen API
-
-## Auth
-
-/api/auth/login\
-/api/auth/refresh\
-/api/auth/logout
-
-## Espacio del usuario
-
-/api/me/dashboard\
-/api/me/subjects\
-/api/me/schedule\
-/api/me/grades\
-/api/me/attendance
-
-## Otros módulos
-
-/api/users\
-/api/courses\
-/api/subjects\
-/api/sections\
-/api/assessments\
-/api/grades\
-/api/attendance\
-/api/announcements\
-/api/notifications\
-/api/documents\
-/api/requests\
-/api/events\
-/api/schedules\
-/api/health
-
-------------------------------------------------------------------------
-
-# Seguridad
-
--   Contraseñas hasheadas con bcrypt
--   Access tokens JWT de corta duración
--   Refresh tokens almacenados hasheados
--   Rotación automática de refresh tokens
--   Logout invalida el refresh token
--   Rutas protegidas por autenticación
--   Operaciones restringidas por roles
--   Validación de datos con Zod
-
-------------------------------------------------------------------------
-
-# Scripts
-
-npm run dev\
-npm run typecheck\
-npm run build\
-npm start
-
-------------------------------------------------------------------------
-
-# Licencia
-
-Proyecto creado con fines educativos.
+---
