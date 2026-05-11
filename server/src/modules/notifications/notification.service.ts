@@ -60,6 +60,10 @@ class NotificationStreamManager {
     this.connections.clear();
   }
 
+  connectionCount() {
+    return Array.from(this.connections.values()).reduce((total, connections) => total + connections.size, 0);
+  }
+
   private remove(userId: string, res: Response) {
     const userConnections = this.connections.get(userId);
     if (!userConnections) return;

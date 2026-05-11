@@ -52,11 +52,19 @@ const authLimiter = rateLimit({
 app.use(globalLimiter);
 
 app.get('/api/health', async (_req, res) => {
+  const health = {
+    status: 'ok',
+    service: 'school-intranet-system',
+    timestamp: new Date().toISOString(),
+    uptime: Math.floor(process.uptime()),
+    environment: env.NODE_ENV
+  };
+
   try {
     await prisma.$queryRaw`SELECT 1`;
-    res.json({ status: 'ok', database: 'available', service: 'school-intranet-system', timestamp: new Date().toISOString() });
+    res.json({ ...health, database: 'available' });
   } catch {
-    res.status(200).json({ status: 'ok', database: 'unavailable', service: 'school-intranet-system', timestamp: new Date().toISOString() });
+    res.status(200).json({ ...health, database: 'unavailable' });
   }
 });
 
