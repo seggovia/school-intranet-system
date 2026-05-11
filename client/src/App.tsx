@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { AuthSession } from './types';
 import { logout, sessionStorageKey } from './api';
 import { LoginPage } from './pages/LoginPage';
+import { LandingPage } from './pages/LandingPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { Shell } from './components/Shell';
@@ -53,6 +54,7 @@ export function App() {
   if (!auth.isLoggedIn) {
     return (
       <Routes>
+        <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
@@ -64,7 +66,8 @@ export function App() {
   return (
     <Shell user={auth.user!} onLogout={handleLogout}>
       <Routes>
-        <Route path="/" element={<DashboardPage />} />
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/academico" element={<MySubjectsPage />} />
         <Route path="/gestion-academica" element={<AcademicsPage user={auth.user!} />} />
         <Route path="/horario" element={<CalendarPage user={auth.user!} />} />
