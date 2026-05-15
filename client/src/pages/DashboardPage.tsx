@@ -452,7 +452,7 @@ export function DashboardPage() {
             {dashboard.data.role === 'guardian' && observations.map((observation) => <span key={observation.id}><AlertTriangle size={16} /> {observation.student ? `${observation.student}: ` : ''}{observation.body}</span>)}
             {!dashboard.data.announcements.length && !dashboard.data.documents.length && !(dashboard.data.role === 'guardian' && observations.length) && <EmptyState title="Sin actividad reciente" />}
           </div>
-          <div className="quick-actions">
+          <div className="quick-actions" style={{ marginTop: 16, paddingTop: 16 }}>
             <Link to="/asistencia"><ClipboardCheck size={16} /> Asistencia</Link>
             <Link to="/academico"><BookOpen size={16} /> Académico</Link>
             <Link to="/comunicaciones"><Bell size={16} /> Comunicar</Link>
