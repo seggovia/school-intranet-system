@@ -7,21 +7,21 @@ import { MaterialRepository } from './material.repository.js';
 
 const repository = new MaterialRepository();
 
-type DownloadMaterial = any;
+type DownloadMaterial = NonNullable<Awaited<ReturnType<MaterialRepository['findForDownload']>>>;
 
 function canDownloadMaterial(user: JwtUser, material: DownloadMaterial) {
   if (user.roles.some((role) => ['admin', 'director'].includes(role))) return true;
   if (user.roles.includes('teacher')) {
-    return material.unit.subject.teachers.some((item: any) => item.teacher.userId === user.id)
-      || material.unit.subject.sections.some((item: any) => item.section.headTeacher?.userId === user.id)
-      || material.unit.subject.sections.some((item: any) => item.section.schedules?.some((schedule: any) => schedule.teacher.userId === user.id));
+    return material.unit.subject.teachers.some((item) => item.teacher.userId === user.id)
+      || material.unit.subject.sections.some((item) => item.section.headTeacher?.userId === user.id)
+      || material.unit.subject.sections.some((item) => item.section.schedules?.some((schedule) => schedule.teacher.userId === user.id));
   }
   if (user.roles.includes('student')) {
-    return material.unit.subject.sections.some((item: any) => item.section.enrollments.some((enrollment: any) => enrollment.student.userId === user.id));
+    return material.unit.subject.sections.some((item) => item.section.enrollments.some((enrollment) => enrollment.student.userId === user.id));
   }
   if (user.roles.includes('guardian')) {
-    return material.unit.subject.sections.some((item: any) => item.section.enrollments.some((enrollment: any) => (
-      enrollment.student.guardians.some((guardian: any) => guardian.guardian.userId === user.id)
+    return material.unit.subject.sections.some((item) => item.section.enrollments.some((enrollment) => (
+      enrollment.student.guardians.some((guardian) => guardian.guardian.userId === user.id)
     )));
   }
   return false;
