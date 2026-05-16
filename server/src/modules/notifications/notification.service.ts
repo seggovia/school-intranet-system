@@ -74,10 +74,6 @@ class NotificationStreamManager {
 
 export const NotificationStream = new NotificationStreamManager();
 
-process.once('SIGTERM', () => {
-  NotificationStream.closeAll();
-});
-
 export class NotificationService {
   async listForUser(userId: string) {
     const rows = await repository.listForUser(userId);
