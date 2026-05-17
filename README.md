@@ -12,6 +12,10 @@ Plataforma de gestión académica institucional para colegios. Incluye gestión 
 |------------------------|---------------------|
 | ![Gradebook](docs/screenshots/gradebook.png) | ![Guardian](docs/screenshots/guardian.png) |
 
+| Boletín PDF |
+|-------------|
+| ![PDF](docs/screenshots/pdf.png) |
+
 ## Stack técnico
 
 | Capa | Tecnología |
