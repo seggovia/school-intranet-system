@@ -2,6 +2,16 @@
 
 Plataforma de gestión académica institucional para colegios. Incluye gestión de notas, asistencia, comunicados, tickets administrativos, horarios, notificaciones en tiempo real y generación de boletines PDF.
 
+## Vista previa
+
+| Landing institucional | Panel administrativo |
+|----------------------|---------------------|
+| ![Landing](docs/screenshots/landing.png) | ![Dashboard](docs/screenshots/dashboard.png) |
+
+| Libro de calificaciones | Portal del apoderado |
+|------------------------|---------------------|
+| ![Gradebook](docs/screenshots/gradebook.png) | ![Guardian](docs/screenshots/guardian.png) |
+
 ## Stack técnico
 
 | Capa | Tecnología |
@@ -122,5 +132,14 @@ MySQL / MariaDB
 - Rate limiting: 100 req/15min global, 10 req/15min en endpoints de auth
 - Helmet para headers de seguridad HTTP
 - Auditoría de LOGIN_SUCCESS, LOGIN_FAILED y acciones críticas con IP, userAgent y filtros
+
+## Roadmap
+
+- [ ] Tests de integración para flujos críticos (login, asistencia, calificaciones)
+- [ ] Separación de AdminPage.tsx en componentes por módulo
+- [ ] Refactor de styles.css por dominio (base, layout, forms, admin, gradebook)
+- [ ] Export de datos académicos en formato CSV
+- [ ] Firma digital de comunicados por apoderado
+- [ ] Integración con calendario externo
 
 ---
