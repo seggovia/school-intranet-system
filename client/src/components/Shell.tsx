@@ -185,35 +185,47 @@ export function Shell({ user, onLogout, children }: { user: User; onLogout: () =
         <main className="content">{children}</main>
       </div>
       <style>{`
-        @media (max-width: 768px) {
+        @media (max-width: 820px) {
           .institution-header {
             grid-template-columns: minmax(0, 1fr) auto auto;
+            padding: 10px 12px;
+            position: relative;
+            z-index: 1001;
           }
 
           .shell-mobile-menu-button {
-            display: inline-flex;
+            display: inline-flex !important;
             grid-column: 2;
             grid-row: 1;
+            order: 2;
+          }
+
+          .institution-header .institution-user {
+            grid-column: 3;
+            grid-row: 1;
+            order: 3;
+          }
+
+          .institution-header .institution-search {
+            display: none !important;
           }
 
           .institution-header .nav-list {
             position: fixed;
-            top: 64px;
+            top: 0;
             left: 0;
             right: 0;
+            bottom: 0;
             z-index: 1000;
             display: none;
             grid-template-columns: 1fr;
             align-items: stretch;
-            justify-content: stretch;
+            justify-content: start;
             width: 100vw;
-            max-height: calc(100vh - 64px);
+            max-height: 100vh;
             overflow-y: auto;
-            padding: 10px;
-            border: 1px solid rgba(255, 255, 255, 0.14);
-            border-radius: 8px;
-            background: var(--color-navbar);
-            box-shadow: 0 18px 45px rgba(15, 23, 42, 0.28);
+            padding: 80px 16px 24px;
+            background: #0f172a;
           }
 
           .institution-header .nav-list.nav-list-open {
@@ -222,25 +234,28 @@ export function Shell({ user, onLogout, children }: { user: User; onLogout: () =
 
           .institution-header .nav-list a {
             justify-content: flex-start;
-            min-height: 44px;
-            padding: 0 12px;
+            min-height: 52px;
+            padding: 0 16px;
+            font-size: 1rem;
           }
 
           .institution-header .nav-list a span {
             display: inline;
           }
-
-          .institution-header .institution-search {
-            display: none;
-          }
-
-          .institution-header .institution-user {
-            grid-column: 3;
-            grid-row: 1;
-            justify-content: flex-end;
-          }
         }
       `}</style>
+      {open && (
+        <div
+          onClick={() => setOpen(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.5)',
+            zIndex: 999,
+          }}
+          aria-hidden="true"
+        />
+      )}
     </div>
   );
 }
