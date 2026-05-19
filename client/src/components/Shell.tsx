@@ -226,8 +226,7 @@ export function Shell({ user, onLogout, children }: { user: User; onLogout: () =
           }
 
           .institution-header .institution-search {
-            grid-column: 1 / -1;
-            grid-row: 2;
+            display: none;
           }
 
           .institution-header .institution-user {

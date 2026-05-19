@@ -238,6 +238,12 @@ export function ProfilePage({ onLogout }: { onLogout: () => void }) {
           .profile-page .academic-summary-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr));
           }
+
+          .profile-page .quick-preferences label {
+            flex-wrap: wrap;
+            word-break: break-word;
+            overflow-wrap: break-word;
+          }
         }
       `}</style>
     </div>

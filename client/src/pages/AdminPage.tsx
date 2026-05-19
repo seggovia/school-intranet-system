@@ -1595,6 +1595,26 @@ export function AdminPage({ user }: { user: User }) {
       {observationStudent && <StudentObservationsModal student={observationStudent} onClose={() => setObservationStudent(null)} onApiError={handleApiError} />}
       {confirm && <ConfirmDialog confirm={confirm} onClose={() => setConfirm(null)} onApiError={handleApiError} />}
       {apiError && <ApiErrorModal error={apiError} onClose={() => setApiError(null)} />}
+      <style>{`
+        @media (max-width: 768px) {
+          .admin-page .page-header,
+          .admin-page .page-header > *,
+          .admin-page .page-header h1,
+          .admin-page .page-header p {
+            max-width: 100%;
+            overflow-wrap: break-word;
+            word-break: break-word;
+          }
+
+          .admin-page .admin-summary-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+
+          .admin-page .admin-summary-card {
+            min-width: 0;
+          }
+        }
+      `}</style>
     </div>
   );
 }
