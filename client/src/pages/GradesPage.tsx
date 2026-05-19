@@ -507,7 +507,7 @@ function StaffGradebookView({ user }: { user: User }) {
 
       <GradebookStats rows={gradebookRows} />
 
-      <section className="panel gradebook-sheet-panel">
+      <section className="panel gradebook-sheet-panel" style={{ overflowX: 'hidden' }}>
         <div className="gradebook-table-heading">
           <div>
             <strong>{gradebookRows.length} estudiantes</strong>

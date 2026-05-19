@@ -185,6 +185,33 @@ export function CommunicationsPage({ user }: { user: User }) {
       </section>
 
       {selected && <CommunicationDetailModal row={selected} isAdmin={isAdmin} onClose={() => setSelected(null)} />}
+      <style>{`
+        @media (max-width: 768px) {
+          .communications-page .communication-list,
+          .communications-page .communication-card {
+            width: 100%;
+          }
+
+          .communications-page .communication-filters {
+            grid-template-columns: 1fr;
+          }
+
+          .communications-page .communication-filters > *,
+          .communications-page .communication-card footer > * {
+            width: 100%;
+          }
+
+          .communications-page .communication-card footer {
+            align-items: stretch;
+            flex-direction: column;
+          }
+
+          .communications-page .communication-card footer button,
+          .communications-page .communication-card footer .badge {
+            justify-content: center;
+          }
+        }
+      `}</style>
     </div>
   );
 }

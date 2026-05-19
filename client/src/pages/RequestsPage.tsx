@@ -62,6 +62,7 @@ export function RequestsPage({ user }: { user: User }) {
   const [detailLoading, setDetailLoading] = useState(false);
   const [comment, setComment] = useState('');
   const [page, setPage] = useState(1);
+  const [formOpen, setFormOpen] = useState(false);
   const canManageRequests = user.permissions.includes('requests:manage');
   const pageSize = 8;
 
@@ -107,6 +108,7 @@ export function RequestsPage({ user }: { user: User }) {
       setSubject('');
       setDescription('');
       setPriority('normal');
+      setFormOpen(false);
     } catch {
       setError('No se pudo crear la solicitud. Revisa los datos e intenta nuevamente.');
     }
@@ -139,8 +141,12 @@ export function RequestsPage({ user }: { user: User }) {
       </section>
 
       <section className="request-layout">
+        <div className={`request-form-panel ${formOpen ? 'mobile-open' : ''}`}>
         <form className="request-form" onSubmit={handleSubmit} noValidate>
-          <h2>Nueva solicitud</h2>
+          <header className="request-form-header">
+            <h2>Nueva solicitud</h2>
+            <button className="icon-button request-form-close" type="button" onClick={() => setFormOpen(false)} aria-label="Cerrar formulario"><X size={18} /></button>
+          </header>
           {error && <p className="form-error">{error}</p>}
           <label>Asunto<input value={subject} onChange={(event) => setSubject(event.target.value)} placeholder="Ej: Certificado alumno regular" /></label>
           <label>Area<select value={area} onChange={(event) => setArea(event.target.value)}>{areas.map((item) => <option key={item}>{item}</option>)}</select></label>
@@ -148,6 +154,7 @@ export function RequestsPage({ user }: { user: User }) {
           <label>Descripcion<textarea value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Describe el motivo, contexto y cualquier fecha relevante." rows={5} /></label>
           <button className="primary-button" type="submit"><Send size={17} /> Enviar ticket</button>
         </form>
+        </div>
 
         <section className="panel ticket-workspace">
           <div className="ticket-toolbar">
@@ -180,6 +187,9 @@ export function RequestsPage({ user }: { user: User }) {
           </div>
         </section>
       </section>
+      <button className="primary-button new-request-fab" type="button" onClick={() => setFormOpen(true)}>
+        + Nueva solicitud
+      </button>
 
       {detailLoading && <LoadingState label="Cargando detalle..." />}
       {selected && (
@@ -193,6 +203,88 @@ export function RequestsPage({ user }: { user: User }) {
           onClose={() => setSelected(null)}
         />
       )}
+      <style>{`
+        .request-form-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+        }
+
+        .request-form-header h2 {
+          margin: 0;
+        }
+
+        .request-form-close,
+        .new-request-fab {
+          display: none;
+        }
+
+        @media (max-width: 768px) {
+          .tickets-page .request-layout {
+            grid-template-columns: 1fr;
+          }
+
+          .tickets-page .ticket-workspace {
+            width: 100%;
+          }
+
+          .tickets-page .request-form-panel {
+            display: none;
+          }
+
+          .tickets-page .request-form-panel.mobile-open {
+            position: fixed;
+            inset: auto 0 0;
+            z-index: 60;
+            display: block;
+            padding: 12px;
+            background: rgba(15, 23, 42, 0.38);
+          }
+
+          .tickets-page .request-form-panel.mobile-open .request-form {
+            max-height: calc(100vh - 48px);
+            overflow: auto;
+            border-radius: 14px 14px 0 0;
+          }
+
+          .tickets-page .request-form-close {
+            display: inline-flex;
+          }
+
+          .tickets-page .new-request-fab {
+            position: fixed;
+            right: 18px;
+            bottom: 18px;
+            z-index: 50;
+            display: inline-flex;
+            min-height: 46px;
+            padding: 0 16px;
+            box-shadow: 0 16px 35px rgba(15, 23, 42, 0.24);
+          }
+
+          .tickets-page .ticket-toolbar {
+            align-items: stretch;
+            flex-direction: column;
+          }
+
+          .tickets-page .ticket-toolbar > * {
+            width: 100%;
+          }
+
+          .tickets-page .ticket-card {
+            grid-template-columns: 1fr;
+          }
+
+          .tickets-page .ticket-actions {
+            justify-content: stretch;
+          }
+
+          .tickets-page .ticket-actions > * {
+            width: 100%;
+          }
+        }
+      `}</style>
     </div>
   );
 }

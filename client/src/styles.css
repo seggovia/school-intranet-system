@@ -977,7 +977,7 @@
 .admin-modal-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 90;
+  z-index: 1002;
   background: rgba(15, 23, 42, 0.58);
   display: grid;
   place-items: center;
@@ -7491,6 +7491,9 @@ html.dark .institution-header {
 
 html.dark :where(
   .panel,
+  .subject-card,
+  .section-card,
+  .empty-state,
   .announcement-card,
   .request-form,
   .timeline-item,
@@ -7565,6 +7568,7 @@ html.dark :where(
   .admin-modal,
   .admin-confirm,
   .api-error-modal,
+  .class-modal,
   .student-picker-modal,
   .guardian-detail-modal,
   .communication-detail-modal,
@@ -7574,6 +7578,15 @@ html.dark :where(
   color: var(--color-text);
   background: var(--color-card);
   box-shadow: var(--shadow-modal);
+}
+
+html.dark .panel,
+html.dark .subject-card,
+html.dark .section-card,
+html.dark .empty-state {
+  color: var(--color-text);
+  border-color: var(--color-border);
+  background: var(--color-card);
 }
 
 html.dark :where(
@@ -7677,6 +7690,40 @@ html.dark .preference-options button.active {
   background: #172554;
 }
 
+html.dark .admin-form-grid {
+  background: var(--color-card);
+}
+
+html.dark .admin-form-section {
+  background: var(--color-card-subtle);
+  border-color: var(--color-border);
+}
+
+html.dark .admin-form-grid label,
+html.dark .admin-form-section label,
+html.dark .admin-form-grid .admin-form-section legend,
+html.dark .admin-relation-card label {
+  color: var(--color-text);
+}
+
+html.dark .admin-form-section legend {
+  color: #60a5fa;
+}
+
+html.dark .checkbox-list {
+  background: var(--color-card-subtle);
+  border-color: var(--color-border);
+}
+
+html.dark .admin-modal footer {
+  border-color: var(--color-border);
+}
+
+html.dark .admin-modal header button {
+  background: var(--color-card-subtle);
+  color: var(--color-text);
+}
+
 html.dark .admin-notice.success {
   color: #bbf7d0;
   background: #064e3b;
@@ -7687,4 +7734,44 @@ html.dark .form-error,
 html.dark .alert {
   color: #fecaca;
   background: #7f1d1d;
+}
+
+@media (max-width: 768px) {
+  .admin-modal-backdrop {
+    padding: 12px;
+    align-items: flex-start;
+    padding-top: 60px;
+  }
+
+  .admin-modal,
+  .admin-confirm,
+  .api-error-modal,
+  .student-picker-modal {
+    width: 100%;
+    max-height: 85vh;
+    font-size: 15px;
+  }
+
+  .admin-form-section {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-form-grid {
+    padding: 16px;
+  }
+
+  .admin-modal header {
+    padding: 16px;
+  }
+
+  .admin-modal footer {
+    padding: 14px 16px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .admin-modal footer button {
+    flex: 1 1 auto;
+    min-width: 120px;
+  }
 }

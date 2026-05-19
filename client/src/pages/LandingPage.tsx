@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Bell,
@@ -9,10 +10,12 @@ import {
   GraduationCap,
   Heart,
   HelpCircle,
+  Menu,
   School,
   Shield,
   TrendingUp,
-  Users
+  Users,
+  X
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -96,8 +99,11 @@ const stats = ['1.172 Estudiantes', '86 Docentes', '24/7 Autoservicio', '100% Di
 const footerLinks = ['Panel', 'Académico', 'Horario', 'Asistencia', 'Comunicados'];
 
 export function LandingPage() {
+  const [menuOpen, setMenuOpen] = useState(false);
+
   function scrollToFeatures() {
     document.getElementById('modulos')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setMenuOpen(false);
   }
 
   return (
@@ -108,7 +114,22 @@ export function LandingPage() {
             <span style={styles.logoMark}><School size={25} /></span>
             <strong style={styles.brandText}>Sistema de Intranet Colegio</strong>
           </Link>
-          <Link to="/login" style={styles.navButton}>Ingresar al sistema</Link>
+          <Link to="/login" style={styles.navButton} className="landing-nav-button-inline">Ingresar al sistema</Link>
+          <button
+            type="button"
+            style={styles.mobileMenuButton}
+            className="landing-mobile-menu-button"
+            onClick={() => setMenuOpen((value) => !value)}
+            aria-label={menuOpen ? 'Cerrar menu' : 'Abrir menu'}
+            aria-expanded={menuOpen}
+          >
+            {menuOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+          {menuOpen && (
+            <nav style={styles.mobileMenu} className="landing-mobile-menu" aria-label="Navegacion movil">
+              <Link to="/login" style={styles.mobileMenuLink} onClick={() => setMenuOpen(false)}>Ingresar al sistema</Link>
+            </nav>
+          )}
         </div>
       </header>
 
@@ -124,7 +145,7 @@ export function LandingPage() {
               <Link to="/login" style={styles.primaryHeroButton}>Ingresar al sistema</Link>
               <button type="button" onClick={scrollToFeatures} style={styles.secondaryHeroButton}>Ver módulos</button>
             </div>
-            <div style={styles.statsRow}>
+            <div style={styles.statsRow} className="landing-hero-stats">
               {stats.map((item) => (
                 <span key={item} style={styles.statItem}>{item}</span>
               ))}
@@ -139,7 +160,7 @@ export function LandingPage() {
             <h2 style={styles.sectionTitle}>Todo lo que necesita su institución</h2>
             <p style={styles.sectionSubtitle}>Módulos integrados para la operación académica completa</p>
           </div>
-          <div style={styles.featureGrid}>
+          <div style={styles.featureGrid} className="landing-feature-grid">
             {features.map((feature) => (
               <article key={feature.title} style={styles.featureCard}>
                 <span style={styles.cardIcon}><feature.icon size={24} /></span>
@@ -198,6 +219,29 @@ export function LandingPage() {
         </div>
         <div style={styles.footerBottom}>© 2026 Sistema de Intranet Colegio. Proyecto de portafolio.</div>
       </footer>
+      <style>{`
+        @media (max-width: 768px) {
+          .landing-nav-button-inline {
+            display: none !important;
+          }
+
+          .landing-mobile-menu-button {
+            display: inline-flex !important;
+          }
+
+          .landing-mobile-menu {
+            display: grid !important;
+          }
+
+          .landing-hero-stats {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          }
+
+          .landing-feature-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
     </main>
   );
 }
@@ -260,6 +304,36 @@ const styles: Record<string, CSSProperties> = {
     fontWeight: 700,
     background: 'rgba(255,255,255,0.08)',
     whiteSpace: 'nowrap'
+  },
+  mobileMenuButton: {
+    display: 'none',
+    width: 42,
+    height: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+    border: '1px solid rgba(255,255,255,0.28)',
+    borderRadius: 8,
+    color: '#ffffff',
+    background: 'rgba(255,255,255,0.08)',
+    cursor: 'pointer'
+  },
+  mobileMenu: {
+    display: 'none',
+    width: '100%',
+    padding: '0 0 12px'
+  },
+  mobileMenuLink: {
+    minHeight: 44,
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 8,
+    padding: '0 14px',
+    color: '#ffffff',
+    textDecoration: 'none',
+    fontWeight: 800,
+    background: 'rgba(255,255,255,0.1)',
+    border: '1px solid rgba(255,255,255,0.18)'
   },
   hero: {
     width: '100%',

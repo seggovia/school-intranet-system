@@ -58,7 +58,7 @@ export function Shell({ user, onLogout, children }: { user: User; onLogout: () =
           </div>
         </div>
 
-        <button className="icon-button mobile-only" onClick={() => setOpen((value) => !value)} aria-label={open ? 'Cerrar menu' : 'Abrir menu'}>
+        <button className="icon-button mobile-only shell-mobile-menu-button" onClick={() => setOpen((value) => !value)} aria-label={open ? 'Cerrar menu' : 'Abrir menu'} aria-expanded={open}>
           {open ? <X size={20} /> : <Menu size={20} />}
         </button>
 
@@ -184,6 +184,81 @@ export function Shell({ user, onLogout, children }: { user: User; onLogout: () =
       <div className="main-area">
         <main className="content">{children}</main>
       </div>
+      <style>{`
+        @media (max-width: 820px) {
+          .institution-header {
+            grid-template-columns: minmax(0, 1fr) auto auto;
+            padding: 10px 12px;
+            position: relative;
+            z-index: 1001;
+          }
+
+          .shell-mobile-menu-button {
+            display: inline-flex !important;
+            grid-column: 2;
+            grid-row: 1;
+            order: 2;
+          }
+
+          .institution-header .institution-user {
+            grid-column: 3;
+            grid-row: 1;
+            order: 3;
+          }
+
+          .institution-header .institution-search {
+            display: none !important;
+          }
+
+          .institution-header .nav-list {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 1000;
+            display: none;
+            grid-template-columns: 1fr;
+            align-items: stretch;
+            justify-content: start;
+            width: 100vw;
+            height: 100vh;
+            max-height: 100vh;
+            overflow-y: auto;
+            margin: 0;
+            padding: 70px 16px 24px;
+            border-radius: 0;
+            background: #0f172a;
+          }
+
+          .institution-header .nav-list.nav-list-open {
+            display: grid;
+          }
+
+          .institution-header .nav-list a {
+            justify-content: flex-start;
+            min-height: 44px;
+            padding: 0 8px;
+            font-size: 1rem;
+          }
+
+          .institution-header .nav-list a span {
+            display: inline;
+          }
+        }
+      `}</style>
+      {open && (
+        <div
+          onClick={() => setOpen(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.5)',
+            zIndex: 999,
+          }}
+          aria-hidden="true"
+        />
+      )}
     </div>
   );
 }

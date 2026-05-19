@@ -463,6 +463,28 @@ export function DashboardPage() {
       </section>
         </>
       )}
+      <style>{`
+        @media (max-width: 768px) {
+          .institutional-dashboard .kpi-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+
+          .institutional-dashboard .analytics-grid,
+          .institutional-dashboard .workspace-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .institutional-dashboard .quick-actions {
+            flex-wrap: wrap;
+            align-items: stretch;
+          }
+
+          .institutional-dashboard .quick-actions a {
+            flex: 1 1 140px;
+            justify-content: center;
+          }
+        }
+      `}</style>
     </div>
   );
 }
