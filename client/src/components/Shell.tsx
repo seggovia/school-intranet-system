@@ -225,7 +225,9 @@ export function Shell({ user, onLogout, children }: { user: User; onLogout: () =
             height: 100vh;
             max-height: 100vh;
             overflow-y: auto;
+            margin: 0;
             padding: 70px 16px 24px;
+            border-radius: 0;
             background: #0f172a;
           }
 
