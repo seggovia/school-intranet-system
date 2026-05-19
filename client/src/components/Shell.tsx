@@ -222,9 +222,10 @@ export function Shell({ user, onLogout, children }: { user: User; onLogout: () =
             align-items: stretch;
             justify-content: start;
             width: 100vw;
+            height: 100vh;
             max-height: 100vh;
             overflow-y: auto;
-            padding: 80px 16px 24px;
+            padding: 70px 16px 24px;
             background: #0f172a;
           }
 
@@ -234,8 +235,8 @@ export function Shell({ user, onLogout, children }: { user: User; onLogout: () =
 
           .institution-header .nav-list a {
             justify-content: flex-start;
-            min-height: 52px;
-            padding: 0 16px;
+            min-height: 44px;
+            padding: 0 8px;
             font-size: 1rem;
           }
 

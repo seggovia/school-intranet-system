@@ -1613,6 +1613,26 @@ export function AdminPage({ user }: { user: User }) {
           .admin-page .admin-summary-card {
             min-width: 0;
           }
+
+          .admin-page .admin-filterbar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: stretch;
+          }
+
+          .admin-page .admin-filterbar > label {
+            flex: 1 1 100%;
+            min-width: 0;
+          }
+
+          .admin-page .admin-filterbar > button {
+            flex: 1 1 48%;
+          }
+
+          .admin-page .admin-tabs {
+            position: relative;
+            z-index: 1;
+          }
         }
       `}</style>
     </div>
