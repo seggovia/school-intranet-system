@@ -198,12 +198,17 @@ export function Shell({ user, onLogout, children }: { user: User; onLogout: () =
 
           .institution-header .nav-list {
             position: fixed;
-            inset: 70px 12px auto 12px;
-            z-index: 40;
+            top: 64px;
+            left: 0;
+            right: 0;
+            z-index: 1000;
             display: none;
             grid-template-columns: 1fr;
             align-items: stretch;
             justify-content: stretch;
+            width: 100vw;
+            max-height: calc(100vh - 64px);
+            overflow-y: auto;
             padding: 10px;
             border: 1px solid rgba(255, 255, 255, 0.14);
             border-radius: 8px;
