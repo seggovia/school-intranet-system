@@ -7491,6 +7491,9 @@ html.dark .institution-header {
 
 html.dark :where(
   .panel,
+  .subject-card,
+  .section-card,
+  .empty-state,
   .announcement-card,
   .request-form,
   .timeline-item,
@@ -7565,6 +7568,7 @@ html.dark :where(
   .admin-modal,
   .admin-confirm,
   .api-error-modal,
+  .class-modal,
   .student-picker-modal,
   .guardian-detail-modal,
   .communication-detail-modal,
@@ -7574,6 +7578,15 @@ html.dark :where(
   color: var(--color-text);
   background: var(--color-card);
   box-shadow: var(--shadow-modal);
+}
+
+html.dark .panel,
+html.dark .subject-card,
+html.dark .section-card,
+html.dark .empty-state {
+  color: var(--color-text);
+  border-color: var(--color-border);
+  background: var(--color-card);
 }
 
 html.dark :where(
