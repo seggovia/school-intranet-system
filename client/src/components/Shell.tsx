@@ -58,7 +58,7 @@ export function Shell({ user, onLogout, children }: { user: User; onLogout: () =
           </div>
         </div>
 
-        <button className="icon-button mobile-only" onClick={() => setOpen((value) => !value)} aria-label={open ? 'Cerrar menu' : 'Abrir menu'}>
+        <button className="icon-button mobile-only shell-mobile-menu-button" onClick={() => setOpen((value) => !value)} aria-label={open ? 'Cerrar menu' : 'Abrir menu'} aria-expanded={open}>
           {open ? <X size={20} /> : <Menu size={20} />}
         </button>
 
@@ -184,6 +184,59 @@ export function Shell({ user, onLogout, children }: { user: User; onLogout: () =
       <div className="main-area">
         <main className="content">{children}</main>
       </div>
+      <style>{`
+        @media (max-width: 768px) {
+          .institution-header {
+            grid-template-columns: minmax(0, 1fr) auto auto;
+          }
+
+          .shell-mobile-menu-button {
+            display: inline-flex;
+            grid-column: 2;
+            grid-row: 1;
+          }
+
+          .institution-header .nav-list {
+            position: fixed;
+            inset: 70px 12px auto 12px;
+            z-index: 40;
+            display: none;
+            grid-template-columns: 1fr;
+            align-items: stretch;
+            justify-content: stretch;
+            padding: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 8px;
+            background: var(--color-navbar);
+            box-shadow: 0 18px 45px rgba(15, 23, 42, 0.28);
+          }
+
+          .institution-header .nav-list.nav-list-open {
+            display: grid;
+          }
+
+          .institution-header .nav-list a {
+            justify-content: flex-start;
+            min-height: 44px;
+            padding: 0 12px;
+          }
+
+          .institution-header .nav-list a span {
+            display: inline;
+          }
+
+          .institution-header .institution-search {
+            grid-column: 1 / -1;
+            grid-row: 2;
+          }
+
+          .institution-header .institution-user {
+            grid-column: 3;
+            grid-row: 1;
+            justify-content: flex-end;
+          }
+        }
+      `}</style>
     </div>
   );
 }

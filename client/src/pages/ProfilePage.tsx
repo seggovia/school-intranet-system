@@ -229,6 +229,17 @@ export function ProfilePage({ onLogout }: { onLogout: () => void }) {
           </div>
         </section>
       </section>
+      <style>{`
+        @media (max-width: 768px) {
+          .profile-page .profile-layout {
+            grid-template-columns: 1fr;
+          }
+
+          .profile-page .academic-summary-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+        }
+      `}</style>
     </div>
   );
 }
