@@ -55,6 +55,7 @@ export function GradebookTable({
   const generalAverage = courseAverage(rows);
 
   return (
+    <>
     <div className="gradebook-spreadsheet-wrap">
       <table className="gradebook-spreadsheet">
         <thead>
@@ -123,5 +124,23 @@ export function GradebookTable({
         </tfoot>
       </table>
     </div>
+    <style>{`
+      @media (max-width: 768px) {
+        .gradebook-sheet-panel {
+          display: block;
+          width: 100%;
+        }
+
+        .gradebook-spreadsheet-wrap {
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        .gradebook-spreadsheet {
+          min-width: 600px;
+        }
+      }
+    `}</style>
+    </>
   );
 }
