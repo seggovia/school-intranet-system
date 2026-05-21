@@ -21,6 +21,20 @@ import { AdminPage } from './pages/AdminPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { PreferencesPage } from './pages/PreferencesPage';
 
+function RoleGuard({
+  user,
+  roles,
+  children,
+}: {
+  user: { roles: string[] };
+  roles: string[];
+  children: React.ReactElement;
+}) {
+  const allowed = user.roles.some((r) => roles.includes(r));
+  if (!allowed) return <Navigate to="/dashboard" replace />;
+  return children;
+}
+
 export function App() {
   const [session, setSession] = useState<AuthSession | null>(() => {
     const raw = localStorage.getItem(sessionStorageKey);
@@ -69,16 +83,44 @@ export function App() {
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/academico" element={<MySubjectsPage />} />
-        <Route path="/gestion-academica" element={<AcademicsPage user={auth.user!} />} />
+        <Route
+          path="/gestion-academica"
+          element={
+            <RoleGuard user={auth.user!} roles={['admin', 'director', 'teacher']}>
+              <AcademicsPage user={auth.user!} />
+            </RoleGuard>
+          }
+        />
         <Route path="/horario" element={<CalendarPage user={auth.user!} />} />
-        <Route path="/asistencia" element={<AttendancePage user={auth.user!} />} />
-        <Route path="/calificaciones" element={<GradesPage user={auth.user!} />} />
+        <Route
+          path="/asistencia"
+          element={
+            <RoleGuard user={auth.user!} roles={['admin', 'director', 'teacher', 'inspector', 'student', 'guardian']}>
+              <AttendancePage user={auth.user!} />
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="/calificaciones"
+          element={
+            <RoleGuard user={auth.user!} roles={['admin', 'director', 'teacher', 'inspector']}>
+              <GradesPage user={auth.user!} />
+            </RoleGuard>
+          }
+        />
         <Route path="/subjects/:id" element={<SubjectDetailPage user={auth.user!} />} />
         <Route path="/comunicaciones" element={<CommunicationsPage user={auth.user!} />} />
         <Route path="/calendario" element={<CalendarPage user={auth.user!} />} />
         <Route path="/documentos" element={<DocumentsPage user={auth.user!} />} />
         <Route path="/solicitudes" element={<RequestsPage user={auth.user!} />} />
-        <Route path="/admin" element={<AdminPage user={auth.user!} />} />
+        <Route
+          path="/admin"
+          element={
+            <RoleGuard user={auth.user!} roles={['admin', 'director', 'inspector']}>
+              <AdminPage user={auth.user!} />
+            </RoleGuard>
+          }
+        />
         <Route path="/perfil" element={<ProfilePage onLogout={handleLogout} />} />
         <Route path="/preferencias" element={<PreferencesPage user={auth.user!} />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
