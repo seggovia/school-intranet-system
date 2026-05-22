@@ -6,6 +6,7 @@ import { PageHeader } from '../components/PageHeader';
 import { RoleBadge } from '../components/RoleBadge';
 import { InstitutionalScheduleSummary, PersonalScheduleCards } from '../components/ScheduleCalendar';
 import { SectionCard } from '../components/SectionCard';
+import { SkeletonStats } from '../components/Skeleton';
 import { EmptyState, ErrorState, LoadingState } from '../components/States';
 import { StatCard } from '../components/StatCard';
 import { useAsyncData } from '../hooks';
@@ -343,7 +344,7 @@ export function DashboardPage() {
       />
 
       {dashboard.error && <ErrorState />}
-      {dashboard.loading && <LoadingState label="Cargando panel institucional..." />}
+      {dashboard.loading && <SkeletonStats />}
 
       {!dashboard.loading && dashboard.data.role === 'student' && <StudentPortal dashboard={dashboard.data} schedule={schedule.data} />}
       {!dashboard.loading && dashboard.data.role === 'guardian' && <GuardianPortal dashboard={dashboard.data} />}
