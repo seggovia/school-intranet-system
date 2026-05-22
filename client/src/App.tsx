@@ -20,6 +20,7 @@ import { SubjectDetailPage } from './pages/SubjectDetailPage';
 import { AdminPage } from './pages/AdminPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { PreferencesPage } from './pages/PreferencesPage';
+import { NotFoundPage } from './pages/NotFoundPage';
 
 function RoleGuard({
   user,
@@ -125,7 +126,7 @@ export function App() {
         <Route path="/preferencias" element={<PreferencesPage user={auth.user!} />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </Shell>
   );
