@@ -163,6 +163,8 @@ function getValues(form: HTMLFormElement, key: string) {
 
 type UserLikeRow = Partial<AdminUserRow> | Partial<AdminStudentRow> | Partial<AdminTeacherRow> | Partial<AdminGuardianRow>;
 type UserFormErrors = Partial<Record<'name' | 'lastName' | 'email' | 'role' | 'password' | 'confirmPassword' | 'rut' | 'phone' | 'birthDate' | 'sectionId' | 'department', string>>;
+type AdminUserClientErrors = { nombre?: string; apellido?: string; correo?: string; password?: string; rol?: string };
+const inlineFieldErrorStyle = { color: '#dc2626', fontSize: 12 };
 
 function roleFromModal(modal: ModalState): Role | '' {
   if (modal.type === 'student') return 'student';
@@ -195,7 +197,7 @@ function PasswordInput({ name, label, value, onChange, error, help, placeholder 
           {visible ? <EyeOff size={18} /> : <Eye size={18} />}
         </button>
       </span>
-      {error && <span className="field-error">{error}</span>}
+      {error && <span className="field-error" style={inlineFieldErrorStyle}>{error}</span>}
       {help && <small className="field-help">{help}</small>}
     </label>
   );
@@ -336,19 +338,19 @@ function UserFields({
     <>
       <fieldset className="admin-form-section">
         <legend>Datos personales</legend>
-        <label>Nombre<input name="name" defaultValue={names.name} autoComplete="off" placeholder="Nombre del usuario" className={errors.name ? 'input-error' : undefined} />{errors.name && <span className="field-error">{errors.name}</span>}</label>
-        <label>Apellido<input name="lastName" defaultValue={names.lastName} autoComplete="off" placeholder="Apellido" className={errors.lastName ? 'input-error' : undefined} />{errors.lastName && <span className="field-error">{errors.lastName}</span>}</label>
+        <label>Nombre<input name="name" defaultValue={names.name} autoComplete="off" placeholder="Nombre del usuario" className={errors.name ? 'input-error' : undefined} />{errors.name && <span className="field-error" style={inlineFieldErrorStyle}>{errors.name}</span>}</label>
+        <label>Apellido<input name="lastName" defaultValue={names.lastName} autoComplete="off" placeholder="Apellido" className={errors.lastName ? 'input-error' : undefined} />{errors.lastName && <span className="field-error" style={inlineFieldErrorStyle}>{errors.lastName}</span>}</label>
       </fieldset>
       <fieldset className="admin-form-section">
         <legend>Acceso</legend>
-        <label>Correo<input name="email" type="email" defaultValue={row?.email ?? ''} autoComplete="new-email" placeholder="correo@colegio.cl" spellCheck={false} className={errors.email ? 'input-error' : undefined} />{errors.email && <span className="field-error">{errors.email}</span>}</label>
+        <label>Correo<input name="email" type="email" defaultValue={row?.email ?? ''} autoComplete="new-email" placeholder="correo@colegio.cl" spellCheck={false} className={errors.email ? 'input-error' : undefined} />{errors.email && <span className="field-error" style={inlineFieldErrorStyle}>{errors.email}</span>}</label>
       {canChangeRole && (
         <label>Rol
           <select name="role" value={role} onChange={(event) => isRole(event.target.value) && onRoleChange?.(event.target.value)} className={errors.role ? 'input-error' : undefined}>
             <option value="">Selecciona un rol</option>
             {options.roles.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
           </select>
-          {errors.role && <span className="field-error">{errors.role}</span>}
+          {errors.role && <span className="field-error" style={inlineFieldErrorStyle}>{errors.role}</span>}
         </label>
       )}
       {showPassword && <PasswordInput name="password" label="Contraseña" value={password} onChange={onPasswordChange} error={errors.password} />}
@@ -381,11 +383,22 @@ function UserFields({
   );
 }
 
+function mapAdminUserClientErrors(errors: AdminUserClientErrors): UserFormErrors {
+  return {
+    name: errors.nombre,
+    lastName: errors.apellido,
+    email: errors.correo,
+    password: errors.password,
+    role: errors.rol
+  };
+}
+
 function EntityModal({ modal, options, students, onClose, onSaved, setConfirm, onApiError, onResetPassword }: { modal: ModalState; options: AdminBundle['summary']['options']; students: AdminStudentRow[]; onClose: () => void; onSaved: (message: string) => void; setConfirm: (confirm: ConfirmState | null) => void; onApiError: (error: unknown) => void; onResetPassword: (target: NonNullable<ResetPasswordTarget>) => void }) {
   const title = `${modal.mode === 'create' ? 'Crear' : 'Editar'} ${modal.type === 'user' ? 'usuario' : modal.type === 'student' ? 'estudiante' : modal.type === 'teacher' ? 'profesor' : modal.type === 'guardian' ? 'apoderado' : modal.type === 'course' ? 'curso' : modal.type === 'section' ? 'sección' : modal.type === 'classroom' ? 'sala' : 'asignatura'}`;
   const [selectedRole, setSelectedRole] = useState<Role | ''>(roleFromModal(modal));
   const [formError, setFormError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<UserFormErrors>({});
+  const [userFormErrors, setUserFormErrors] = useState<AdminUserClientErrors>({});
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [studentPickerOpen, setStudentPickerOpen] = useState(false);
@@ -394,7 +407,8 @@ function EntityModal({ modal, options, students, onClose, onSaved, setConfirm, o
   );
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
-  const hasFieldErrors = Object.keys(fieldErrors).length > 0;
+  const displayedFieldErrors = modal.type === 'user' ? { ...fieldErrors, ...mapAdminUserClientErrors(userFormErrors) } : fieldErrors;
+  const hasFieldErrors = Object.keys(fieldErrors).length > 0 || Object.keys(userFormErrors).length > 0;
   const resetUserTarget = modal.mode === 'edit' && ['user', 'student', 'teacher', 'guardian'].includes(modal.type)
     ? {
         id: modal.type === 'user' ? modal.row?.id ?? '' : (modal.row as AdminStudentRow | AdminTeacherRow | AdminGuardianRow | undefined)?.userId ?? '',
@@ -453,6 +467,32 @@ function EntityModal({ modal, options, students, onClose, onSaved, setConfirm, o
     return Object.keys(nextErrors).length === 0;
   }
 
+  function validateAdminUserForm(payload: AdminUserPayload, requirePassword: boolean) {
+    const nextErrors: AdminUserClientErrors = {};
+    const name = payload.name.trim();
+    const lastName = payload.lastName?.trim() ?? '';
+    const email = payload.email.trim();
+
+    if (!name) nextErrors.nombre = 'El nombre es obligatorio.';
+    else if (name.length < 2) nextErrors.nombre = 'El nombre debe tener al menos 2 caracteres.';
+    if (!lastName) nextErrors.apellido = 'El apellido es obligatorio.';
+    else if (lastName.length < 2) nextErrors.apellido = 'El apellido debe tener al menos 2 caracteres.';
+    if (!email) nextErrors.correo = 'El correo es obligatorio.';
+    else {
+      const atIndex = email.indexOf('@');
+      const dotAfterAt = atIndex >= 0 && email.indexOf('.', atIndex + 1) > atIndex + 1;
+      if (atIndex <= 0 || !dotAfterAt) nextErrors.correo = 'Ingresa un correo válido.';
+    }
+    if (!payload.role) nextErrors.rol = 'Selecciona un rol.';
+    if (requirePassword) {
+      if (!payload.password) nextErrors.password = 'La contraseña es obligatoria.';
+      else if (payload.password.length < 6) nextErrors.password = 'La contraseña debe tener al menos 6 caracteres.';
+    }
+
+    setUserFormErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  }
+
   function cleanUserPayload(payload: AdminUserPayload): AdminUserPayload {
     const role = payload.role;
     const cleaned: AdminUserPayload = {
@@ -499,6 +539,7 @@ function EntityModal({ modal, options, students, onClose, onSaved, setConfirm, o
       studentIds: selectedStudentIds
     };
 
+    if (modal.type === 'user' && !validateAdminUserForm(baseUser, modal.mode === 'create')) return;
     if (['user', 'student', 'teacher', 'guardian'].includes(modal.type) && !validateUserPayload(baseUser, modal.type === 'user', modal.mode === 'create')) return;
     const cleanedUser = cleanUserPayload(baseUser);
 
@@ -560,7 +601,7 @@ function EntityModal({ modal, options, students, onClose, onSaved, setConfirm, o
 
   return (
     <div className="admin-modal-backdrop" role="dialog" aria-modal="true" onMouseDown={(event) => { if (event.target === event.currentTarget) requestClose(); }}>
-      <form className="admin-modal" onSubmit={submit} autoComplete="off" noValidate onInput={() => { setDirty(true); if (hasFieldErrors) setFieldErrors({}); if (formError) setFormError(''); }}>
+      <form className="admin-modal" onSubmit={submit} autoComplete="off" noValidate onInput={() => { setDirty(true); if (hasFieldErrors) { setFieldErrors({}); setUserFormErrors({}); } if (formError) setFormError(''); }}>
         <input className="admin-autofill-decoy" type="text" name="fake-username" autoComplete="username" tabIndex={-1} aria-hidden="true" />
         <input className="admin-autofill-decoy" type="password" name="fake-password" autoComplete="current-password" tabIndex={-1} aria-hidden="true" />
         <header>
@@ -568,7 +609,7 @@ function EntityModal({ modal, options, students, onClose, onSaved, setConfirm, o
           <button type="button" onClick={requestClose}>x</button>
         </header>
         <div className="admin-form-grid">
-          {modal.type === 'user' && <UserFields role={selectedRole} row={modal.row} options={options} students={students} selectedStudentIds={selectedStudentIds} onOpenStudentPicker={() => setStudentPickerOpen(true)} canChangeRole showPassword={modal.mode === 'create'} password={password} confirmPassword={confirmPassword} onPasswordChange={setPassword} onConfirmPasswordChange={setConfirmPassword} errors={fieldErrors} onRoleChange={(role) => { setSelectedRole(role); setSelectedStudentIds([]); setPassword(''); setConfirmPassword(''); setFieldErrors({}); setFormError(''); }} />}
+          {modal.type === 'user' && <UserFields role={selectedRole} row={modal.row} options={options} students={students} selectedStudentIds={selectedStudentIds} onOpenStudentPicker={() => setStudentPickerOpen(true)} canChangeRole showPassword={modal.mode === 'create'} password={password} confirmPassword={confirmPassword} onPasswordChange={setPassword} onConfirmPasswordChange={setConfirmPassword} errors={displayedFieldErrors} onRoleChange={(role) => { setSelectedRole(role); setSelectedStudentIds([]); setPassword(''); setConfirmPassword(''); setFieldErrors({}); setUserFormErrors({}); setFormError(''); }} />}
           {modal.type === 'student' && <UserFields role="student" row={modal.row} options={options} students={students} selectedStudentIds={selectedStudentIds} onOpenStudentPicker={() => setStudentPickerOpen(true)} showPassword={modal.mode === 'create'} password={password} confirmPassword={confirmPassword} onPasswordChange={setPassword} onConfirmPasswordChange={setConfirmPassword} errors={fieldErrors} />}
           {modal.type === 'teacher' && <UserFields role="teacher" row={modal.row} options={options} students={students} selectedStudentIds={selectedStudentIds} onOpenStudentPicker={() => setStudentPickerOpen(true)} showPassword={modal.mode === 'create'} password={password} confirmPassword={confirmPassword} onPasswordChange={setPassword} onConfirmPasswordChange={setConfirmPassword} errors={fieldErrors} />}
           {modal.type === 'guardian' && <UserFields role="guardian" row={modal.row} options={options} students={students} selectedStudentIds={selectedStudentIds} onOpenStudentPicker={() => setStudentPickerOpen(true)} showPassword={modal.mode === 'create'} password={password} confirmPassword={confirmPassword} onPasswordChange={setPassword} onConfirmPasswordChange={setConfirmPassword} errors={fieldErrors} />}
