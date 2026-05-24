@@ -14,6 +14,7 @@ import type { AttendanceHistoryItem, GradebookHistoryItem, MyAttendanceResponse,
 
 const emptyDashboard: RoleDashboard = { role: 'student', profile: { id: '', name: '', email: '', roles: [] }, stats: [], sections: [], linkedStudents: [], announcements: [], documents: [] };
 const icons = [Users, ClipboardCheck, GraduationCap, HelpCircle, TrendingUp, AlertTriangle];
+const attendanceIcons = [ClipboardCheck, CheckCircle2, Clock, AlertTriangle];
 type DashboardObservation = { id: string; studentId: string; student?: string; author: string; section: string | null; body: string; type: 'positiva' | 'negativa' | 'neutral'; date: string; isVisible: boolean; createdAt: string };
 type AcademicPeriodOption = { id: string; name: string; year: number; startDate: string; endDate: string; isActive: boolean };
 type GuardianStudentDashboard = {
@@ -349,7 +350,36 @@ export function DashboardPage() {
       {!dashboard.loading && dashboard.data.role === 'student' && <StudentPortal dashboard={dashboard.data} schedule={schedule.data} />}
       {!dashboard.loading && dashboard.data.role === 'guardian' && <GuardianPortal dashboard={dashboard.data} />}
 
-      {!['student', 'guardian'].includes(dashboard.data.role) && (
+      {!dashboard.loading && dashboard.data.role === 'inspector' && (
+        <>
+          <section className="quick-actions">
+            <Link to="/asistencia"><ClipboardCheck size={16} /> Registrar asistencia</Link>
+            <Link to="/horario"><CalendarDays size={16} /> Ver horario</Link>
+            <Link to="/comunicaciones"><Bell size={16} /> Comunicados</Link>
+          </section>
+
+          <section className="kpi-grid">
+            {dashboard.data.stats.slice(0, 4).map((kpi, index) => (
+              <StatCard key={kpi.label} label={kpi.label} value={kpi.value} trend={kpi.trend} tone={kpi.tone} icon={attendanceIcons[index] ?? ClipboardCheck} />
+            ))}
+          </section>
+
+          <section className="workspace-grid">
+            <article className="panel">
+              <div className="panel-title-row">
+                <h2>Cursos activos hoy</h2>
+                <Link className="text-link" to="/asistencia">Ver asistencia</Link>
+              </div>
+              <div className="section-grid">
+                {sections.slice(0, 4).map((section) => <SectionCard key={section.id} {...section} />)}
+              </div>
+              {!sections.length && <EmptyState title="Sin cursos activos" description="Los cursos apareceran cuando existan secciones configuradas para la jornada." />}
+            </article>
+          </section>
+        </>
+      )}
+
+      {!['student', 'guardian', 'inspector'].includes(dashboard.data.role) && (
         <>
 
       <section className="kpi-grid">
