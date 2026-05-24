@@ -36,13 +36,43 @@ function RoleGuard({
   return children;
 }
 
+function useSessionWarning(session: AuthSession | null) {
+  const [showWarning, setShowWarning] = useState(false);
+
+  useEffect(() => {
+    setShowWarning(false);
+    if (!session?.accessToken) return;
+
+    try {
+      const payload = JSON.parse(atob(session.accessToken.split('.')[1]));
+      const expiresAt = payload.exp * 1000;
+      const warningAt = expiresAt - 3 * 60 * 1000;
+      const now = Date.now();
+
+      if (now >= warningAt) {
+        setShowWarning(true);
+        return;
+      }
+
+      const timer = setTimeout(() => setShowWarning(true), warningAt - now);
+      return () => clearTimeout(timer);
+    } catch {
+      return;
+    }
+  }, [session?.accessToken]);
+
+  return showWarning;
+}
+
 export function App() {
   const [session, setSession] = useState<AuthSession | null>(() => {
     const raw = localStorage.getItem(sessionStorageKey);
     return raw ? (JSON.parse(raw) as AuthSession) : null;
   });
+  const [isRefreshingSession, setIsRefreshingSession] = useState(false);
 
   const auth = useMemo(() => ({ user: session?.user ?? null, isLoggedIn: Boolean(session?.user) }), [session]);
+  const showSessionWarning = useSessionWarning(session);
 
   function handleLogin(nextSession: AuthSession) {
     localStorage.setItem(sessionStorageKey, JSON.stringify(nextSession));
@@ -66,6 +96,28 @@ export function App() {
     setSession(null);
   }
 
+  async function handleRefreshSession() {
+    if (!session?.refreshToken || isRefreshingSession) return;
+
+    setIsRefreshingSession(true);
+    try {
+      const response = await fetch('/api/auth/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken: session.refreshToken })
+      });
+
+      if (!response.ok) return;
+
+      const data = (await response.json()) as AuthSession;
+      const nextSession = { ...session, ...data };
+      localStorage.setItem(sessionStorageKey, JSON.stringify(nextSession));
+      setSession(nextSession);
+    } finally {
+      setIsRefreshingSession(false);
+    }
+  }
+
   if (!auth.isLoggedIn) {
     return (
       <Routes>
@@ -79,55 +131,76 @@ export function App() {
   }
 
   return (
-    <Shell user={auth.user!} onLogout={handleLogout}>
-      <Routes>
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/academico" element={<MySubjectsPage />} />
-        <Route
-          path="/gestion-academica"
-          element={
-            <RoleGuard user={auth.user!} roles={['admin', 'director', 'teacher']}>
-              <AcademicsPage user={auth.user!} />
-            </RoleGuard>
-          }
-        />
-        <Route path="/horario" element={<CalendarPage user={auth.user!} />} />
-        <Route
-          path="/asistencia"
-          element={
-            <RoleGuard user={auth.user!} roles={['admin', 'director', 'teacher', 'inspector', 'student', 'guardian']}>
-              <AttendancePage user={auth.user!} />
-            </RoleGuard>
-          }
-        />
-        <Route
-          path="/calificaciones"
-          element={
-            <RoleGuard user={auth.user!} roles={['admin', 'director', 'teacher', 'inspector']}>
-              <GradesPage user={auth.user!} />
-            </RoleGuard>
-          }
-        />
-        <Route path="/subjects/:id" element={<SubjectDetailPage user={auth.user!} />} />
-        <Route path="/comunicaciones" element={<CommunicationsPage user={auth.user!} />} />
-        <Route path="/calendario" element={<CalendarPage user={auth.user!} />} />
-        <Route path="/documentos" element={<DocumentsPage user={auth.user!} />} />
-        <Route path="/solicitudes" element={<RequestsPage user={auth.user!} />} />
-        <Route
-          path="/admin"
-          element={
-            <RoleGuard user={auth.user!} roles={['admin', 'director', 'inspector']}>
-              <AdminPage user={auth.user!} />
-            </RoleGuard>
-          }
-        />
-        <Route path="/perfil" element={<ProfilePage onLogout={handleLogout} />} />
-        <Route path="/preferencias" element={<PreferencesPage user={auth.user!} />} />
-        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-        <Route path="/reset-password" element={<ResetPasswordPage />} />
-        <Route path="*" element={<NotFoundPage />} />
-      </Routes>
-    </Shell>
+    <>
+      {showSessionWarning && auth.isLoggedIn && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            width: '100%',
+            zIndex: 9999,
+            background: '#92400e',
+            color: 'white',
+            padding: '10px',
+            textAlign: 'center'
+          }}
+        >
+          Tu sesión expirará pronto. Guarda tu trabajo.
+          <button type="button" onClick={handleRefreshSession} disabled={isRefreshingSession} style={{ marginLeft: '12px' }}>
+            Renovar sesión
+          </button>
+        </div>
+      )}
+      <Shell user={auth.user!} onLogout={handleLogout}>
+        <Routes>
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/academico" element={<MySubjectsPage />} />
+          <Route
+            path="/gestion-academica"
+            element={
+              <RoleGuard user={auth.user!} roles={['admin', 'director', 'teacher']}>
+                <AcademicsPage user={auth.user!} />
+              </RoleGuard>
+            }
+          />
+          <Route path="/horario" element={<CalendarPage user={auth.user!} />} />
+          <Route
+            path="/asistencia"
+            element={
+              <RoleGuard user={auth.user!} roles={['admin', 'director', 'teacher', 'inspector', 'student', 'guardian']}>
+                <AttendancePage user={auth.user!} />
+              </RoleGuard>
+            }
+          />
+          <Route
+            path="/calificaciones"
+            element={
+              <RoleGuard user={auth.user!} roles={['admin', 'director', 'teacher', 'inspector']}>
+                <GradesPage user={auth.user!} />
+              </RoleGuard>
+            }
+          />
+          <Route path="/subjects/:id" element={<SubjectDetailPage user={auth.user!} />} />
+          <Route path="/comunicaciones" element={<CommunicationsPage user={auth.user!} />} />
+          <Route path="/calendario" element={<CalendarPage user={auth.user!} />} />
+          <Route path="/documentos" element={<DocumentsPage user={auth.user!} />} />
+          <Route path="/solicitudes" element={<RequestsPage user={auth.user!} />} />
+          <Route
+            path="/admin"
+            element={
+              <RoleGuard user={auth.user!} roles={['admin', 'director', 'inspector']}>
+                <AdminPage user={auth.user!} />
+              </RoleGuard>
+            }
+          />
+          <Route path="/perfil" element={<ProfilePage onLogout={handleLogout} />} />
+          <Route path="/preferencias" element={<PreferencesPage user={auth.user!} />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
+      </Shell>
+    </>
   );
 }
