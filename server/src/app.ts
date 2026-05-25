@@ -3,6 +3,7 @@ import express from 'express';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
+import { createRequire } from 'node:module';
 import { env } from './config/env.js';
 import { prisma } from './config/db.js';
 import { errorHandler, notFoundHandler } from './middlewares/error.middleware.js';
@@ -18,6 +19,7 @@ import { documentRoutes } from './modules/documents/document.routes.js';
 import { gradebookRoutes, gradeRoutes } from './modules/grades/grade.routes.js';
 import { meRoutes } from './modules/me/me.routes.js';
 import { materialRoutes } from './modules/materials/material.routes.js';
+import { NotificationStream } from './modules/notifications/notification.service.js';
 import { notificationRoutes } from './modules/notifications/notification.routes.js';
 import { observationRoutes } from './modules/observations/observation.routes.js';
 import { periodRoutes } from './modules/periods/period.routes.js';
@@ -27,6 +29,16 @@ import { schoolRoutes } from './modules/school/school.routes.js';
 import { sectionRoutes } from './modules/sections/section.routes.js';
 import { assignmentReviewRoutes, subjectRoutes } from './modules/subjects/subject.routes.js';
 import { userRoutes } from './modules/users/user.routes.js';
+
+const require = createRequire(import.meta.url);
+const serverVersion = (() => {
+  try {
+    const packageJson = require('../package.json') as { version?: unknown };
+    return typeof packageJson.version === 'string' ? packageJson.version : 'unknown';
+  } catch {
+    return 'unknown';
+  }
+})();
 
 export const app = express();
 
@@ -52,12 +64,20 @@ const authLimiter = rateLimit({
 app.use(globalLimiter);
 
 app.get('/api/health', async (_req, res) => {
+  const memoryUsage = process.memoryUsage();
   const health = {
     status: 'ok',
     service: 'school-intranet-system',
     timestamp: new Date().toISOString(),
     uptime: Math.floor(process.uptime()),
-    environment: env.NODE_ENV
+    environment: env.NODE_ENV,
+    version: serverVersion,
+    nodeVersion: process.version,
+    memoryUsage: {
+      heapUsed: Math.round(memoryUsage.heapUsed / 1024 / 1024),
+      unit: 'MB'
+    },
+    activeSSEConnections: NotificationStream.connectionCount()
   };
 
   try {
