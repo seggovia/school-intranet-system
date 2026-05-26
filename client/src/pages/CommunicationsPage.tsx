@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, CalendarClock, CheckCircle2, Eye, FileUp, Megaphone, Search, Send, Users, X } from 'lucide-react';
 import { loadAnnouncements, loadMyDashboard, markAnnouncementRead } from '../api';
 import { PageHeader } from '../components/PageHeader';
@@ -11,6 +11,7 @@ const emptyDashboard: RoleDashboard = { role: 'student', profile: { id: '', name
 const priorities = ['normal', 'alta', 'critica'];
 const types = ['institucional', 'curso', 'familias', 'docentes', 'emergencia'];
 const states = ['no_leido', 'leido'];
+const PAGE_SIZE = 10;
 
 type CommunicationRow = Announcement & {
   type: string;
@@ -68,6 +69,7 @@ export function CommunicationsPage({ user }: { user: User }) {
   const [readOverrides, setReadOverrides] = useState<Record<string, Partial<Announcement>>>({});
   const [readingIds, setReadingIds] = useState<Set<string>>(() => new Set());
   const [selected, setSelected] = useState<CommunicationRow | null>(null);
+  const [page, setPage] = useState(1);
   const canPublish = user.permissions.includes('communications:manage');
   const isAdmin = ['admin', 'director', 'inspector'].includes(user.primaryRole);
 
@@ -93,8 +95,13 @@ export function CommunicationsPage({ user }: { user: User }) {
       && (!status || item.status === status)
       && (!date || item.date === date);
   });
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const paginated = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
   const readRate = rows.length ? Math.round((rows.filter((item) => item.status === 'leido').length / rows.length) * 100) : 0;
   const registeredReadRate = rows.length ? Math.round(rows.reduce((total, item) => total + (item.readPercentage ?? 0), 0) / rows.length) : 0;
+
+  useEffect(() => { setPage(1); }, [date, priority, query, status, type]);
 
   async function markRead(id: string) {
     if (readingIds.has(id)) return;
@@ -157,7 +164,7 @@ export function CommunicationsPage({ user }: { user: User }) {
       </section>
 
       <section className="communication-list">
-        {filtered.map((row) => (
+        {paginated.map((row) => (
           <article key={row.id} className={`communication-card ${row.status}`}>
             <header>
               <div>
@@ -183,6 +190,11 @@ export function CommunicationsPage({ user }: { user: User }) {
         ))}
         {!filtered.length && <section className="panel"><EmptyState title="Sin comunicados" description="No hay comunicados que coincidan con tu rol o con los filtros seleccionados." /></section>}
       </section>
+      <div className="assignment-pager">
+        <button className="secondary-button" type="button" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)}>Anterior</button>
+        <span>Página {currentPage} de {totalPages}</span>
+        <button className="secondary-button" type="button" disabled={currentPage >= totalPages} onClick={() => setPage(currentPage + 1)}>Siguiente</button>
+      </div>
 
       {selected && <CommunicationDetailModal row={selected} isAdmin={isAdmin} onClose={() => setSelected(null)} />}
       <style>{`
