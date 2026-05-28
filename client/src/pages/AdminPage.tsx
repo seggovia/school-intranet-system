@@ -409,6 +409,7 @@ function EntityModal({ modal, options, students, onClose, onSaved, setConfirm, o
   const [dirty, setDirty] = useState(false);
   const displayedFieldErrors = modal.type === 'user' ? { ...fieldErrors, ...mapAdminUserClientErrors(userFormErrors) } : fieldErrors;
   const hasFieldErrors = Object.keys(fieldErrors).length > 0 || Object.keys(userFormErrors).length > 0;
+  const submitting = saving;
   const resetUserTarget = modal.mode === 'edit' && ['user', 'student', 'teacher', 'guardian'].includes(modal.type)
     ? {
         id: modal.type === 'user' ? modal.row?.id ?? '' : (modal.row as AdminStudentRow | AdminTeacherRow | AdminGuardianRow | undefined)?.userId ?? '',
@@ -625,7 +626,15 @@ function EntityModal({ modal, options, students, onClose, onSaved, setConfirm, o
           {modal.type === 'subject' && <><label>Asignatura<input name="name" defaultValue={modal.row?.name} required /></label><label>Código<input name="code" defaultValue={modal.row?.code} required /></label><MultiSelectField label="Cursos" name="courseIds" options={options.courses} defaultValues={modal.row?.courses?.map((item) => item.id)} /><MultiSelectField label="Secciones" name="sectionIds" options={options.sections} defaultValues={modal.row?.sections?.map((item) => item.id)} /><MultiSelectField label="Profesores" name="teacherIds" options={options.teachers} defaultValues={modal.row?.teachers?.map((item) => item.id)} /></>}
         </div>
         {formError && <p className="admin-modal-error">{formError}</p>}
-        <footer>{resetUserTarget?.id && <button type="button" className="secondary-button" onClick={() => onResetPassword(resetUserTarget)}><KeyRound size={16} />Restablecer contraseña</button>}<button type="button" className="secondary-button" onClick={requestClose}>Cancelar</button><button type="submit" className="primary-button" disabled={saving || hasFieldErrors}>{saving ? 'Guardando...' : modal.type === 'course' ? 'Guardar curso' : modal.type === 'section' ? 'Guardar sección' : modal.type === 'classroom' ? 'Guardar sala' : modal.type === 'subject' ? 'Guardar asignatura' : 'Guardar usuario'}</button></footer>
+        <footer>
+          {resetUserTarget?.id && <button type="button" className="secondary-button" onClick={() => onResetPassword(resetUserTarget)}><KeyRound size={16} />Restablecer contraseña</button>}
+          <button type="button" className="secondary-button" onClick={requestClose}>Cancelar</button>
+          <button type="submit" className="primary-button" disabled={submitting || hasFieldErrors}>
+            {submitting
+              ? <><span style={{ display: 'inline-block', width: 14, height: 14, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', borderRadius: '50%', animation: 'spin 0.7s linear infinite', marginRight: 6 }} />Guardando...</>
+              : modal.type === 'course' ? 'Guardar curso' : modal.type === 'section' ? 'Guardar sección' : modal.type === 'classroom' ? 'Guardar sala' : modal.type === 'subject' ? 'Guardar asignatura' : 'Guardar usuario'}
+          </button>
+        </footer>
       </form>
       {studentPickerOpen && <StudentPickerModal students={students} selectedIds={selectedStudentIds} onCancel={() => setStudentPickerOpen(false)} onConfirm={(ids) => { setSelectedStudentIds(ids); setStudentPickerOpen(false); }} setConfirm={setConfirm} />}
     </div>
@@ -1647,6 +1656,10 @@ export function AdminPage({ user }: { user: User }) {
       {confirm && <ConfirmDialog confirm={confirm} onClose={() => setConfirm(null)} onApiError={handleApiError} />}
       {apiError && <ApiErrorModal error={apiError} onClose={() => setApiError(null)} />}
       <style>{`
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+
         @media (max-width: 768px) {
           .admin-page .page-header,
           .admin-page .page-header > *,
