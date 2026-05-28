@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, CalendarClock, CheckCircle2, Eye, FileUp, Megaphone, Search, Send, Users, X } from 'lucide-react';
-import { loadAnnouncements, loadMyDashboard, markAnnouncementRead } from '../api';
+import { createAnnouncement, loadAnnouncements, loadMyDashboard, markAnnouncementRead } from '../api';
 import { PageHeader } from '../components/PageHeader';
 import { StatusBadge } from '../components/StatusBadge';
 import { EmptyState, LoadingState } from '../components/States';
@@ -12,6 +12,8 @@ const priorities = ['normal', 'alta', 'critica'];
 const types = ['institucional', 'curso', 'familias', 'docentes', 'emergencia'];
 const states = ['no_leido', 'leido'];
 const PAGE_SIZE = 10;
+const CONTENT_LIMIT = 2000;
+const CONTENT_WARNING_LIMIT = 1800;
 
 type CommunicationRow = Announcement & {
   type: string;
@@ -58,6 +60,12 @@ function formatDateTime(value?: string | null) {
   return `Leido ${new Intl.DateTimeFormat('es-CL', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(value))}`;
 }
 
+function characterCounterColor(length: number) {
+  if (length > CONTENT_LIMIT) return '#dc2626';
+  if (length > CONTENT_WARNING_LIMIT) return '#d97706';
+  return 'var(--color-muted)';
+}
+
 export function CommunicationsPage({ user }: { user: User }) {
   const announcements = useAsyncData(loadAnnouncements, [] as Announcement[]);
   const dashboard = useAsyncData(loadMyDashboard, emptyDashboard);
@@ -70,8 +78,16 @@ export function CommunicationsPage({ user }: { user: User }) {
   const [readingIds, setReadingIds] = useState<Set<string>>(() => new Set());
   const [selected, setSelected] = useState<CommunicationRow | null>(null);
   const [page, setPage] = useState(1);
+  const [formOpen, setFormOpen] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+  const [newAudience, setNewAudience] = useState('Toda la comunidad');
+  const [newPriority, setNewPriority] = useState('normal');
+  const [newContent, setNewContent] = useState('');
+  const [formError, setFormError] = useState('');
+  const [publishing, setPublishing] = useState(false);
   const canPublish = user.permissions.includes('communications:manage');
   const isAdmin = ['admin', 'director', 'inspector'].includes(user.primaryRole);
+  const contentOverLimit = newContent.length > CONTENT_LIMIT;
 
   const rows: CommunicationRow[] = useMemo(() => announcements.data
     .filter((item) => audienceMatches(item, user, dashboard.data))
@@ -137,13 +153,36 @@ export function CommunicationsPage({ user }: { user: User }) {
     if (row.status === 'no_leido') void markRead(row.id);
   }
 
+  async function handleCreateAnnouncement(event: FormEvent) {
+    event.preventDefault();
+    setFormError('');
+    if (newTitle.trim().length < 4) return setFormError('El titulo debe tener al menos 4 caracteres.');
+    if (newAudience.trim().length < 3) return setFormError('Indica los destinatarios del comunicado.');
+    if (newContent.trim().length < 5) return setFormError('El contenido debe tener al menos 5 caracteres.');
+    if (contentOverLimit) return setFormError('El contenido no puede superar 2000 caracteres.');
+    setPublishing(true);
+    try {
+      await createAnnouncement({ title: newTitle.trim(), audience: newAudience.trim(), priority: newPriority, body: newContent.trim() });
+      await announcements.reload();
+      setNewTitle('');
+      setNewAudience('Toda la comunidad');
+      setNewPriority('normal');
+      setNewContent('');
+      setFormOpen(false);
+    } catch {
+      setFormError('No se pudo publicar el comunicado. Revisa los datos e intenta nuevamente.');
+    } finally {
+      setPublishing(false);
+    }
+  }
+
   return (
     <div className="page-stack communications-page">
       <PageHeader
         eyebrow="Comunicaciones"
         title="Comunicados institucionales"
         description="Comunicaciones segmentadas por rol, prioridad, destinatarios y estado de lectura."
-        actions={canPublish && <button className="primary-button"><Send size={17} /> Nuevo comunicado</button>}
+        actions={canPublish && <button className="primary-button" type="button" onClick={() => setFormOpen(true)}><Send size={17} /> Nuevo comunicado</button>}
       />
 
       {(announcements.loading || dashboard.loading) && <LoadingState label="Cargando comunicados..." />}
@@ -196,8 +235,58 @@ export function CommunicationsPage({ user }: { user: User }) {
         <button className="secondary-button" type="button" disabled={currentPage >= totalPages} onClick={() => setPage(currentPage + 1)}>Siguiente</button>
       </div>
 
+      {formOpen && (
+        <div className="modal-backdrop" role="presentation" onClick={() => setFormOpen(false)}>
+          <form className="communication-form-modal" onSubmit={handleCreateAnnouncement} noValidate role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+            <header>
+              <div><span className="eyebrow">Comunicaciones</span><h2>Nuevo comunicado</h2></div>
+              <button className="icon-button" type="button" onClick={() => setFormOpen(false)} aria-label="Cerrar"><X size={18} /></button>
+            </header>
+            {formError && <p className="form-error">{formError}</p>}
+            <label>Titulo<input value={newTitle} onChange={(event) => setNewTitle(event.target.value)} placeholder="Ej: Reunion general de apoderados" /></label>
+            <label>Destinatarios<input value={newAudience} onChange={(event) => setNewAudience(event.target.value)} placeholder="Toda la comunidad, docentes, familias..." /></label>
+            <label>Prioridad<select value={newPriority} onChange={(event) => setNewPriority(event.target.value)}>{priorities.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+            <label>
+              Contenido
+              <textarea value={newContent} onChange={(event) => setNewContent(event.target.value)} placeholder="Escribe el contenido del comunicado." rows={6} />
+              <span className="character-counter" style={{ color: characterCounterColor(newContent.length) }}>{newContent.length} / {CONTENT_LIMIT} caracteres</span>
+            </label>
+            <button className="primary-button" type="submit" disabled={publishing || contentOverLimit}><Send size={17} /> Publicar comunicado</button>
+          </form>
+        </div>
+      )}
+
       {selected && <CommunicationDetailModal row={selected} isAdmin={isAdmin} onClose={() => setSelected(null)} />}
       <style>{`
+        .communications-page .communication-form-modal {
+          display: grid;
+          gap: 14px;
+          width: min(620px, calc(100vw - 28px));
+          padding: 20px;
+          border: 1px solid var(--color-border);
+          border-radius: 8px;
+          background: var(--color-card);
+          box-shadow: var(--shadow-card);
+        }
+
+        .communications-page .communication-form-modal header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+        }
+
+        .communications-page .communication-form-modal h2 {
+          margin: 0;
+        }
+
+        .communications-page .character-counter {
+          display: block;
+          margin-top: 6px;
+          font-size: 12px;
+          text-align: right;
+        }
+
         @media (max-width: 768px) {
           .communications-page .communication-list,
           .communications-page .communication-card {
