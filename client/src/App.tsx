@@ -155,7 +155,14 @@ export function App() {
         <Routes>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/academico" element={<MySubjectsPage />} />
+          <Route
+            path="/academico"
+            element={
+              <RoleGuard user={auth.user!} roles={['admin', 'director', 'teacher']}>
+                <MySubjectsPage />
+              </RoleGuard>
+            }
+          />
           <Route
             path="/gestion-academica"
             element={
