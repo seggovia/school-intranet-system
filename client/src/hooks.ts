@@ -65,6 +65,7 @@ export function useNotifications() {
   const [busy, setBusy] = useState(false);
   const [lastRealtimeNotification, setLastRealtimeNotification] = useState<UserNotification | null>(null);
   const [pollingFallback, setPollingFallback] = useState(false);
+  const [streamRetry, setStreamRetry] = useState(0);
 
   const refresh = useCallback(async () => {
     const data = await loadMyNotifications();
@@ -88,6 +89,7 @@ export function useNotifications() {
       return undefined;
     }
 
+    let retryTimer: number | undefined;
     const source = new EventSource(notificationStreamUrl(token));
     source.onopen = () => setPollingFallback(false);
     source.onmessage = (event) => {
@@ -105,13 +107,18 @@ export function useNotifications() {
         // Ignore malformed SSE messages and keep the stream open.
       }
     };
-    source.onerror = () => {
+    source.onerror = (event) => {
+      console.warn('Notification stream disconnected. Retrying in 5 seconds.', event);
       source.close();
       setPollingFallback(true);
+      retryTimer = window.setTimeout(() => setStreamRetry((current) => current + 1), 5000);
     };
 
-    return () => source.close();
-  }, []);
+    return () => {
+      if (retryTimer) window.clearTimeout(retryTimer);
+      source.close();
+    };
+  }, [streamRetry]);
 
   useEffect(() => {
     if (!pollingFallback) return undefined;
