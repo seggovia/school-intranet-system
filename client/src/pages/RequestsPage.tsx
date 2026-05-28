@@ -71,6 +71,7 @@ export function RequestsPage({ user }: { user: User }) {
   const [comment, setComment] = useState('');
   const [page, setPage] = useState(1);
   const [formOpen, setFormOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const canManageRequests = user.permissions.includes('requests:manage');
   const pageSize = 8;
   const descriptionOverLimit = description.length > DESCRIPTION_LIMIT;
@@ -108,9 +109,11 @@ export function RequestsPage({ user }: { user: User }) {
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
+    if (submitting) return;
     setError('');
     if (subject.trim().length < 4) return setError('El asunto debe tener al menos 4 caracteres.');
     if (descriptionOverLimit) return setError('La descripcion no puede superar 2000 caracteres.');
+    setSubmitting(true);
     try {
       const { data } = await api.post<TicketListItem>('/requests', { subject: subject.trim(), area, description: description.trim() || undefined, priority });
       setTickets((current) => [data, ...current]);
@@ -120,6 +123,8 @@ export function RequestsPage({ user }: { user: User }) {
       setFormOpen(false);
     } catch {
       setError('No se pudo crear la solicitud. Revisa los datos e intenta nuevamente.');
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -165,7 +170,11 @@ export function RequestsPage({ user }: { user: User }) {
             <textarea value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Describe el motivo, contexto y cualquier fecha relevante." rows={5} />
             <span className="character-counter" style={{ color: characterCounterColor(description.length) }}>{description.length} / {DESCRIPTION_LIMIT} caracteres</span>
           </label>
-          <button className="primary-button" type="submit" disabled={descriptionOverLimit}><Send size={17} /> Enviar ticket</button>
+          <button className="primary-button" type="submit" disabled={submitting || descriptionOverLimit}>
+            {submitting
+              ? <><span style={{ display: 'inline-block', width: 14, height: 14, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', borderRadius: '50%', animation: 'spin 0.7s linear infinite', marginRight: 6 }} />Enviando...</>
+              : <><Send size={17} /> Enviar ticket</>}
+          </button>
         </form>
         </div>
 
@@ -238,6 +247,10 @@ export function RequestsPage({ user }: { user: User }) {
           margin-top: 6px;
           font-size: 12px;
           text-align: right;
+        }
+
+        @keyframes spin {
+          to { transform: rotate(360deg); }
         }
 
         @media (max-width: 768px) {

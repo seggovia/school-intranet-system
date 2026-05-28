@@ -155,6 +155,7 @@ export function CommunicationsPage({ user }: { user: User }) {
 
   async function handleCreateAnnouncement(event: FormEvent) {
     event.preventDefault();
+    if (publishing) return;
     setFormError('');
     if (newTitle.trim().length < 4) return setFormError('El titulo debe tener al menos 4 caracteres.');
     if (newAudience.trim().length < 3) return setFormError('Indica los destinatarios del comunicado.');
@@ -251,7 +252,11 @@ export function CommunicationsPage({ user }: { user: User }) {
               <textarea value={newContent} onChange={(event) => setNewContent(event.target.value)} placeholder="Escribe el contenido del comunicado." rows={6} />
               <span className="character-counter" style={{ color: characterCounterColor(newContent.length) }}>{newContent.length} / {CONTENT_LIMIT} caracteres</span>
             </label>
-            <button className="primary-button" type="submit" disabled={publishing || contentOverLimit}><Send size={17} /> Publicar comunicado</button>
+            <button className="primary-button" type="submit" disabled={publishing || contentOverLimit}>
+              {publishing
+                ? <><span style={{ display: 'inline-block', width: 14, height: 14, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', borderRadius: '50%', animation: 'spin 0.7s linear infinite', marginRight: 6 }} />Enviando...</>
+                : <><Send size={17} /> Publicar comunicado</>}
+            </button>
           </form>
         </div>
       )}
@@ -285,6 +290,10 @@ export function CommunicationsPage({ user }: { user: User }) {
           margin-top: 6px;
           font-size: 12px;
           text-align: right;
+        }
+
+        @keyframes spin {
+          to { transform: rotate(360deg); }
         }
 
         @media (max-width: 768px) {
