@@ -85,7 +85,11 @@ export function MySubjectsPage() {
           })}
         </section>
       ) : (
-        <section className="panel"><EmptyState title="Sin asignaturas asignadas" /></section>
+        <div style={{ display: 'grid', placeItems: 'center', gap: 10, minHeight: 280, padding: 32, textAlign: 'center', color: 'var(--color-muted)' }}>
+          <BookOpen size={48} color="var(--color-muted)" />
+          <h2 style={{ margin: 0, color: 'var(--color-text)', fontSize: 22 }}>Sin asignaturas asignadas</h2>
+          <p style={{ margin: 0, maxWidth: 520 }}>No tienes asignaturas activas para este período. Contacta al administrador si crees que esto es un error.</p>
+        </div>
       )}
     </div>
   );

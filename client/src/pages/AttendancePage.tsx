@@ -317,7 +317,18 @@ function ManageAttendance({ user }: { user: User }) {
   }
 
   if (loading) return <LoadingState label="Cargando asistencia..." />;
-  if (!context?.sections.length) return <div className="page-stack"><PageHeader eyebrow="Asistencia" title="Sin secciones asignadas" description="No hay secciones/asignaturas disponibles para registrar asistencia." /></div>;
+  if (!context?.sections.length) {
+    return (
+      <div className="page-stack attendance-page">
+        <PageHeader eyebrow="Asistencia" title="Asistencia" description="Registro diario por sección, asignatura y estudiante." />
+        <div style={{ display: 'grid', placeItems: 'center', gap: 10, minHeight: 280, padding: 32, textAlign: 'center', color: 'var(--color-muted)' }}>
+          <BookOpen size={48} color="var(--color-muted)" />
+          <h2 style={{ margin: 0, color: 'var(--color-text)', fontSize: 22 }}>Sin secciones asignadas</h2>
+          <p style={{ margin: 0, maxWidth: 520 }}>No tienes secciones activas. Contacta al administrador.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="page-stack attendance-page">
