@@ -91,6 +91,7 @@ app.get('/api/health', async (_req, res) => {
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/forgot-password', authLimiter);
 app.use('/api/auth', authRoutes);
+app.use('/api/notifications', notificationRoutes);
 app.use('/api', auditRoutes);
 app.use('/api/me', meRoutes);
 app.use('/api/admin', adminRoutes);
@@ -105,7 +106,6 @@ app.use('/api/grades', gradeRoutes);
 app.use('/api/gradebook', gradebookRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/announcements', announcementRoutes);
-app.use('/api/notifications', notificationRoutes);
 app.use('/api/observations', observationRoutes);
 app.use('/api/documents', documentRoutes);
 app.use('/api/periods', periodRoutes);
