@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { type InternalAxiosRequestConfig } from 'axios';
 import type {
   AdminBundle,
   AdminClassroomRow,
@@ -49,27 +49,69 @@ import type {
 } from './types';
 
 export const sessionStorageKey = 'school-intranet-session';
+const REQUEST_TIMEOUT_MS = 30000;
+const NETWORK_ERROR_MESSAGE = 'Sin conexión al servidor. Verifica tu conexión a internet.';
+const SERVICE_UNAVAILABLE_MESSAGE = 'El servidor no está disponible temporalmente. Intenta de nuevo en unos minutos.';
+const REQUEST_TIMEOUT_MESSAGE = 'La solicitud tardó demasiado. Intenta de nuevo.';
+
+type ApiRequestConfig = InternalAxiosRequestConfig & {
+  _retry?: boolean;
+  _timeoutId?: ReturnType<typeof setTimeout>;
+  _timedOut?: boolean;
+};
+
+function isNotificationStream(url?: string) {
+  return Boolean(url?.includes('/notifications/stream'));
+}
+
+function clearRequestTimeout(config?: ApiRequestConfig) {
+  if (config?._timeoutId) {
+    clearTimeout(config._timeoutId);
+    delete config._timeoutId;
+  }
+}
+
+function isFetchNetworkTypeError(error: unknown) {
+  if (!(error instanceof TypeError)) return false;
+  const message = error.message.toLowerCase();
+  return message.includes('fetch') || message.includes('network');
+}
 
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL ?? '/api',
-  timeout: 8000
+  timeout: REQUEST_TIMEOUT_MS
 });
 
 api.interceptors.request.use((config) => {
+  const requestConfig = config as ApiRequestConfig;
   const raw = localStorage.getItem(sessionStorageKey);
   if (raw) {
     const session = JSON.parse(raw) as AuthSession;
-    config.headers.Authorization = `Bearer ${session.accessToken}`;
+    requestConfig.headers.Authorization = `Bearer ${session.accessToken}`;
   }
-  return config;
+  if (isNotificationStream(requestConfig.url)) {
+    requestConfig.timeout = 0;
+  } else if (!requestConfig.signal) {
+    const controller = new AbortController();
+    requestConfig._timeoutId = setTimeout(() => {
+      requestConfig._timedOut = true;
+      controller.abort();
+    }, REQUEST_TIMEOUT_MS);
+    requestConfig.signal = controller.signal;
+  }
+  return requestConfig;
 });
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    clearRequestTimeout(response.config as ApiRequestConfig);
+    return response;
+  },
   async (error) => {
-    const original = error.config;
+    const original = error.config as ApiRequestConfig | undefined;
+    clearRequestTimeout(original);
     const raw = localStorage.getItem(sessionStorageKey);
-    if (error.response?.status === 401 && raw && !original._retry) {
+    if (error.response?.status === 401 && raw && original && !original._retry) {
       original._retry = true;
       const current = JSON.parse(raw) as AuthSession;
       try {
@@ -82,6 +124,15 @@ api.interceptors.response.use(
         localStorage.removeItem(sessionStorageKey);
         window.dispatchEvent(new CustomEvent('school-session-expired'));
       }
+    }
+    if (original?._timedOut || error.response?.status === 408 || error.code === 'ECONNABORTED') {
+      return Promise.reject(new Error(REQUEST_TIMEOUT_MESSAGE));
+    }
+    if (error.response?.status === 503) {
+      return Promise.reject(new Error(SERVICE_UNAVAILABLE_MESSAGE));
+    }
+    if (isFetchNetworkTypeError(error) || isFetchNetworkTypeError(error?.cause) || error.code === 'ERR_NETWORK') {
+      return Promise.reject(new Error(NETWORK_ERROR_MESSAGE));
     }
     return Promise.reject(error);
   }
