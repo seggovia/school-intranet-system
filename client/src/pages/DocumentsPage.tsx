@@ -1,5 +1,5 @@
 import { Download, FileCheck2 } from 'lucide-react';
-import { createSubjectMaterial, loadDocuments, loadMySubjects } from '../api';
+import { loadDocuments, loadMySubjects } from '../api';
 import { DataTable } from '../components/DataTable';
 import { StatusBadge } from '../components/StatusBadge';
 import { useAsyncData } from '../hooks';
@@ -9,14 +9,7 @@ export function DocumentsPage({ user }: { user: User }) {
   const { data } = useAsyncData(loadDocuments, [] as DocumentItem[]);
   const subjects = useAsyncData(loadMySubjects, [] as MySubject[]);
   const canManageDocuments = user.permissions.includes('documents:manage');
-  const canManageMaterials = ['admin', 'director', 'teacher'].includes(user.primaryRole);
   const materials = subjects.data.flatMap((subject) => subject.materials.map((material) => ({ ...material, subject: subject.name })));
-
-  async function registerMaterial() {
-    const subject = subjects.data[0];
-    if (!subject) return;
-    await createSubjectMaterial({ subjectId: subject.id, title: `Material de ${subject.name}`, fileUrl: 'https://example.com/material.pdf' });
-  }
 
   return (
     <div className="page-stack">
@@ -27,8 +20,7 @@ export function DocumentsPage({ user }: { user: User }) {
           <p>Normativas, protocolos y documentos operativos versionados.</p>
         </div>
         <div className="action-row">
-          {canManageMaterials && <button className="secondary-button" onClick={registerMaterial}><FileCheck2 size={18} /> Registrar material</button>}
-          {canManageDocuments && <button className="secondary-button"><FileCheck2 size={18} /> Subir documento institucional</button>}
+          {canManageDocuments && <button className="secondary-button" onClick={() => window.alert('Funcionalidad de subida disponible próximamente. Contacta al administrador del sistema.')}><FileCheck2 size={18} /> Subir documento institucional</button>}
         </div>
       </section>
 
