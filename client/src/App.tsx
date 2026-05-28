@@ -203,8 +203,9 @@ export function App() {
           />
           <Route path="/perfil" element={<ProfilePage onLogout={handleLogout} />} />
           <Route path="/preferencias" element={<PreferencesPage user={auth.user!} />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/login" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/forgot-password" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/reset-password" element={<Navigate to="/dashboard" replace />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </Shell>
