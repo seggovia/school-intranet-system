@@ -15,6 +15,8 @@ const ticketStates = [
 ] as const;
 const areas = ['Secretaria', 'Administracion', 'Convivencia Escolar', 'Soporte TI'];
 const priorities = ['normal', 'alta', 'urgente'] as const;
+const DESCRIPTION_LIMIT = 2000;
+const DESCRIPTION_WARNING_LIMIT = 1800;
 
 type TicketStatus = typeof ticketStates[number]['value'];
 type TicketPriority = typeof priorities[number];
@@ -45,6 +47,12 @@ function priorityStyle(priority: TicketPriority) {
   return { background: '#e7eef5', color: '#334155' };
 }
 
+function characterCounterColor(length: number) {
+  if (length > DESCRIPTION_LIMIT) return '#dc2626';
+  if (length > DESCRIPTION_WARNING_LIMIT) return '#d97706';
+  return 'var(--color-muted)';
+}
+
 export function RequestsPage({ user }: { user: User }) {
   const [tickets, setTickets] = useState<TicketListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -65,6 +73,7 @@ export function RequestsPage({ user }: { user: User }) {
   const [formOpen, setFormOpen] = useState(false);
   const canManageRequests = user.permissions.includes('requests:manage');
   const pageSize = 8;
+  const descriptionOverLimit = description.length > DESCRIPTION_LIMIT;
 
   useEffect(() => {
     loadRequests().then((data) => setTickets(data as TicketListItem[])).catch(() => setTickets([])).finally(() => setLoading(false));
@@ -101,7 +110,7 @@ export function RequestsPage({ user }: { user: User }) {
     event.preventDefault();
     setError('');
     if (subject.trim().length < 4) return setError('El asunto debe tener al menos 4 caracteres.');
-    if (description.trim().length > 2000) return setError('La descripcion no puede superar 2000 caracteres.');
+    if (descriptionOverLimit) return setError('La descripcion no puede superar 2000 caracteres.');
     try {
       const { data } = await api.post<TicketListItem>('/requests', { subject: subject.trim(), area, description: description.trim() || undefined, priority });
       setTickets((current) => [data, ...current]);
@@ -151,8 +160,12 @@ export function RequestsPage({ user }: { user: User }) {
           <label>Asunto<input value={subject} onChange={(event) => setSubject(event.target.value)} placeholder="Ej: Certificado alumno regular" /></label>
           <label>Area<select value={area} onChange={(event) => setArea(event.target.value)}>{areas.map((item) => <option key={item}>{item}</option>)}</select></label>
           <label>Prioridad<select value={priority} onChange={(event) => setPriority(event.target.value as TicketPriority)}>{priorities.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
-          <label>Descripcion<textarea value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Describe el motivo, contexto y cualquier fecha relevante." rows={5} /></label>
-          <button className="primary-button" type="submit"><Send size={17} /> Enviar ticket</button>
+          <label>
+            Descripcion
+            <textarea value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Describe el motivo, contexto y cualquier fecha relevante." rows={5} />
+            <span className="character-counter" style={{ color: characterCounterColor(description.length) }}>{description.length} / {DESCRIPTION_LIMIT} caracteres</span>
+          </label>
+          <button className="primary-button" type="submit" disabled={descriptionOverLimit}><Send size={17} /> Enviar ticket</button>
         </form>
         </div>
 
@@ -218,6 +231,13 @@ export function RequestsPage({ user }: { user: User }) {
         .request-form-close,
         .new-request-fab {
           display: none;
+        }
+
+        .tickets-page .character-counter {
+          display: block;
+          margin-top: 6px;
+          font-size: 12px;
+          text-align: right;
         }
 
         @media (max-width: 768px) {
