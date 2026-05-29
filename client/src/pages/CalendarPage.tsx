@@ -1,42 +1,81 @@
-import { CalendarClock, MapPin } from 'lucide-react';
-import { loadEvents, loadMySchedule } from '../api';
+import { BookOpen, Clock, DoorOpen, UserRound } from 'lucide-react';
+import { loadMySchedule } from '../api';
 import { PageHeader } from '../components/PageHeader';
-import { InstitutionalScheduleSummary, PersonalScheduleCards } from '../components/ScheduleCalendar';
-import { StatusBadge } from '../components/StatusBadge';
+import { ScheduleCalendar } from '../components/ScheduleCalendar';
+import { getSubjectStatus } from '../utils/scheduleColors';
 import { useAsyncData } from '../hooks';
-import type { CalendarEvent, ScheduleCalendarEvent, User } from '../types';
+import type { ScheduleCalendarEvent, User } from '../types';
+
+function timeFromDate(value: string) {
+  return new Date(value).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+}
+
+function eventTimes(event: ScheduleCalendarEvent) {
+  return {
+    startTime: event.startsAt ?? timeFromDate(event.start),
+    endTime: event.endsAt ?? timeFromDate(event.end),
+  };
+}
+
+function eventWeekday(event: ScheduleCalendarEvent) {
+  return event.weekday ?? new Date(event.start).getDay();
+}
+
+function subtitleForRole(role: string) {
+  if (role === 'student') return 'Tu horario semanal de clases';
+  if (role === 'teacher') return 'Tus clases asignadas esta semana';
+  if (['admin', 'director', 'inspector'].includes(role)) return 'Vista global de todos los horarios';
+  return 'Horario semanal de clases';
+}
+
+function ScheduleStats({ events }: { events: ScheduleCalendarEvent[] }) {
+  const today = new Date().getDay();
+  const todayEvents = events.filter((event) => eventWeekday(event) === today);
+  const activeToday = todayEvents.filter((event) => {
+    const { startTime, endTime } = eventTimes(event);
+    return getSubjectStatus(startTime, endTime) === 'active';
+  }).length;
+  const rooms = new Set(todayEvents.map((event) => event.room).filter(Boolean)).size;
+  const teachers = new Set(todayEvents.map((event) => event.teacher).filter(Boolean)).size;
+  const subjects = new Set(events.map((event) => event.subject).filter(Boolean)).size;
+
+  return (
+    <div className="institutional-schedule-kpis">
+      <article>
+        <BookOpen size={18} />
+        <span>Clases activas hoy</span>
+        <strong>{activeToday}</strong>
+      </article>
+      <article>
+        <DoorOpen size={18} />
+        <span>Salas ocupadas</span>
+        <strong>{rooms}</strong>
+      </article>
+      <article>
+        <UserRound size={18} />
+        <span>Docentes con clases</span>
+        <strong>{teachers}</strong>
+      </article>
+      <article>
+        <Clock size={18} />
+        <span>Asignaturas semanales</span>
+        <strong>{subjects}</strong>
+      </article>
+    </div>
+  );
+}
 
 export function CalendarPage({ user }: { user: User }) {
-  const { data } = useAsyncData(loadEvents, [] as CalendarEvent[]);
   const schedule = useAsyncData(loadMySchedule, [] as ScheduleCalendarEvent[]);
-  const institutional = ['admin', 'director', 'inspector'].includes(user.primaryRole);
-  const title = institutional ? 'Horario institucional' : user.primaryRole === 'teacher' ? 'Mi horario docente' : user.primaryRole === 'guardian' ? 'Horario de estudiantes' : 'Mi horario de clases';
-  const description = institutional
-    ? 'Vista global por bloques para supervisión de clases, salas, docentes y operación escolar.'
-    : 'Vista personal de clases según tu rol y asignaciones vigentes.';
 
   return (
     <div className="page-stack">
-      <PageHeader eyebrow="Horario" title={title} description={description} />
+      <PageHeader eyebrow="Horario" title="Horario institucional" description={subtitleForRole(user.primaryRole)} />
+
+      <ScheduleStats events={schedule.data} />
 
       <section className="panel">
-        {institutional ? <InstitutionalScheduleSummary events={schedule.data} role={user.primaryRole} /> : <PersonalScheduleCards events={schedule.data} role={user.primaryRole} />}
-      </section>
-
-      <section className="timeline">
-        {data.map((event) => (
-          <article className="timeline-item" key={event.id}>
-            <div className="date-pill">
-              <CalendarClock size={18} />
-              <span>{event.date.slice(5)}</span>
-            </div>
-            <div>
-              <h2>{event.title}</h2>
-              <p><MapPin size={16} /> {event.location}</p>
-            </div>
-            <StatusBadge value={event.type} />
-          </article>
-        ))}
+        <ScheduleCalendar events={schedule.data} userRole={user.primaryRole} loading={schedule.loading} />
       </section>
     </div>
   );

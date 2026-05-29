@@ -32,8 +32,8 @@ services:
       PORT: 4000
       CLIENT_URL: http://localhost:5173
       DATABASE_URL: mysql://school:school_password@mysql:3306/school_intranet
-      JWT_ACCESS_SECRET: docker_access_secret_change_before_production
-      JWT_REFRESH_SECRET: docker_refresh_secret_change_before_production
+      JWT_ACCESS_SECRET: local_access_secret_change_before_production
+      JWT_REFRESH_SECRET: local_refresh_secret_change_before_production
       ACCESS_TOKEN_TTL: 15m
       REFRESH_TOKEN_TTL_DAYS: 7
     ports:
