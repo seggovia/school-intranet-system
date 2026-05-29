@@ -144,12 +144,14 @@ export function ScheduleCalendar({ events, userRole, loading }: ScheduleCalendar
         locale={esLocale}
         headerToolbar={{ left: 'prev,next today', center: 'title', right: 'timeGridWeek,timeGridDay' }}
         slotMinTime="07:30:00"
-        slotMaxTime="19:00:00"
-        slotDuration="00:15:00"
+        slotMaxTime="18:30:00"
+        slotDuration="00:30:00"
         slotLabelInterval="01:00:00"
         allDaySlot={false}
         weekends={false}
         height="auto"
+        contentHeight={600}
+        expandRows={false}
         events={calendarEvents}
         eventClick={handleEventClick}
         eventContent={renderEventContent}
