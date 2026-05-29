@@ -118,12 +118,11 @@ function LoadingCalendar() {
 }
 
 export function ScheduleCalendar({ events, userRole, loading }: ScheduleCalendarProps) {
-  const [selected, setSelected] = useState<ScheduleCalendarEvent | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const calendarEvents = useMemo(() => events.map(toFullCalendarEvent), [events]);
 
-  function handleEventClick(arg: EventClickArg) {
-    const source = events.find((event) => event.id === arg.event.id);
-    if (source) setSelected(source);
+  function handleEventClick(info: EventClickArg) {
+    setSelectedEvent(info.event.extendedProps);
   }
 
   if (loading) return <LoadingCalendar />;
@@ -158,7 +157,7 @@ export function ScheduleCalendar({ events, userRole, loading }: ScheduleCalendar
         nowIndicator
         businessHours={{ daysOfWeek: [1, 2, 3, 4, 5], startTime: '08:00', endTime: '18:00' }}
       />
-      {selected && <ScheduleEventDetail event={selected} onClose={() => setSelected(null)} />}
+      {selectedEvent && <ScheduleEventDetail event={selectedEvent} onClose={() => setSelectedEvent(null)} />}
     </>
   );
 }

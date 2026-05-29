@@ -5,7 +5,15 @@ import { getSubjectColor, getSubjectStatus } from '../utils/scheduleColors';
 import type { ScheduleCalendarEvent } from '../types';
 
 type Props = {
-  event: ScheduleCalendarEvent;
+  event: ScheduleCalendarEvent & {
+    subjectName?: string;
+    teacherName?: string;
+    roomName?: string;
+    sectionName?: string;
+    courseName?: string;
+    startTime?: string;
+    endTime?: string;
+  };
   onClose: () => void;
 };
 
@@ -13,10 +21,10 @@ function timeFromDate(value: string) {
   return new Date(value).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
 }
 
-function getTimes(event: ScheduleCalendarEvent) {
+function getTimes(event: Props['event']) {
   return {
-    startTime: event.startsAt ?? timeFromDate(event.start),
-    endTime: event.endsAt ?? timeFromDate(event.end),
+    startTime: event.startTime ?? event.startsAt ?? timeFromDate(event.start),
+    endTime: event.endTime ?? event.endsAt ?? timeFromDate(event.end),
   };
 }
 
@@ -62,7 +70,12 @@ function ActionLink({ to, children }: { to: string; children: ReactNode }) {
 
 export function ScheduleEventDetail({ event, onClose }: Props) {
   const { startTime, endTime } = getTimes(event);
-  const color = getSubjectColor(event.subject);
+  const subjectName = event.subjectName ?? event.subject;
+  const teacherName = event.teacherName ?? event.teacher;
+  const roomName = event.roomName ?? event.room;
+  const sectionName = event.sectionName ?? event.section;
+  const courseName = event.courseName ?? event.course;
+  const color = getSubjectColor(subjectName);
   const status = getSubjectStatus(startTime, endTime);
 
   return (
@@ -75,7 +88,7 @@ export function ScheduleEventDetail({ event, onClose }: Props) {
       <aside
         role="dialog"
         aria-modal="true"
-        aria-label={`Detalle de ${event.subject}`}
+        aria-label={`Detalle de ${subjectName}`}
         onClick={(clickEvent) => clickEvent.stopPropagation()}
         style={{
           position: 'fixed',
@@ -114,7 +127,7 @@ export function ScheduleEventDetail({ event, onClose }: Props) {
             <X size={18} />
           </button>
           <BookOpen size={30} />
-          <h2 style={{ margin: '14px 0 10px', fontSize: 24, lineHeight: 1.15 }}>{event.subject}</h2>
+          <h2 style={{ margin: '14px 0 10px', fontSize: 24, lineHeight: 1.15 }}>{subjectName}</h2>
           <span style={{ display: 'inline-flex', borderRadius: 999, padding: '5px 9px', background: 'rgba(255,255,255,0.18)', fontSize: 12, fontWeight: 800 }}>
             {statusLabels[status]}
           </span>
@@ -123,10 +136,10 @@ export function ScheduleEventDetail({ event, onClose }: Props) {
         <div style={{ padding: 20, flex: 1 }}>
           <h3 style={{ margin: '0 0 8px', fontSize: 14, color: '#111827' }}>Información</h3>
           <InfoRow icon={<Clock size={18} />} label="Horario" value={`${startTime} - ${endTime}`} />
-          <InfoRow icon={<MapPin size={18} />} label="Sala" value={event.room} />
-          <InfoRow icon={<User size={18} />} label="Profesor" value={event.teacher} />
-          <InfoRow icon={<Users size={18} />} label="Sección" value={event.section} />
-          <InfoRow icon={<GraduationCap size={18} />} label="Curso" value={event.course} />
+          <InfoRow icon={<MapPin size={18} />} label="Sala" value={roomName} />
+          <InfoRow icon={<User size={18} />} label="Profesor" value={teacherName} />
+          <InfoRow icon={<Users size={18} />} label="Sección" value={sectionName} />
+          <InfoRow icon={<GraduationCap size={18} />} label="Curso" value={courseName} />
 
           <h3 style={{ margin: '22px 0 10px', fontSize: 14, color: '#111827' }}>Acciones</h3>
           <div style={{ display: 'grid', gap: 10 }}>
