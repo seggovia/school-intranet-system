@@ -1,7 +1,9 @@
 node_modules
-dist
-client/dist
-server/dist
+dist/
+client/dist/
+server/dist/
+server/uploads/*
+!server/uploads/.gitkeep
 *.tsbuildinfo
 .env
 .env.local
