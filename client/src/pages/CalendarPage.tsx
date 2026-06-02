@@ -1,4 +1,5 @@
 import { BookOpen, Clock, DoorOpen, UserRound } from 'lucide-react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { loadMySchedule } from '../api';
 import { PageHeader } from '../components/PageHeader';
@@ -43,6 +44,20 @@ function subtitleForRole(role: string) {
   if (role === 'teacher') return 'Tus clases asignadas esta semana';
   if (['admin', 'director', 'inspector'].includes(role)) return 'Vista global de todos los horarios';
   return 'Horario semanal de clases';
+}
+
+function eventSectionName(event: ScheduleCalendarEvent) {
+  return (
+    (event as ScheduleCalendarEvent & { extendedProps?: { sectionName?: string } }).extendedProps
+      ?.sectionName ?? event.section
+  );
+}
+
+function eventTeacherName(event: ScheduleCalendarEvent) {
+  return (
+    (event as ScheduleCalendarEvent & { extendedProps?: { teacherName?: string } }).extendedProps
+      ?.teacherName ?? event.teacher
+  );
 }
 
 function ScheduleStats({ events, role }: { events: ScheduleCalendarEvent[]; role: string }) {
@@ -139,7 +154,21 @@ function ScheduleStats({ events, role }: { events: ScheduleCalendarEvent[]; role
 }
 
 export function CalendarPage({ user }: { user: User }) {
+  const [sectionFilter, setSectionFilter] = useState('');
+  const [teacherFilter, setTeacherFilter] = useState('');
   const schedule = useAsyncData(loadMySchedule, [] as ScheduleCalendarEvent[]);
+  const canFilterSchedule = ['admin', 'director', 'inspector'].includes(user.primaryRole);
+  const sectionOptions = Array.from(
+    new Set(schedule.data.map((event) => eventSectionName(event)).filter(Boolean)),
+  ).sort((a, b) => a.localeCompare(b, 'es'));
+  const teacherOptions = Array.from(
+    new Set(schedule.data.map((event) => eventTeacherName(event)).filter(Boolean)),
+  ).sort((a, b) => a.localeCompare(b, 'es'));
+  const filteredEvents = schedule.data.filter((event) => {
+    const matchesSection = sectionFilter === '' || eventSectionName(event) === sectionFilter;
+    const matchesTeacher = teacherFilter === '' || eventTeacherName(event) === teacherFilter;
+    return matchesSection && matchesTeacher;
+  });
 
   return (
     <div className="page-stack">
@@ -147,8 +176,52 @@ export function CalendarPage({ user }: { user: User }) {
 
       <ScheduleStats events={schedule.data} role={user.primaryRole} />
 
+      {canFilterSchedule && (
+        <div
+          className="institutional-schedule-filters"
+          style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '16px' }}
+        >
+          <select
+            value={sectionFilter}
+            onChange={(event) => setSectionFilter(event.target.value)}
+            aria-label="Filtrar por sección"
+          >
+            <option value="">Todas las secciones</option>
+            {sectionOptions.map((section) => (
+              <option key={section} value={section}>
+                {section}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={teacherFilter}
+            onChange={(event) => setTeacherFilter(event.target.value)}
+            aria-label="Filtrar por profesor"
+          >
+            <option value="">Todos los profesores</option>
+            {teacherOptions.map((teacher) => (
+              <option key={teacher} value={teacher}>
+                {teacher}
+              </option>
+            ))}
+          </select>
+
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => {
+              setSectionFilter('');
+              setTeacherFilter('');
+            }}
+          >
+            Limpiar filtros
+          </button>
+        </div>
+      )}
+
       <section className="panel">
-        <ScheduleCalendar events={schedule.data} userRole={user.primaryRole} loading={schedule.loading} />
+        <ScheduleCalendar events={filteredEvents} userRole={user.primaryRole} loading={schedule.loading} />
       </section>
     </div>
   );
