@@ -47,6 +47,15 @@
   text-rendering: optimizeLegibility;
 }
 
+html.reduce-motion * {
+  animation-duration: 0.01ms !important;
+  transition-duration: 0.01ms !important;
+}
+
+html.large-text {
+  font-size: 110%;
+}
+
 html.dark {
   --bg: #020817;
   --surface: #0f172a;

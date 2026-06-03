@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Bell, CheckCircle2, Languages, Monitor, Moon, Shield, Sun } from 'lucide-react';
+import { Accessibility, Bell, CheckCircle2, Languages, Monitor, Moon, Shield, Sun } from 'lucide-react';
 import { PageHeader } from '../components/PageHeader';
 import { updateMyPreferences } from '../api';
 import { normalizeApiError } from '../api-error';
@@ -24,6 +24,9 @@ const defaultPreferences: PreferenceState = {
   language: 'es'
 };
 
+const reduceMotionStorageKey = 'reduce-motion';
+const largeTextStorageKey = 'large-text';
+
 function preferenceKey(userId: string) {
   return `school-user-preferences:${userId}`;
 }
@@ -43,6 +46,8 @@ function toUserPreferences(preferences: PreferenceState): UserPreferences {
 export function PreferencesPage({ user }: { user: User }) {
   const { i18n, t } = useTranslation();
   const { theme, resolvedTheme, setTheme } = useTheme();
+  const [reduceMotion, setReduceMotion] = useState(() => localStorage.getItem(reduceMotionStorageKey) === 'true');
+  const [largeText, setLargeText] = useState(() => localStorage.getItem(largeTextStorageKey) === 'true');
   const [preferences, setPreferences] = useState<PreferenceState>(() => {
     const raw = localStorage.getItem(preferenceKey(user.id));
     return raw
@@ -51,6 +56,16 @@ export function PreferencesPage({ user }: { user: User }) {
   });
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('reduce-motion', reduceMotion);
+    localStorage.setItem(reduceMotionStorageKey, String(reduceMotion));
+  }, [reduceMotion]);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('large-text', largeText);
+    localStorage.setItem(largeTextStorageKey, String(largeText));
+  }, [largeText]);
 
   useEffect(() => {
     setPreferences((current) => (current.theme === theme ? current : { ...current, theme }));
@@ -96,6 +111,16 @@ export function PreferencesPage({ user }: { user: User }) {
     savePreferences({ ...preferences, language: nextLanguage });
   }
 
+  function handleAccessibilityChange(preference: 'reduceMotion' | 'largeText', enabled: boolean) {
+    if (preference === 'reduceMotion') {
+      setReduceMotion(enabled);
+    } else {
+      setLargeText(enabled);
+    }
+    setSaved(true);
+    window.setTimeout(() => setSaved(false), 1600);
+  }
+
   return (
     <div className="page-stack preferences-page">
       <PageHeader eyebrow={t('preferences.header.eyebrow')} title={t('preferences.header.title')} description={t('preferences.header.description')} />
@@ -105,13 +130,21 @@ export function PreferencesPage({ user }: { user: User }) {
 
       <section className="preferences-grid">
         <article className="panel preference-card">
-          <header><div><span className="eyebrow">{t('preferences.theme.eyebrow')}</span><h2>{t('preferences.theme.title')}</h2></div><Monitor size={20} /></header>
+          <header><div><span className="eyebrow">{t('preferences.theme.eyebrow')}</span><h2>Apariencia</h2></div><Monitor size={20} /></header>
+          <label><input type="checkbox" checked={resolvedTheme === 'dark'} onChange={(event) => handleThemeChange(event.target.checked ? 'dark' : 'light')} /> Tema oscuro</label>
           <div className="preference-options">
             <button className={theme === 'system' ? 'active' : ''} onClick={() => handleThemeChange('system')}><Monitor size={17} />{t('preferences.theme.system')}</button>
             <button className={theme === 'light' ? 'active' : ''} onClick={() => handleThemeChange('light')}><Sun size={17} />{t('preferences.theme.light')}</button>
             <button className={theme === 'dark' ? 'active' : ''} onClick={() => handleThemeChange('dark')}><Moon size={17} />{t('preferences.theme.dark')}</button>
           </div>
           <p>{t('preferences.theme.description', { mode: t(resolvedTheme === 'dark' ? 'preferences.theme.resolvedDark' : 'preferences.theme.resolvedLight') })}</p>
+        </article>
+
+        <article className="panel preference-card">
+          <header><div><span className="eyebrow">Lectura y movimiento</span><h2>Accesibilidad</h2></div><Accessibility size={20} /></header>
+          <label><input type="checkbox" checked={reduceMotion} onChange={(event) => handleAccessibilityChange('reduceMotion', event.target.checked)} /> Reducir animaciones</label>
+          <label><input type="checkbox" checked={largeText} onChange={(event) => handleAccessibilityChange('largeText', event.target.checked)} /> Texto más grande</label>
+          <p>Ajusta la interfaz para una lectura más cómoda y con menos movimiento.</p>
         </article>
 
         <article className="panel preference-card">
