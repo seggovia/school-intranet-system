@@ -1,5 +1,5 @@
 import { BarChart3, Bell, CalendarDays, Check, CheckCheck, ChevronDown, ClipboardCheck, FileText, GraduationCap, HelpCircle, LogOut, Menu, School, Search, Shield, Star, UserCircle, X } from 'lucide-react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import clsx from 'clsx';
 import { useNotifications } from '../hooks';
@@ -16,7 +16,21 @@ const navItems = [
   { to: '/admin', label: 'Administracion', icon: Shield, roles: ['admin', 'director', 'inspector'] }
 ];
 
+const ROUTE_NAMES: Record<string, string> = {
+  '/dashboard': 'Panel institucional',
+  '/academico': 'Académico',
+  '/horario': 'Horario',
+  '/asistencia': 'Asistencia',
+  '/comunicaciones': 'Comunicados',
+  '/solicitudes': 'Tickets',
+  '/admin': 'Administración',
+  '/calificaciones': 'Calificaciones',
+  '/perfil': 'Perfil',
+  '/preferencias': 'Preferencias',
+};
+
 export function Shell({ user, onLogout, children }: { user: User; onLogout: () => void; children: ReactNode }) {
+  const location = useLocation();
   const [open, setOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -24,6 +38,8 @@ export function Shell({ user, onLogout, children }: { user: User; onLogout: () =
   const [notificationToast, setNotificationToast] = useState('');
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const notificationRef = useRef<HTMLDivElement>(null);
+  const currentRouteName = ROUTE_NAMES[location.pathname] ?? location.pathname;
+  const showBreadcrumb = location.pathname !== '/' && location.pathname !== '/login';
 
   useEffect(() => {
     function handlePointerDown(event: PointerEvent) {
@@ -179,6 +195,13 @@ export function Shell({ user, onLogout, children }: { user: User; onLogout: () =
           </div>
         </div>
       </header>
+      {showBreadcrumb && (
+        <div className="breadcrumb-bar">
+          <NavLink to="/">Inicio</NavLink>
+          <span>&gt;</span>
+          <span>{currentRouteName}</span>
+        </div>
+      )}
       {notificationToast && <div className="admin-notice success" onClick={() => setNotificationToast('')}>Nueva notificación: {notificationToast}</div>}
 
       <div className="main-area">

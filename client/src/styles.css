@@ -3021,6 +3021,37 @@ select:disabled {
   box-shadow: none;
 }
 
+.breadcrumb-bar {
+  padding: 6px 24px;
+  font-size: 12px;
+  color: var(--text-muted);
+  background: var(--surface-secondary);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.breadcrumb-bar a {
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.breadcrumb-bar a:hover {
+  color: var(--primary);
+}
+
+.breadcrumb-bar span {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+@media (max-width: 768px) {
+  .breadcrumb-bar {
+    display: none;
+  }
+}
+
 .brand {
   display: flex;
   gap: 14px;
