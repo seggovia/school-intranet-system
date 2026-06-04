@@ -6,6 +6,7 @@ import { api } from '../api';
 import { useNotifications } from '../hooks';
 import type { AdminUserRow, Role, ScheduleCalendarEvent, User } from '../types';
 import { RoleBadge } from './RoleBadge';
+import { PageProgress } from './PageProgress';
 
 const navItems = [
   { to: '/', label: 'Panel', icon: BarChart3, roles: ['admin', 'director', 'teacher', 'student', 'guardian', 'inspector'] },
@@ -152,6 +153,7 @@ export function Shell({ user, onLogout, children }: { user: User; onLogout: () =
 
   return (
     <div className={clsx('app-shell', open && 'mobile-nav-open')}>
+      <PageProgress />
       <header className="institution-header">
         <div className="brand">
           <div className="brand-mark">
