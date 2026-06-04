@@ -1,9 +1,10 @@
 import { BarChart3, Bell, CalendarDays, Check, CheckCheck, ChevronDown, ClipboardCheck, FileText, GraduationCap, HelpCircle, LogOut, Menu, School, Search, Shield, Star, UserCircle, X } from 'lucide-react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import clsx from 'clsx';
+import { api } from '../api';
 import { useNotifications } from '../hooks';
-import type { User } from '../types';
+import type { AdminUserRow, Role, ScheduleCalendarEvent, User } from '../types';
 import { RoleBadge } from './RoleBadge';
 
 const navItems = [
@@ -29,17 +30,87 @@ const ROUTE_NAMES: Record<string, string> = {
   '/preferencias': 'Preferencias',
 };
 
+type SearchResult = {
+  id: string;
+  name: string;
+  role: Role;
+  isCurrentUser: boolean;
+};
+
 export function Shell({ user, onLogout, children }: { user: User; onLogout: () => void; children: ReactNode }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const { notifications, unreadCount, busy: notificationsBusy, lastRealtimeNotification, refresh, markRead, markAllRead } = useNotifications();
   const [notificationToast, setNotificationToast] = useState('');
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const notificationRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLDivElement>(null);
   const currentRouteName = ROUTE_NAMES[location.pathname] ?? location.pathname;
   const showBreadcrumb = location.pathname !== '/' && location.pathname !== '/login';
+
+  async function performSearch(nextQuery = query) {
+    const trimmed = nextQuery.trim();
+    if (!trimmed) {
+      setResults([]);
+      setSearchOpen(false);
+      setSearching(false);
+      return;
+    }
+
+    setSearching(true);
+    setSearchOpen(true);
+    const normalizedQuery = trimmed.toLowerCase();
+    const [usersResponse, scheduleResponse] = await Promise.allSettled([
+      api.get<AdminUserRow[]>('/admin/users', { params: { search: trimmed } }),
+      api.get<ScheduleCalendarEvent[]>('/me/schedule')
+    ]);
+
+    const userResults = usersResponse.status === 'fulfilled' ? usersResponse.value.data
+      .filter((item: AdminUserRow) => [item.name, item.email, item.department, item.section ?? ''].some((value) => value.toLowerCase().includes(normalizedQuery)))
+      .map((item: AdminUserRow) => ({
+        id: item.id,
+        name: item.name,
+        role: item.role,
+        isCurrentUser: item.id === user.id
+      })) : [];
+
+    const scheduleResults = scheduleResponse.status === 'fulfilled' ? scheduleResponse.value.data.flatMap((item: ScheduleCalendarEvent) => {
+      const matches: SearchResult[] = [];
+      if (item.teacher.toLowerCase().includes(normalizedQuery)) {
+        matches.push({
+          id: item.teacherId ?? `teacher-${item.id}`,
+          name: item.teacher,
+          role: 'teacher',
+          isCurrentUser: item.teacherId === user.id || item.teacher === user.name
+        });
+      }
+      item.students?.forEach((student: { id: string; name: string }) => {
+        if (student.name.toLowerCase().includes(normalizedQuery)) {
+          matches.push({
+            id: student.id,
+            name: student.name,
+            role: 'student',
+            isCurrentUser: student.id === user.id || student.name === user.name
+          });
+        }
+      });
+      return matches;
+    }) : [];
+
+    const uniqueResults = [...userResults, ...scheduleResults].filter((item, index, items) => (
+      items.findIndex((candidate) => candidate.id === item.id && candidate.role === item.role) === index
+    ));
+
+    setResults(uniqueResults.slice(0, 5));
+    setSearching(false);
+  }
 
   useEffect(() => {
     function handlePointerDown(event: PointerEvent) {
@@ -49,10 +120,28 @@ export function Shell({ user, onLogout, children }: { user: User; onLogout: () =
       if (!notificationRef.current?.contains(event.target as Node)) {
         setNotificationsOpen(false);
       }
+      if (!searchRef.current?.contains(event.target as Node)) {
+        setSearchOpen(false);
+      }
     }
-    if (profileOpen || notificationsOpen) document.addEventListener('pointerdown', handlePointerDown);
+    if (profileOpen || notificationsOpen || searchOpen) document.addEventListener('pointerdown', handlePointerDown);
     return () => document.removeEventListener('pointerdown', handlePointerDown);
-  }, [profileOpen, notificationsOpen]);
+  }, [profileOpen, notificationsOpen, searchOpen]);
+
+  useEffect(() => {
+    const trimmed = query.trim();
+    if (!trimmed) {
+      setResults([]);
+      setSearchOpen(false);
+      setSearching(false);
+      return undefined;
+    }
+
+    const timer = window.setTimeout(() => {
+      void performSearch(trimmed);
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [query]);
 
   useEffect(() => {
     if (!lastRealtimeNotification) return undefined;
@@ -90,9 +179,70 @@ export function Shell({ user, onLogout, children }: { user: User; onLogout: () =
           })}
         </nav>
 
-        <div className="institution-search">
+        <div className="institution-search" ref={searchRef} style={{ position: 'relative' }}>
           <Search size={18} />
-          <input placeholder="Buscar estudiantes, documentos o comunicados" />
+          <input
+            placeholder="Buscar estudiantes, documentos o comunicados"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            onFocus={() => {
+              if (query.trim()) setSearchOpen(true);
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                void performSearch();
+              }
+            }}
+          />
+          {searchOpen && query.trim() && (
+            <div
+              style={{
+                position: 'absolute',
+                top: '100%',
+                right: 0,
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
+                borderRadius: 8,
+                boxShadow: 'var(--shadow-lg)',
+                zIndex: 200,
+                minWidth: 300,
+                padding: 8,
+                marginTop: 8
+              }}
+            >
+              {searching && <div style={{ padding: '10px 12px', color: 'var(--muted)' }}>Buscando...</div>}
+              {!searching && results.map((item) => (
+                <button
+                  key={`${item.role}-${item.id}`}
+                  type="button"
+                  onClick={() => {
+                    setSearchOpen(false);
+                    setQuery('');
+                    navigate(item.isCurrentUser ? '/perfil' : '/admin');
+                  }}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 12,
+                    padding: '10px 12px',
+                    border: 0,
+                    borderRadius: 6,
+                    background: 'transparent',
+                    color: 'var(--text)',
+                    cursor: 'pointer',
+                    textAlign: 'left'
+                  }}
+                >
+                  <span>{item.name}</span>
+                  <RoleBadge role={item.role} />
+                </button>
+              ))}
+              {!searching && !results.length && <div style={{ padding: '10px 12px', color: 'var(--muted)' }}>Sin resultados</div>}
+            </div>
+          )}
         </div>
 
         <div className="institution-user">
