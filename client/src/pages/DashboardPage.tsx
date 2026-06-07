@@ -330,6 +330,8 @@ function DashboardList({ title, icon, empty, children }: { title: string; icon: 
 export function DashboardPage() {
   const dashboard = useAsyncData(loadMyDashboard, emptyDashboard);
   const schedule = useAsyncData(loadMySchedule, [] as ScheduleCalendarEvent[]);
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+  const [tooltipPos, setTooltipPos] = useState<{ left: number; top: number } | null>(null);
   const [title, description] = dashboardCopy(dashboard.data.role);
   const sections = dashboard.data.sections;
   const observations = ((dashboard.data as RoleDashboard & { observations?: DashboardObservation[] }).observations ?? []).slice(0, 5);
@@ -393,17 +395,46 @@ export function DashboardPage() {
           <div className="panel-title-row">
             <div>
               <span className="eyebrow">Asistencia</span>
-              <h2>Tendencia semanal</h2>
+              <h2>{dashboard.data.role === 'student' ? 'Mi asistencia esta semana' : 'Tendencia semanal'}</h2>
             </div>
             <CheckCircle2 size={20} />
           </div>
-          <div className="bar-chart" aria-label="Grafico de asistencia semanal">
-            {['Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'].map((day, index) => (
-              <div key={day}>
-                <span style={{ height: `${barValue(index)}%` }} />
-                <small>{day}</small>
-              </div>
-            ))}
+          <div className="bar-chart" aria-label="Grafico de asistencia semanal" style={{ position: 'relative' }}>
+            {['Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'].map((day, index) => {
+              const pct = barValue(index);
+              return (
+                <div key={day} onMouseEnter={() => setHoverIndex(index)} onMouseLeave={() => { setHoverIndex(null); setTooltipPos(null); }} onMouseMove={(e) => {
+                  const rect = (e.currentTarget as HTMLElement).parentElement?.getBoundingClientRect();
+                  if (!rect) return;
+                  setTooltipPos({ left: e.clientX - rect.left + 8, top: e.clientY - rect.top - 36 });
+                }} style={{ position: 'relative' }}>
+                  <span style={{ height: `${pct}%` }} />
+                  <small>{day}</small>
+                </div>
+              );
+            })}
+
+            {hoverIndex !== null && tooltipPos && (
+              (() => {
+                const pct = barValue(hoverIndex);
+                const color = pct >= 85 ? 'green' : pct >= 70 ? 'orange' : 'red';
+                const day = ['Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'][hoverIndex];
+                return (
+                  <div style={{ position: 'absolute', left: tooltipPos.left, top: tooltipPos.top, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, padding: 8, boxShadow: 'var(--shadow-md)', zIndex: 100 }}>
+                    <div style={{ fontWeight: 600 }}>{day}</div>
+                    <div style={{ color }}>{pct}% asistencia</div>
+                  </div>
+                );
+              })()
+            )}
+
+            <div style={{ marginTop: 12, display: 'flex', gap: 8, alignItems: 'center' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ width: 10, height: 10, borderRadius: 6, background: 'green', display: 'inline-block' }} /> Buena (≥85%)</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ width: 10, height: 10, borderRadius: 6, background: 'orange', display: 'inline-block' }} /> Regular (70-84%)</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ width: 10, height: 10, borderRadius: 6, background: 'red', display: 'inline-block' }} /> Baja (&lt;70%)</span>
+            </div>
+
+            <div style={{ marginTop: 8 }}><Link to="/asistencia" className="text-link">Ver detalle completo →</Link></div>
           </div>
         </article>
 
