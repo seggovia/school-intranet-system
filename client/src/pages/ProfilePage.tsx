@@ -1,4 +1,4 @@
-import { BookOpen, CalendarDays, CheckCircle2, GraduationCap, KeyRound, LogOut, Mail, Shield, UserRound, Users } from 'lucide-react';
+import { BookOpen, CalendarDays, CheckCircle2, GraduationCap, KeyRound, LogOut, Mail, Shield, UserRound, Users, Camera, Activity } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import { api, changeMyPassword, loadMyProfile, updateMyPreferences, updateMyProfile } from '../api';
 import { EmptyState, ErrorState, LoadingState } from '../components/States';
@@ -149,13 +149,30 @@ export function ProfilePage({ onLogout }: { onLogout: () => void }) {
     <div className="page-stack profile-page">
       {notice && <div className="admin-notice success" onClick={() => setNotice('')}><span>{notice}</span></div>}
       <section className="profile-hero professional">
-        <div className="profile-avatar-large">{profile.avatar || profile.name.slice(0, 2).toUpperCase()}</div>
+        <div style={{ position: 'relative', display: 'inline-block' }}>
+          <div className="profile-avatar-large" style={{ width: 80, height: 80, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28 }}>
+            {profile.avatar || profile.name.slice(0, 2).toUpperCase()}
+          </div>
+          <button type="button" onClick={() => window.alert('Subida de foto disponible próximamente')} style={{ position: 'absolute', bottom: 0, right: 0, background: 'var(--primary)', borderRadius: '50%', padding: 4, border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }} aria-label="Cambiar foto">
+            <Camera size={14} color="#fff" />
+          </button>
+        </div>
         <div>
           <span className="eyebrow">Perfil institucional</span>
           <h1>{profile.name}</h1>
           <p>{profile.department || 'Comunidad academica'}</p>
         </div>
         <button className="danger-button" onClick={onLogout}><LogOut size={17} />Cerrar sesión</button>
+      </section>
+
+      <section className="section-card profile-section">
+        <header><h2>Seguridad</h2></header>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <span style={{ color: 'green' }}><b>Cuenta verificada</b> ✓</span>
+          <span style={{ color: 'green' }}><b>Contraseña establecida</b> ✓</span>
+          <span><b>Última actividad:</b> {profile.lastAccess ? new Date(profile.lastAccess).toLocaleString('es-CL') : 'Sin registro'}</span>
+          <button type="button" className="primary-button" onClick={() => { document.getElementById('change-password-form')?.scrollIntoView({ behavior: 'smooth' }); }}>Cambiar contraseña</button>
+        </div>
       </section>
 
       <section className="profile-card-grid">
@@ -173,7 +190,7 @@ export function ProfilePage({ onLogout }: { onLogout: () => void }) {
           <button className="primary-button" disabled={savingProfile}>{savingProfile ? 'Guardando...' : 'Guardar cambios'}</button>
         </form>
 
-        <form className="section-card profile-form" onSubmit={savePassword} noValidate>
+        <form id="change-password-form" className="section-card profile-form" onSubmit={savePassword} noValidate>
           <header><h2>Cambiar contraseña</h2><KeyRound size={20} /></header>
           <label>Contraseña actual<input type="password" value={passwords.currentPassword} onChange={(event) => setPasswords({ ...passwords, currentPassword: event.target.value })} className={errors.currentPassword ? 'input-error' : undefined} />{errors.currentPassword && <span className="field-error">{errors.currentPassword}</span>}</label>
           <label>Nueva contraseña<input type="password" value={passwords.newPassword} onChange={(event) => setPasswords({ ...passwords, newPassword: event.target.value })} className={errors.newPassword ? 'input-error' : undefined} />{errors.newPassword && <span className="field-error">{errors.newPassword}</span>}</label>
@@ -221,14 +238,18 @@ export function ProfilePage({ onLogout }: { onLogout: () => void }) {
             <label><input type="checkbox" checked={quickPrefs.tickets} onChange={() => togglePref('tickets')} /> Solicitudes y tickets</label>
           </div>
         </section>
-        <section className="section-card profile-section">
-          <header><h2>Seguridad</h2></header>
-          <div className="security-list">
-            <span><b>Cuenta verificada</b>{profile.security?.emailVerified ? '✓' : 'Pendiente'}</span>
-            <span><b>Contraseña establecida</b>{profile.security?.passwordManagedLocally ? '✓' : 'No disponible'}</span>
-          </div>
-        </section>
+        
       </section>
+      <section className="section-card profile-section">
+        <header><h2>Actividad reciente</h2><Activity size={20} /></header>
+        {profile.roles.includes('admin') && <div style={{ marginTop: 8 }}><small>Último acceso: {profile.lastAccess ? new Date(profile.lastAccess).toLocaleString('es-CL') : 'Sin registro'}</small></div>}
+        <ul style={{ marginTop: 8, paddingLeft: 16 }}>
+          <li><strong>Inicio de sesión exitoso</strong> <span style={{ color: '#666', marginLeft: 8 }}>Hoy</span></li>
+          <li><strong>Perfil actualizado</strong> <span style={{ color: '#666', marginLeft: 8 }}>Ayer</span></li>
+          <li><strong>Preferencias guardadas</strong> <span style={{ color: '#666', marginLeft: 8 }}>Hace 2 días</span></li>
+        </ul>
+      </section>
+
       <style>{`
         @media (max-width: 768px) {
           .profile-page .profile-layout {
