@@ -1,4 +1,6 @@
 ﻿import { AlertTriangle, BookOpen, Building2, CheckCircle2, ChevronDown, ChevronRight, ClipboardList, Edit3, Eye, EyeOff, GraduationCap, KeyRound, Link2, Plus, Search, Shield, ToggleLeft, ToggleRight, Trash2, UserRound, Users, X } from 'lucide-react';
+import AdminUsersSection from './admin/AdminUsersSection';
+import AdminStudentsSection from './admin/AdminStudentsSection';
 import { FormEvent, ReactNode, useEffect, useMemo, useState } from 'react';
 import { History } from 'lucide-react';
 import {
@@ -1559,6 +1561,18 @@ export function AdminPage({ user }: { user: User }) {
     return setModal({ type: 'user', mode: 'edit', row });
   }
 
+  function handleToggleUser(row: AdminUserRow) {
+    statusAction('usuario', row.name, row.isActive, () => setAdminUserStatus(row.id, !row.isActive));
+  }
+
+  function handleResetPassword(row: AdminUserRow) {
+    setResetTarget({ id: row.id, name: row.name });
+  }
+
+  function handleToggleStudent(row: AdminStudentRow) {
+    statusAction('estudiante', row.name, row.isActive, () => setAdminStudentStatus(row.id, !row.isActive));
+  }
+
   const specialtyOptions = Array.from(new Set(bundle.teachers.map((teacher) => teacher.specialty).filter(Boolean))).sort();
   const resetFilters = () => {
     setQuery('');
@@ -1626,9 +1640,26 @@ export function AdminPage({ user }: { user: User }) {
             {canManage && <button className="primary-button" onClick={() => setModal({ type: tab === 'students' ? 'student' : tab === 'teachers' ? 'teacher' : tab === 'guardians' ? 'guardian' : tab === 'subjects' ? 'subject' : 'user', mode: 'create' })}><Plus size={18} />Crear</button>}
           </div>}
 
-          {tab === 'users' && <AdminTable headers={['Usuario', 'Rol', 'Estado', 'Acciones']} rows={filtered as AdminUserRow[]} render={(row) => <><div><strong>{row.name}</strong><small>{row.email}</small></div><span>{roleLabels[row.role]}</span><StatusBadge active={row.isActive} /><div className="admin-row-actions">{canManage && <><button onClick={() => editUserRow(row)}><Edit3 size={16} />Editar</button><button onClick={() => statusAction('usuario', row.name, row.isActive, () => setAdminUserStatus(row.id, !row.isActive))}>{row.isActive ? <ToggleRight /> : <ToggleLeft />} {row.isActive ? 'Desactivar' : 'Activar'}</button><button onClick={() => setResetTarget({ id: row.id, name: row.name })}><KeyRound size={16} />Restablecer contraseña</button></>}</div></>} />}
+          {tab === 'users' && (
+            <AdminUsersSection
+              users={filtered as AdminUserRow[]}
+              roleLabels={roleLabels}
+              canManage={canManage}
+              onEdit={editUserRow}
+              onToggleStatus={handleToggleUser}
+              onResetPassword={handleResetPassword}
+            />
+          )}
 
-          {tab === 'students' && <AdminTable headers={['Estudiante', 'Curso / Sección', 'Apoderado', 'Estado', 'Acciones']} rows={filtered as AdminStudentRow[]} render={(row) => <><div><strong>{row.name}</strong><small>{row.email}</small></div><span>{row.course} · {row.section}</span><span>{row.guardians.length ? row.guardians.map((item) => item.name).join(', ') : 'Sin apoderado'}</span><StatusBadge active={row.isActive} /><div className="admin-row-actions">{canManage && <><button onClick={() => setObservationStudent(row)}><ClipboardList size={16} />Anotaciones</button><button onClick={() => setModal({ type: 'student', mode: 'edit', row })}><Edit3 size={16} />Editar</button><button onClick={() => statusAction('estudiante', row.name, row.isActive, () => setAdminStudentStatus(row.id, !row.isActive))}>{row.isActive ? 'Desactivar' : 'Activar'}</button></>}</div></>} />}
+          {tab === 'students' && (
+            <AdminStudentsSection
+              students={filtered as AdminStudentRow[]}
+              canManage={canManage}
+              onOpenObservations={(row) => setObservationStudent(row)}
+              onEdit={(row) => setModal({ type: 'student', mode: 'edit', row })}
+              onToggleStatus={handleToggleStudent}
+            />
+          )}
 
           {tab === 'teachers' && <AdminTable headers={['Profesor', 'Área', 'Asignaturas', 'Estado', 'Acciones']} rows={filtered as AdminTeacherRow[]} render={(row) => <><div><strong>{row.name}</strong><small>{row.email}</small></div><span>{row.specialty}</span><span>{row.subjects.map((item) => item.name).join(', ') || 'Sin asignaturas'}</span><StatusBadge active={row.isActive} /><div className="admin-row-actions">{canManage && <><button onClick={() => setModal({ type: 'teacher', mode: 'edit', row })}><Edit3 size={16} />Editar</button><button onClick={() => statusAction('profesor', row.name, row.isActive, () => setAdminTeacherStatus(row.id, !row.isActive))}>{row.isActive ? 'Desactivar' : 'Activar'}</button></>}</div></>} />}
 
