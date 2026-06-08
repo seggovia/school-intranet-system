@@ -100,6 +100,7 @@ const footerLinks = ['Panel', 'Académico', 'Horario', 'Asistencia', 'Comunicado
 
 export function LandingPage() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showAnnouncement, setShowAnnouncement] = useState(true);
 
   function scrollToFeatures() {
     document.getElementById('modulos')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -132,6 +133,24 @@ export function LandingPage() {
           )}
         </div>
       </header>
+
+      {showAnnouncement && (
+        <section style={styles.announcementBar}>
+          <div style={styles.announcementInner}>
+            <span style={styles.announcementText}>
+              🎓 Sistema de demostración — Credenciales: demo1234 para todos los roles
+            </span>
+            <button
+              type="button"
+              style={styles.announcementClose}
+              onClick={() => setShowAnnouncement(false)}
+              aria-label="Cerrar anuncio"
+            >
+              <X size={18} />
+            </button>
+          </div>
+        </section>
+      )}
 
       <section style={styles.hero}>
         <div style={styles.heroInner}>
@@ -202,22 +221,46 @@ export function LandingPage() {
       </section>
 
       <footer style={styles.footer}>
-        <div style={styles.footerInner}>
-          <div style={styles.footerBrand}>
-            <span style={styles.footerLogo}><School size={23} /></span>
-            <div>
-              <strong>Sistema de Intranet Colegio</strong>
-              <small>Gestión interna</small>
+        <div style={styles.footerTop}>
+          <div style={styles.footerColumn}>
+            <div style={styles.footerBrand}>
+              <span style={styles.footerLogo}><School size={23} /></span>
+              <div>
+                <strong>Sistema de Intranet Colegio</strong>
+              </div>
+            </div>
+            <p style={styles.footerText}>
+              Sistema de gestión académica para instituciones educativas. Plataforma diseñada para apoyar la administración,
+              docentes, estudiantes y apoderados en una experiencia moderna y centralizada.
+            </p>
+          </div>
+
+          <div style={styles.footerColumn}>
+            <h3 style={styles.footerColumnTitle}>Módulos</h3>
+            <div style={styles.footerLinkList}>
+              <a href="#modulos" style={styles.footerLink}>Panel</a>
+              <a href="#modulos" style={styles.footerLink}>Académico</a>
+              <a href="#modulos" style={styles.footerLink}>Comunicados</a>
+              <a href="#modulos" style={styles.footerLink}>Tickets</a>
+              <a href="#modulos" style={styles.footerLink}>Horario</a>
             </div>
           </div>
-          <nav style={styles.footerNav} aria-label="Navegación de acceso">
-            {footerLinks.map((item) => (
-              <Link key={item} to="/login" style={styles.footerLink}>{item}</Link>
-            ))}
-          </nav>
-          <p style={styles.footerStack}>React · Node.js · TypeScript · Prisma · MySQL</p>
+
+          <div style={styles.footerColumn}>
+            <h3 style={styles.footerColumnTitle}>Stack técnico</h3>
+            <div style={styles.badgeRow}>
+              <span style={{ ...styles.techBadge, background: '#61dafb', color: '#0f172a' }}>React</span>
+              <span style={{ ...styles.techBadge, background: '#6cc24a' }}>Node.js</span>
+              <span style={{ ...styles.techBadge, background: '#007acc' }}>TypeScript</span>
+              <span style={{ ...styles.techBadge, background: '#2d3748' }}>Prisma</span>
+              <span style={{ ...styles.techBadge, background: '#00758f' }}>MySQL</span>
+              <span style={{ ...styles.techBadge, background: '#2496ed' }}>Docker</span>
+            </div>
+          </div>
         </div>
-        <div style={styles.footerBottom}>© 2026 Sistema de Intranet Colegio. Proyecto de portafolio.</div>
+        <div style={styles.footerBottom}>
+          © 2026 Sistema de Intranet Escolar · Proyecto de portafolio · Desarrollado con React + Node.js + TypeScript
+        </div>
       </footer>
       <style>{`
         @media (max-width: 768px) {
@@ -555,6 +598,15 @@ const styles: Record<string, CSSProperties> = {
     background: '#020617',
     color: '#ffffff'
   },
+  footerTop: {
+    width: 'min(1120px, calc(100% - 32px))',
+    margin: '0 auto',
+    padding: '40px 0 24px',
+    display: 'grid',
+    gridTemplateColumns: 'repeat(3, minmax(220px, 1fr))',
+    gap: 24,
+    borderBottom: '1px solid rgba(255,255,255,0.08)'
+  },
   footerInner: {
     width: 'min(1120px, calc(100% - 32px))',
     margin: '0 auto',
@@ -563,6 +615,49 @@ const styles: Record<string, CSSProperties> = {
     gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
     gap: 24,
     alignItems: 'center'
+  },
+  footerColumn: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 14
+  },
+  footerColumnTitle: {
+    margin: 0,
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: 800
+  },
+  footerText: {
+    margin: 0,
+    color: '#cbd5e1',
+    lineHeight: 1.8,
+    fontSize: 15,
+    maxWidth: 360
+  },
+  footerLinkList: {
+    display: 'grid',
+    gap: 10
+  },
+  footerLink: {
+    color: '#cbd5e1',
+    textDecoration: 'none',
+    fontWeight: 700,
+    fontSize: 15
+  },
+  badgeRow: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 10
+  },
+  techBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 999,
+    padding: '8px 14px',
+    color: '#ffffff',
+    fontWeight: 700,
+    fontSize: 13
   },
   footerBrand: {
     display: 'flex',
@@ -602,6 +697,38 @@ const styles: Record<string, CSSProperties> = {
     padding: '18px 0 24px',
     borderTop: '1px solid rgba(255,255,255,0.12)',
     color: '#94a3b8',
-    fontSize: 14
+    fontSize: 14,
+    textAlign: 'center'
+  },
+  announcementBar: {
+    width: '100%',
+    background: '#0d9488',
+    color: '#ffffff'
+  },
+  announcementInner: {
+    width: 'min(1120px, calc(100% - 32px))',
+    margin: '0 auto',
+    padding: '12px 0',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 16
+  },
+  announcementText: {
+    fontSize: 15,
+    fontWeight: 600,
+    textAlign: 'center'
+  },
+  announcementClose: {
+    width: 36,
+    height: 36,
+    borderRadius: 999,
+    border: '1px solid rgba(255,255,255,0.22)',
+    background: 'rgba(255,255,255,0.12)',
+    color: '#ffffff',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer'
   }
 };
