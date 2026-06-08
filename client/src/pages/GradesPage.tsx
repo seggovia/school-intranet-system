@@ -59,6 +59,29 @@ function scoreLabel(value: number | null) {
   return value === null ? '-' : value.toFixed(1);
 }
 
+function downloadCsv(filename: string, rows: string[][]) {
+  const csv = rows.map((r) => r.join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportGradebookCsv(evaluations: GradebookEvaluation[], rows: GradebookTableRow[]) {
+  const headers = ['Estudiante', ...evaluations.map((evaluation) => evaluation.title), 'Promedio'];
+  const csvRows = rows.map((row) => {
+    const values = evaluations.map((evaluation) => {
+      const score = row.scores[evaluation.id]?.score;
+      return score === null || score === undefined ? '-' : String(score);
+    });
+    return [row.student, ...values, formatAverage(row.finalAverage)];
+  });
+  downloadCsv('calificaciones.csv', [headers, ...csvRows]);
+}
+
 function buildGradebookRows(students: SectionStudent[], evaluations: GradebookEvaluation[], recordsByEvaluation: Record<string, GradebookRecord[]>): GradebookTableRow[] {
   const recordMaps = Object.fromEntries(
     Object.entries(recordsByEvaluation).map(([evaluationId, records]) => [evaluationId, new Map(records.map((record) => [record.studentId, record]))])
@@ -519,6 +542,7 @@ function StaffGradebookView({ user }: { user: User }) {
             <input type="checkbox" checked={riskOnly} onChange={(event) => setRiskOnly(event.target.checked)} />
             Mostrar solo estudiantes en riesgo
           </label>
+          <button type="button" className="secondary-button" onClick={() => exportGradebookCsv(filteredEvaluations, visibleGradebookRows)}>Exportar CSV</button>
           {canWrite && (
             <button className="primary-button" onClick={saveGradebookChanges} disabled={!dirtyCells.size || savingBulk || Boolean(Object.keys(cellErrors).length)}>
               <Save size={17} />{savingBulk ? 'Guardando...' : 'Guardar cambios'}

@@ -1517,6 +1517,24 @@ export function AdminPage({ user }: { user: User }) {
     });
   }, [bundle, guardianLinksFilter, query, roleFilter, status, studentCourseFilter, studentGuardianFilter, studentSectionFilter, tab, teacherSpecialtyFilter, teacherSubjectFilter]);
 
+  function exportUsersCsv() {
+    const headers = ['Nombre', 'Apellido', 'Email', 'Rol', 'Estado', 'Última actividad'];
+    const rows = (filtered as AdminUserRow[]).map((user) => {
+      const { name, lastName } = splitName(user.name);
+      const roleLabel = roleLabels[user.role] ?? user.role;
+      const lastActivity = (user as Record<string, unknown>).lastActivity ?? (user as Record<string, unknown>).updatedAt ?? '-';
+      return [name, lastName, user.email ?? '', roleLabel, user.isActive ? 'Activo' : 'Inactivo', String(lastActivity)];
+    });
+    const csv = [headers, ...rows].map((r) => r.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'usuarios.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   if (!['admin', 'director', 'inspector'].includes(user.primaryRole)) {
     return <div className="page-stack"><PageHeader eyebrow="Administración" title="Acceso restringido" description="Tu rol no tiene acceso al CRUD administrativo." /></div>;
   }
@@ -1636,6 +1654,7 @@ export function AdminPage({ user }: { user: User }) {
             {tab === 'teachers' && <><label>Área<select value={teacherSpecialtyFilter} onChange={(event) => setTeacherSpecialtyFilter(event.target.value)}><option value="">Todas las áreas</option>{specialtyOptions.map((specialty) => <option key={specialty} value={specialty}>{specialty}</option>)}</select></label><label>Asignatura<select value={teacherSubjectFilter} onChange={(event) => setTeacherSubjectFilter(event.target.value)}><option value="">Todas las asignaturas</option>{bundle.subjects.map((subject) => <option key={subject.id} value={subject.id}>{subject.name}</option>)}</select></label></>}
             {tab === 'guardians' && <label>Vínculos<select value={guardianLinksFilter} onChange={(event) => setGuardianLinksFilter(event.target.value as typeof guardianLinksFilter)}><option value="all">Todos</option><option value="with">Con estudiantes</option><option value="without">Sin estudiantes</option></select></label>}
             {['users', 'students', 'teachers', 'guardians'].includes(tab) && <label>Estado<select value={status} onChange={(event) => setStatus(event.target.value as typeof status)}><option value="all">Todos</option><option value="active">Activos</option><option value="inactive">Inactivos</option></select></label>}
+            {tab === 'users' && <button type="button" className="secondary-button" onClick={exportUsersCsv}>Exportar CSV</button>}
             <button type="button" className="secondary-button" onClick={resetFilters}>Limpiar filtros</button>
             {canManage && <button className="primary-button" onClick={() => setModal({ type: tab === 'students' ? 'student' : tab === 'teachers' ? 'teacher' : tab === 'guardians' ? 'guardian' : tab === 'subjects' ? 'subject' : 'user', mode: 'create' })}><Plus size={18} />Crear</button>}
           </div>}
