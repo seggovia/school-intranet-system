@@ -4,8 +4,9 @@ import { useSearchParams } from 'react-router-dom';
 import { loadAttendanceContext, loadAttendanceGuardian, loadAttendanceMe, loadAttendanceRecords, loadAttendanceSummary, saveAttendanceBulk } from '../api';
 import { normalizeApiError, type NormalizedApiError } from '../api-error';
 import { ApiErrorModal } from '../components/ApiErrorModal';
+import { EmptyState } from '../components/EmptyState';
 import { PageHeader } from '../components/PageHeader';
-import { EmptyState, LoadingState } from '../components/States';
+import { LoadingState } from '../components/States';
 import type { AttendanceContext, AttendanceHistoryItem, AttendanceRecordsResponse, AttendanceRosterRecord, AttendanceRosterStatus, AttendanceScheduleItem, AttendanceStatus, AttendanceSummary, User } from '../types';
 
 const statusOptions: Array<{ value: AttendanceRosterStatus; label: string }> = [
@@ -321,11 +322,7 @@ function ManageAttendance({ user }: { user: User }) {
     return (
       <div className="page-stack attendance-page">
         <PageHeader eyebrow="Asistencia" title="Asistencia" description="Registro diario por sección, asignatura y estudiante." />
-        <div style={{ display: 'grid', placeItems: 'center', gap: 10, minHeight: 280, padding: 32, textAlign: 'center', color: 'var(--color-muted)' }}>
-          <BookOpen size={48} color="var(--color-muted)" />
-          <h2 style={{ margin: 0, color: 'var(--color-text)', fontSize: 22 }}>Sin secciones asignadas</h2>
-          <p style={{ margin: 0, maxWidth: 520 }}>No tienes secciones activas. Contacta al administrador.</p>
-        </div>
+        <EmptyState icon={<BookOpen size={48} />} title="Sin secciones asignadas" description="No tienes secciones activas. Contacta al administrador." />
       </div>
     );
   }

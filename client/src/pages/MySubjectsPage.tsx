@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, BookOpen, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { loadGradebookEvaluations, loadGradebookRecords, loadMySubjects } from '../api';
-import { EmptyState } from '../components/States';
+import { EmptyState } from '../components/EmptyState';
 import { PageHeader } from '../components/PageHeader';
 import { useAsyncData } from '../hooks';
 import type { GradebookEvaluation, GradebookRecord, MySubject } from '../types';
@@ -85,11 +85,11 @@ export function MySubjectsPage() {
           })}
         </section>
       ) : (
-        <div style={{ display: 'grid', placeItems: 'center', gap: 10, minHeight: 280, padding: 32, textAlign: 'center', color: 'var(--color-muted)' }}>
-          <BookOpen size={48} color="var(--color-muted)" />
-          <h2 style={{ margin: 0, color: 'var(--color-text)', fontSize: 22 }}>Sin asignaturas asignadas</h2>
-          <p style={{ margin: 0, maxWidth: 520 }}>No tienes asignaturas activas para este período. Contacta al administrador si crees que esto es un error.</p>
-        </div>
+        <EmptyState
+          icon={<BookOpen size={48} />}
+          title="Sin asignaturas asignadas"
+          description="No tienes asignaturas activas para este período. Contacta al administrador si crees que esto es un error."
+        />
       )}
     </div>
   );
