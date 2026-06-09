@@ -106,6 +106,12 @@ function historySummary(rows: AttendanceHistoryItem[]) {
   return { total, percentage, presente, ausente, atrasado, justificado };
 }
 
+function progressTone(percentage: number) {
+  if (percentage >= 85) return { color: '#16a34a', label: 'verde' };
+  if (percentage >= 70) return { color: '#f59e0b', label: 'naranja' };
+  return { color: '#dc2626', label: 'rojo' };
+}
+
 function ConfirmModal({ confirm, onClose, onApiError }: { confirm: ConfirmState; onClose: () => void; onApiError: (error: unknown) => void }) {
   const [busy, setBusy] = useState(false);
   return (
@@ -161,6 +167,14 @@ function ManageAttendance({ user }: { user: User }) {
   const hasClassToday = schedulesForDay.length > 0;
   const counts = summaryFromRows(records?.students ?? []);
   const pendingChanges = useMemo(() => records?.students.filter((row) => baseline[row.studentId] !== rowSignature(row)).length ?? 0, [baseline, records]);
+  const globalSummary = useMemo(() => {
+    const sections = summary?.sections ?? [];
+    const totalRegistered = sections.reduce((sum, item) => sum + (item.summary.presente ?? 0) + (item.summary.ausente ?? 0) + (item.summary.atrasado ?? 0) + (item.summary.justificado ?? 0), 0);
+    const presentAndLate = sections.reduce((sum, item) => sum + (item.summary.presente ?? 0) + (item.summary.atrasado ?? 0), 0);
+    const percentage = totalRegistered ? Math.round((presentAndLate / totalRegistered) * 100) : 0;
+    const badge = percentage >= 85 ? 'Buen día' : percentage >= 70 ? 'Día regular' : 'Día crítico';
+    return { totalRegistered, percentage, badge };
+  }, [summary]);
   const filteredStudents = useMemo(() => {
     const query = studentQuery.trim().toLowerCase();
     return (records?.students ?? []).filter((student) => {
@@ -351,7 +365,9 @@ function ManageAttendance({ user }: { user: User }) {
               {!isTeacher && <label>Sección<select value={sectionId} onChange={(event) => changeSection(event.target.value)}>{context.sections.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>}
               {!isTeacher && <label>Asignatura<select value={subjectId} onChange={(event) => changeSubject(event.target.value)}>{subjects.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>}
               <label>Fecha<input type="date" value={date} max={today()} onChange={(event) => changeDate(event.target.value)} /></label>
-              <button className="primary-button" disabled={futureDate || !subjectId || !date || !hasClassToday || rosterLoading}>{rosterLoading ? 'Cargando...' : 'Cargar asistencia'}</button>
+              <button className="primary-button" disabled={futureDate || !subjectId || !date || !hasClassToday || rosterLoading}>
+                {rosterLoading ? <><span style={{ display: 'inline-block', width: 14, height: 14, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', borderRadius: '50%', animation: 'spin 0.7s linear infinite', marginRight: 6 }} />Cargando...</> : 'Cargar asistencia'}
+              </button>
             </form>
             <WeekSchedule schedules={weeklySchedules} selectedWeekday={selectedWeekday} />
             {!futureDate && !hasClassToday && <div className="attendance-warning"><AlertTriangle size={17} />No hay clase programada para esta asignatura en la fecha seleccionada.</div>}
@@ -369,7 +385,45 @@ function ManageAttendance({ user }: { user: User }) {
               {!filteredStudents.length && <EmptyState title="Sin estudiantes" description="No hay estudiantes con esos filtros." />}
             </section>
           ) : <EmptyState title="Carga una asistencia" description="Selecciona un día con clase para ver el listado de estudiantes." />}
-          {summary && <section className="panel"><h3>Resumen por sección de hoy</h3><div className="attendance-history-table">{summary.sections.map((item) => <article key={item.name}><strong>{item.name}</strong><span>{item.summary.percentage}% asistencia</span><span>{item.summary.ausente} ausentes</span><span>{item.summary.atrasado} atrasos</span></article>)}</div></section>}
+          {summary && <section className="panel" style={{ display: 'grid', gap: 16 }}>
+            <div style={{ display: 'grid', gap: 8 }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: 18 }}>Resumen por sección de hoy</h3>
+                  <p style={{ margin: '4px 0 0', color: 'var(--text-secondary)', fontSize: 14 }}>Vista rápida del estado del día por sección.</p>
+                </div>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, borderRadius: 999, padding: '6px 10px', background: 'var(--surface-secondary)', color: 'var(--text)', fontSize: 13, fontWeight: 700 }}>{globalSummary.badge}</span>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
+                <strong style={{ fontSize: 15 }}>Total registrados hoy: {globalSummary.totalRegistered}</strong>
+                <span style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Porcentaje global del día: {globalSummary.percentage}%</span>
+              </div>
+            </div>
+            <div className="attendance-history-table" style={{ display: 'grid', gap: 12 }}>
+              {summary.sections.map((item) => {
+                const tone = progressTone(item.summary.percentage ?? 0);
+                return (
+                  <article key={item.name} style={{ display: 'grid', gap: 8, padding: '12px 14px', border: '1px solid var(--color-border)', borderRadius: 10, background: 'var(--surface-secondary)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                      <strong style={{ fontSize: 15 }}>{item.name}</strong>
+                      <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{item.summary.percentage ?? 0}% asistencia</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ position: 'relative', flex: 1, height: 8, borderRadius: 4, background: 'var(--surface-secondary)', overflow: 'hidden' }}>
+                        <div style={{ position: 'absolute', inset: 0, width: `${Math.max(0, Math.min(100, item.summary.percentage ?? 0))}%`, borderRadius: 4, background: tone.color }} />
+                      </div>
+                      <span style={{ minWidth: 42, textAlign: 'right', fontSize: 13, fontWeight: 700, color: tone.color }}>{item.summary.percentage ?? 0}%</span>
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, color: 'var(--text-secondary)', fontSize: 13 }}>
+                      <span>{item.summary.ausente ?? 0} ausentes</span>
+                      <span>{item.summary.atrasado ?? 0} atrasos</span>
+                      <span>{item.summary.justificado ?? 0} justificados</span>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </section>}
         </>
       )}
       {confirm && <ConfirmModal confirm={confirm} onClose={() => setConfirm(null)} onApiError={showApiError} />}
