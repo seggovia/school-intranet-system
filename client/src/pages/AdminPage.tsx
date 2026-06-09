@@ -1522,7 +1522,11 @@ export function AdminPage({ user }: { user: User }) {
     const rows = (filtered as AdminUserRow[]).map((user) => {
       const { name, lastName } = splitName(user.name);
       const roleLabel = roleLabels[user.role] ?? user.role;
-      const lastActivity = (user as Record<string, unknown>).lastActivity ?? (user as Record<string, unknown>).updatedAt ?? '-';
+      const lastActivity = 'lastActivity' in user && typeof user.lastActivity === 'string'
+        ? user.lastActivity
+        : 'updatedAt' in user && typeof user.updatedAt === 'string'
+          ? user.updatedAt
+          : '-';
       return [name, lastName, user.email ?? '', roleLabel, user.isActive ? 'Activo' : 'Inactivo', String(lastActivity)];
     });
     const csv = [headers, ...rows].map((r) => r.join(',')).join('\n');

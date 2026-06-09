@@ -1,9 +1,10 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, CalendarClock, CheckCircle2, Eye, FileUp, Megaphone, Search, Send, Users, X } from 'lucide-react';
 import { createAnnouncement, loadAnnouncements, loadMyDashboard, markAnnouncementRead } from '../api';
+import { EmptyState } from '../components/EmptyState';
 import { PageHeader } from '../components/PageHeader';
 import { StatusBadge } from '../components/StatusBadge';
-import { EmptyState, LoadingState } from '../components/States';
+import { LoadingState } from '../components/States';
 import { useAsyncData } from '../hooks';
 import type { Announcement, RoleDashboard, User } from '../types';
 
@@ -228,7 +229,7 @@ export function CommunicationsPage({ user }: { user: User }) {
             </footer>
           </article>
         ))}
-        {!filtered.length && <section className="panel"><EmptyState title="Sin comunicados" description="No hay comunicados que coincidan con tu rol o con los filtros seleccionados." /></section>}
+        {!filtered.length && <section className="panel"><EmptyState icon={<Megaphone size={48} />} title="Sin comunicados" description="No hay comunicados que coincidan con tu rol o con los filtros seleccionados." /></section>}
       </section>
       <div className="assignment-pager">
         <button className="secondary-button" type="button" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)}>Anterior</button>

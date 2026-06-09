@@ -638,7 +638,7 @@ const styles: Record<string, CSSProperties> = {
     display: 'grid',
     gap: 10
   },
-  footerLink: {
+  footerLinkItem: {
     color: '#cbd5e1',
     textDecoration: 'none',
     fontWeight: 700,
@@ -680,7 +680,7 @@ const styles: Record<string, CSSProperties> = {
     gap: 14,
     flexWrap: 'wrap'
   },
-  footerLink: {
+  footerLinkItem: {
     color: '#cbd5e1',
     textDecoration: 'none',
     fontWeight: 700

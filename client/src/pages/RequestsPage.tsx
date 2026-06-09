@@ -1,8 +1,9 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, CalendarClock, CheckCircle2, Clock, Eye, MessageSquare, Search, Send, UserCheck, X } from 'lucide-react';
 import { api, loadRequests, updateRequestStatus } from '../api';
-import { EmptyState, LoadingState } from '../components/States';
+import { EmptyState } from '../components/EmptyState';
 import { PageHeader } from '../components/PageHeader';
+import { LoadingState } from '../components/States';
 import { StatusBadge } from '../components/StatusBadge';
 import type { RequestTicket, User } from '../types';
 
@@ -200,7 +201,7 @@ export function RequestsPage({ user }: { user: User }) {
                 </div>
               </article>
             ))}
-            {!visible.length && <EmptyState title="Sin solicitudes" description="No hay tickets que coincidan con los filtros. Crea una nueva solicitud o ajusta la busqueda." />}
+            {!visible.length && <EmptyState icon={<MessageSquare size={48} />} title="Sin solicitudes" description="No hay tickets que coincidan con los filtros. Crea una nueva solicitud o ajusta la busqueda." />}
           </div>
           <div className="assignment-pager">
             <button className="secondary-button" type="button" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)}>Anterior</button>
