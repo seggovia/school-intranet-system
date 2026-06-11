@@ -61,6 +61,23 @@ function formatDateTime(value?: string | null) {
   return `Leido ${new Intl.DateTimeFormat('es-CL', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(value))}`;
 }
 
+function formatFullDate(value: string) {
+  return new Intl.DateTimeFormat('es-CL', {
+    weekday: 'long',
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(new Date(value));
+}
+
+function priorityLabel(priority: string) {
+  if (priority === 'alta') return 'Alta';
+  if (priority === 'critica') return 'Crítica';
+  return 'Normal';
+}
+
 function characterCounterColor(length: number) {
   if (length > CONTENT_LIMIT) return '#dc2626';
   if (length > CONTENT_WARNING_LIMIT) return '#d97706';
@@ -262,7 +279,7 @@ export function CommunicationsPage({ user }: { user: User }) {
         </div>
       )}
 
-      {selected && <CommunicationDetailModal row={selected} isAdmin={isAdmin} onClose={() => setSelected(null)} />}
+      {selected && <CommunicationDetailModal row={selected} isAdmin={isAdmin} readingIds={readingIds} onMarkRead={() => void markRead(selected.id)} onClose={() => setSelected(null)} />}
       <style>{`
         .communications-page .communication-form-modal {
           display: grid;
@@ -327,22 +344,53 @@ export function CommunicationsPage({ user }: { user: User }) {
   );
 }
 
-function CommunicationDetailModal({ row, isAdmin, onClose }: { row: CommunicationRow; isAdmin: boolean; onClose: () => void }) {
+function CommunicationDetailModal({ row, isAdmin, readingIds, onMarkRead, onClose }: { row: CommunicationRow; isAdmin: boolean; readingIds: Set<string>; onMarkRead: () => Promise<void> | void; onClose: () => void }) {
+  const readCount = row.readCount ?? 0;
+  const readPercentage = row.readPercentage ?? 0;
+  const totalRecipients = readPercentage > 0 ? Math.max(readCount, Math.ceil(readCount / (readPercentage / 100))) : readCount;
+
   return (
     <div className="modal-backdrop" role="presentation" onClick={onClose}>
       <section className="communication-detail-modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
-        <header>
-          <div><span className="eyebrow">{row.type}</span><h2>{row.title}</h2></div>
+        <header className="communication-detail-header">
+          <div>
+            <span className="eyebrow">{row.type}</span>
+            <h2>{row.title}</h2>
+          </div>
           <button className="icon-button" type="button" onClick={onClose} aria-label="Cerrar"><X size={18} /></button>
         </header>
-        <div className="communication-detail-meta">
-          <span><Users size={16} /><strong>Destinatarios</strong>{row.recipients}</span>
-          <span><CalendarClock size={16} /><strong>Fecha</strong>{formatDate(row.date)}</span>
-          <span><AlertTriangle size={16} /><strong>Prioridad</strong>{row.priority}</span>
-          {isAdmin && <span><Eye size={16} /><strong>Lectura</strong>{row.readPercentage ?? 0}% registrada</span>}
-          <span><CheckCircle2 size={16} /><strong>Estado</strong>{row.status === 'leido' ? formatDateTime(row.readAt) : 'No leido'}</span>
+
+        <div className="communication-detail-badges">
+          <span className="badge badge-normal">{priorityLabel(row.priority)}</span>
+          <span className="badge badge-normal">{row.recipients}</span>
         </div>
-        <p>{row.body}</p>
+
+        <div className="communication-detail-meta">
+          <span><CalendarClock size={16} /><strong>Publicado</strong>{formatFullDate(`${row.date}T12:00:00Z`)}</span>
+          <span><Users size={16} /><strong>Audiencia</strong>{row.recipients}</span>
+          <span><AlertTriangle size={16} /><strong>Prioridad</strong>{priorityLabel(row.priority)}</span>
+          <span><CheckCircle2 size={16} /><strong>Estado</strong>{row.status === 'leido' ? 'Leído' : 'No leído'}</span>
+        </div>
+
+        <article className="communication-detail-body">
+          <h3>Contenido del comunicado</h3>
+          <p style={{ whiteSpace: 'pre-wrap' }}>{row.body || 'No hay contenido adicional para mostrar.'}</p>
+        </article>
+
+        {isAdmin && (
+          <article className="communication-detail-stats">
+            <strong>{readCount} de {totalRecipients} destinatarios han leído este comunicado ({readPercentage}%)</strong>
+            <p>Este resumen está disponible para administradores y directivos.</p>
+          </article>
+        )}
+
+        <footer className="communication-detail-footer">
+          {row.status === 'leido'
+            ? <span className="badge badge-normal"><CheckCircle2 size={15} />✓ Leído</span>
+            : <button className="primary-button" type="button" onClick={() => void onMarkRead()} disabled={readingIds.has(row.id)}><CheckCircle2 size={16} />Marcar como leído</button>}
+          <button className="secondary-button" type="button" onClick={onClose}>Cerrar</button>
+        </footer>
+
         <section className="communication-attachments">
           <h3>Adjuntos</h3>
           {row.attachments.length ? row.attachments.map((item) => <a key={item.url} href={item.url}><FileUp size={16} />{item.name}</a>) : <EmptyState title="Sin adjuntos" description="Este comunicado no tiene archivos asociados." />}
