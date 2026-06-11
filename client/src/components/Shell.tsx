@@ -1,4 +1,4 @@
-import { BarChart3, Bell, CalendarDays, Check, CheckCheck, ChevronDown, ClipboardCheck, FileText, GraduationCap, HelpCircle, LogOut, Menu, School, Search, Shield, Star, UserCircle, X } from 'lucide-react';
+import { BarChart3, Bell, BookOpen, CalendarDays, Check, CheckCheck, ChevronDown, ClipboardCheck, FileText, GraduationCap, HelpCircle, Info, LogOut, Menu, School, Search, Shield, Star, UserCircle, X } from 'lucide-react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import clsx from 'clsx';
@@ -7,6 +7,7 @@ import { useNotifications } from '../hooks';
 import type { AdminUserRow, Role, ScheduleCalendarEvent, User } from '../types';
 import { RoleBadge } from './RoleBadge';
 import { PageProgress } from './PageProgress';
+import { EmptyState } from './EmptyState';
 
 const navItems = [
   { to: '/', label: 'Panel', icon: BarChart3, roles: ['admin', 'director', 'teacher', 'student', 'guardian', 'inspector'] },
@@ -55,6 +56,14 @@ export function Shell({ user, onLogout, children }: { user: User; onLogout: () =
   const searchRef = useRef<HTMLDivElement>(null);
   const currentRouteName = ROUTE_NAMES[location.pathname] ?? location.pathname;
   const showBreadcrumb = location.pathname !== '/' && location.pathname !== '/login';
+  const groupedNotifications = notifications.slice(0, 10).reduce<Record<string, { label: string; icon: typeof Bell; items: typeof notifications }>>((groups, item) => {
+    const category = notificationCategory(item.type);
+    if (!groups[category.label]) {
+      groups[category.label] = { label: category.label, icon: category.icon, items: [] };
+    }
+    groups[category.label].items.push(item);
+    return groups;
+  }, {});
 
   async function performSearch(nextQuery = query) {
     const trimmed = nextQuery.trim();
@@ -273,25 +282,55 @@ export function Shell({ user, onLogout, children }: { user: User; onLogout: () =
                   <button type="button" onClick={markAllRead} disabled={!unreadCount || notificationsBusy}><CheckCheck size={16} />Marcar todas</button>
                 </header>
                 <div className="notification-list">
-                  {notifications.slice(0, 10).map((item) => (
-                    <article key={item.id} className={clsx('notification-item', !item.readAt && 'unread')}>
-                      <div>
-                        <span>{notificationTypeLabel(item.type)}</span>
-                        <strong>{item.title}</strong>
-                        <p>{item.message}</p>
-                        <small>{new Date(item.createdAt).toLocaleString('es-CL')}</small>
-                      </div>
-                      {!item.readAt && <button type="button" onClick={() => markRead(item.id)} disabled={notificationsBusy} aria-label="Marcar como leída"><Check size={16} /></button>}
-                    </article>
-                  ))}
+                  {Object.values(groupedNotifications).map((group) => {
+                    const Icon = group.icon;
+                    return (
+                      <section key={group.label} className="notification-group">
+                        <header className="notification-group-header">
+                          <span className="notification-group-label"><Icon size={14} />{group.label}</span>
+                        </header>
+                        {group.items.map((item) => (
+                          <article key={item.id} className={clsx('notification-item', !item.readAt && 'unread')}>
+                            <button
+                              type="button"
+                              className="notification-item-main"
+                              onClick={() => !item.readAt && markRead(item.id)}
+                              disabled={notificationsBusy}
+                              aria-label={`Marcar como leída: ${item.title}`}
+                            >
+                              <div className="notification-item-icon-wrap">
+                                {notificationIcon(item.type)}
+                              </div>
+                              <div className="notification-item-copy">
+                                <strong>{item.title}</strong>
+                                <p>{item.message}</p>
+                                <small>{formatRelativeTime(item.createdAt)}</small>
+                              </div>
+                              <span className={clsx('notification-dot', !item.readAt && 'active')} aria-hidden="true" />
+                            </button>
+                            {!item.readAt && <button type="button" className="notification-check-button" onClick={() => markRead(item.id)} disabled={notificationsBusy} aria-label="Marcar como leída"><Check size={16} /></button>}
+                          </article>
+                        ))}
+                      </section>
+                    );
+                  })}
                   {!notifications.length && (
-                    <div className="notification-empty">
-                      <Bell size={22} />
-                      <strong>Sin notificaciones</strong>
-                      <span>No hay novedades pendientes por revisar.</span>
-                    </div>
+                    <EmptyState
+                      icon={<Bell size={28} />}
+                      title="Sin notificaciones nuevas"
+                      description="No hay novedades pendientes por revisar."
+                    />
                   )}
                 </div>
+                <footer className="notification-footer">
+                  <button
+                    type="button"
+                    className="notification-footer-link"
+                    onClick={() => window.alert('Página de notificaciones próximamente')}
+                  >
+                    Ver todas las notificaciones
+                  </button>
+                </footer>
               </div>
             )}
           </div>
@@ -360,6 +399,140 @@ export function Shell({ user, onLogout, children }: { user: User; onLogout: () =
         <main className="content">{children}</main>
       </div>
       <style>{`
+        .notification-group {
+          display: grid;
+          gap: 6px;
+          padding: 8px 14px 0;
+        }
+
+        .notification-group-header {
+          display: flex;
+          align-items: center;
+        }
+
+        .notification-group-label {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          color: var(--color-muted);
+          font-size: 0.72rem;
+          font-weight: 900;
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+        }
+
+        .notification-item {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto;
+          gap: 10px;
+          align-items: center;
+          padding: 12px 14px;
+          border-bottom: 1px solid var(--color-border);
+          background: var(--color-card);
+        }
+
+        .notification-item-main {
+          display: grid;
+          grid-template-columns: auto 1fr auto;
+          gap: 10px;
+          align-items: start;
+          width: 100%;
+          padding: 0;
+          border: 0;
+          background: transparent;
+          color: inherit;
+          text-align: left;
+          min-height: auto;
+        }
+
+        .notification-item-main:hover,
+        .notification-item-main:focus-visible {
+          background: transparent;
+        }
+
+        .notification-item-icon-wrap {
+          display: grid;
+          place-items: center;
+          width: 34px;
+          height: 34px;
+          border-radius: 10px;
+          color: #0f766e;
+          background: rgba(20, 184, 166, 0.12);
+        }
+
+        .notification-item-copy {
+          display: grid;
+          gap: 2px;
+          min-width: 0;
+        }
+
+        .notification-item-copy strong,
+        .notification-item-copy p,
+        .notification-item-copy small {
+          display: block;
+          min-width: 0;
+        }
+
+        .notification-item-copy strong {
+          font-size: 0.95rem;
+        }
+
+        .notification-item-copy p {
+          margin: 0;
+          color: var(--color-muted);
+          font-size: 0.9rem;
+          line-height: 1.35;
+        }
+
+        .notification-item-copy small {
+          color: var(--color-muted);
+          font-size: 0.78rem;
+        }
+
+        .notification-dot {
+          width: 8px;
+          height: 8px;
+          margin-top: 8px;
+          border-radius: 999px;
+          background: #cbd5e1;
+          flex: none;
+        }
+
+        .notification-dot.active {
+          background: #22c55e;
+          box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.14);
+        }
+
+        .notification-check-button {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 34px;
+          min-width: 34px;
+          height: 34px;
+          border: 0;
+          border-radius: 8px;
+          color: #0f3f4a;
+          background: #dceef0;
+          cursor: pointer;
+        }
+
+        .notification-footer {
+          padding: 10px 14px 14px;
+          border-top: 1px solid var(--color-border);
+        }
+
+        .notification-footer-link {
+          width: 100%;
+          border: 0;
+          border-radius: 8px;
+          padding: 10px 12px;
+          color: #0f3f4a;
+          background: #dceef0;
+          font-weight: 900;
+          cursor: pointer;
+        }
+
         @media (max-width: 820px) {
           .institution-header {
             grid-template-columns: minmax(0, 1fr) auto auto;
@@ -438,10 +611,31 @@ export function Shell({ user, onLogout, children }: { user: User; onLogout: () =
   );
 }
 
-function notificationTypeLabel(type: string) {
-  if (type === 'announcement') return 'Comunicado';
-  if (type === 'request') return 'Solicitud';
-  if (type === 'grade') return 'Calificación';
-  if (type === 'attendance') return 'Asistencia';
-  return 'Sistema';
+function notificationCategory(type: string) {
+  if (type === 'grade') return { label: 'Académico', icon: BookOpen };
+  if (type === 'attendance') return { label: 'Asistencia', icon: ClipboardCheck };
+  if (type === 'announcement') return { label: 'Comunicados', icon: Bell };
+  return { label: 'Sistema', icon: Info };
+}
+
+function notificationIcon(type: string) {
+  const category = notificationCategory(type);
+  const Icon = category.icon;
+  return <Icon size={16} />;
+}
+
+function formatRelativeTime(value: string) {
+  const diffMs = Date.now() - new Date(value).getTime();
+  const totalMinutes = Math.max(0, Math.floor(diffMs / 60000));
+
+  if (totalMinutes < 1) return 'hace unos segundos';
+  if (totalMinutes < 60) return `hace ${totalMinutes} minuto${totalMinutes === 1 ? '' : 's'}`;
+
+  const totalHours = Math.floor(totalMinutes / 60);
+  if (totalHours < 24) return `hace ${totalHours} hora${totalHours === 1 ? '' : 's'}`;
+
+  const totalDays = Math.floor(totalHours / 24);
+  if (totalDays < 30) return `hace ${totalDays} día${totalDays === 1 ? '' : 's'}`;
+
+  return 'hace más de un mes';
 }
