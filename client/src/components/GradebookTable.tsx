@@ -20,6 +20,11 @@ function courseAverage(rows: GradebookTableRow[]) {
   return averages.length ? Number((averages.reduce((sum, value) => sum + value, 0) / averages.length).toFixed(1)) : null;
 }
 
+function pendingAverageTone(hasPendingChange: boolean) {
+  if (hasPendingChange) return { color: '#d97706' };
+  return undefined;
+}
+
 export function GradebookTable({
   evaluations,
   rows,
@@ -61,11 +66,20 @@ export function GradebookTable({
         <thead>
           <tr>
             <th className="sticky-col student-col">Estudiante</th>
-            {sortedEvaluations.map((evaluation) => (
-              <th key={evaluation.id} className="evaluation-col">
-                <EvalColumnHeader evaluation={evaluation} onEdit={onEditEvaluation} onDelete={onDeleteEvaluation} />
-              </th>
-            ))}
+            {sortedEvaluations.map((evaluation) => {
+              const average = columnAverage(rows, evaluation.id);
+              const hasPendingColumn = rows.some((row) => dirtyCells.has(cellKey(evaluation.id, row.studentId)));
+              return (
+                <th key={evaluation.id} className="evaluation-col">
+                  <div className="eval-column-head">
+                    <EvalColumnHeader evaluation={evaluation} onEdit={onEditEvaluation} onDelete={onDeleteEvaluation} />
+                    <span className="eval-column-average" style={pendingAverageTone(hasPendingColumn)} title="Promedio de esta evaluación según las notas actuales.">
+                      {formatGrade(average)}
+                    </span>
+                  </div>
+                </th>
+              );
+            })}
             <th className="sticky-col-right average-col">Promedio<br /><small>ponderado</small></th>
           </tr>
         </thead>
@@ -105,9 +119,18 @@ export function GradebookTable({
                 );
               })}
               <td className="sticky-col-right average-col">
-                <strong className={`weighted-average grade-tone-${gradeTone(row.finalAverage)}`} title={row.averageDetail}>
-                  {formatGrade(row.finalAverage)}
-                </strong>
+                {(() => {
+                  const hasPendingRow = sortedEvaluations.some((evaluationItem) => dirtyCells.has(cellKey(evaluationItem.id, row.studentId)));
+                  return (
+                    <strong
+                      className={`weighted-average grade-tone-${gradeTone(row.finalAverage)}`}
+                      title={row.averageDetail}
+                      style={pendingAverageTone(hasPendingRow)}
+                    >
+                      {formatGrade(row.finalAverage)}{hasPendingRow ? ' *' : ''}
+                    </strong>
+                  );
+                })()}
               </td>
             </tr>
           ))}
@@ -125,6 +148,19 @@ export function GradebookTable({
       </table>
     </div>
     <style>{`
+      .eval-column-head {
+        display: grid;
+        gap: 6px;
+      }
+
+      .eval-column-average {
+        display: inline-flex;
+        justify-content: flex-start;
+        font-size: 0.82rem;
+        font-weight: 700;
+        color: var(--text-muted);
+      }
+
       @media (max-width: 768px) {
         .gradebook-sheet-panel {
           display: block;

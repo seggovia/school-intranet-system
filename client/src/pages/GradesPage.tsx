@@ -104,11 +104,14 @@ function buildGradebookRows(students: SectionStudent[], evaluations: GradebookEv
       if (record.status === 'con_nota' && record.score !== null) {
         const contribution = Number(record.score) * (evaluation.weight / 100);
         weightedTotal += contribution;
-        averageParts.push(`${evaluation.title}: ${Number(record.score).toFixed(1)} x ${evaluation.weight}% = ${contribution.toFixed(2)}`);
+        averageParts.push(`${evaluation.title} (${evaluation.weight}% · ${Number(record.score).toFixed(1)})`);
       }
     });
 
     const finalAverage = averageParts.length ? Number(weightedTotal.toFixed(1)) : null;
+    const averageDetail = averageParts.length
+      ? `${averageParts.join(' + ')} = ${finalAverage?.toFixed(1) ?? '0.0'}`
+      : 'Sin notas registradas para calcular promedio';
     const academicRisk = finalAverage !== null && finalAverage < 4;
     return {
       id: student.id,
@@ -117,7 +120,7 @@ function buildGradebookRows(students: SectionStudent[], evaluations: GradebookEv
       email: undefined,
       scores,
       finalAverage,
-      averageDetail: averageParts.length ? averageParts.join('\n') : 'Sin notas registradas para calcular promedio',
+      averageDetail,
       academicRisk
     };
   });
@@ -545,7 +548,9 @@ function StaffGradebookView({ user }: { user: User }) {
           <button type="button" className="secondary-button" onClick={() => exportGradebookCsv(filteredEvaluations, visibleGradebookRows)}>Exportar CSV</button>
           {canWrite && (
             <button className="primary-button" onClick={saveGradebookChanges} disabled={!dirtyCells.size || savingBulk || Boolean(Object.keys(cellErrors).length)}>
-              <Save size={17} />{savingBulk ? 'Guardando...' : 'Guardar cambios'}
+              <Save size={17} />
+              {savingBulk ? 'Guardando...' : 'Guardar cambios'}
+              {!savingBulk && dirtyCells.size > 0 && <span className="pending-changes-badge" style={{ marginLeft: 8, display: 'inline-flex', alignItems: 'center', minHeight: 20, padding: '0 8px', borderRadius: 999, background: '#f59e0b', color: '#fff', fontSize: '0.82rem', fontWeight: 800 }}>{dirtyCells.size}</span>}
             </button>
           )}
         </div>
