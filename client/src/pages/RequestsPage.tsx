@@ -42,6 +42,35 @@ function formatDateTime(value: string) {
   return new Intl.DateTimeFormat('es-CL', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(value));
 }
 
+const statusToneMap = {
+  nuevo: { label: 'Nuevo', dot: '#64748b', chip: 'linear-gradient(135deg, #e5e7eb 0%, #cbd5e1 100%)', color: '#334155' },
+  en_proceso: { label: 'En proceso', dot: '#2563eb', chip: 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)', color: '#1d4ed8' },
+  resuelto: { label: 'Resuelto', dot: '#16a34a', chip: 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)', color: '#15803d' },
+  rechazado: { label: 'Rechazado', dot: '#dc2626', chip: 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)', color: '#b91c1c' },
+  cerrado: { label: 'Cerrado', dot: '#111827', chip: 'linear-gradient(135deg, #e5e7eb 0%, #111827 100%)', color: '#111827' }
+} as const;
+
+const commentRoleMap = {
+  admin: { background: '#ccfbf1', color: '#0f766e' },
+  teacher: { background: '#dcfce7', color: '#15803d' },
+  student: { background: '#dbeafe', color: '#1d4ed8' }
+} as const;
+
+function statusTone(value: string) {
+  return statusToneMap[value as keyof typeof statusToneMap] ?? statusToneMap.nuevo;
+}
+
+function detectCommentRole(author: string) {
+  const normalized = author.toLowerCase();
+  if (/admin|director|secretaria|inspector/.test(normalized)) return 'admin';
+  if (/teacher|profesor|docente/.test(normalized)) return 'teacher';
+  return 'student';
+}
+
+function initials(value: string) {
+  return value.split(' ').filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('');
+}
+
 function priorityStyle(priority: TicketPriority) {
   if (priority === 'urgente') return { background: '#fee2e2', color: '#991b1b' };
   if (priority === 'alta') return { background: '#fef3c7', color: '#92400e' };
@@ -250,6 +279,118 @@ export function RequestsPage({ user }: { user: User }) {
           text-align: right;
         }
 
+        .ticket-detail-header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 12px;
+        }
+
+        .status-current-badge {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 36px;
+          padding: 0 12px;
+          border-radius: 999px;
+          font-size: 0.92rem;
+          font-weight: 800;
+          text-transform: capitalize;
+        }
+
+        .ticket-comment-card {
+          display: flex;
+          gap: 12px;
+          padding: 12px;
+          border: 1px solid var(--color-border);
+          border-radius: 14px;
+          background: #fff;
+        }
+
+        .ticket-comment-avatar {
+          display: grid;
+          place-items: center;
+          width: 40px;
+          height: 40px;
+          border-radius: 999px;
+          font-weight: 800;
+          flex: 0 0 40px;
+        }
+
+        .ticket-comment-body {
+          display: grid;
+          gap: 4px;
+          min-width: 0;
+        }
+
+        .ticket-comment-body span,
+        .ticket-comment-body p {
+          color: var(--color-muted);
+          font-size: 0.92rem;
+          margin: 0;
+        }
+
+        .status-history-timeline {
+          position: relative;
+          display: grid;
+          gap: 14px;
+          margin-top: 8px;
+        }
+
+        .status-history-item {
+          position: relative;
+          display: grid;
+          grid-template-columns: 18px 1fr;
+          gap: 12px;
+          align-items: start;
+          padding-left: 2px;
+        }
+
+        .status-history-dot {
+          width: 14px;
+          height: 14px;
+          border-radius: 999px;
+          margin-top: 4px;
+          z-index: 1;
+        }
+
+        .status-history-line {
+          position: absolute;
+          left: 7px;
+          top: 18px;
+          bottom: -14px;
+          width: 2px;
+          background: linear-gradient(180deg, #cbd5e1 0%, #e2e8f0 100%);
+        }
+
+        .status-history-content {
+          display: grid;
+          gap: 4px;
+        }
+
+        .status-history-content p,
+        .status-history-content small {
+          margin: 0;
+          color: var(--color-muted);
+        }
+
+        .status-history-pills {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+
+        .status-history-pills em {
+          display: inline-flex;
+          align-items: center;
+          min-height: 24px;
+          padding: 0 8px;
+          border-radius: 999px;
+          font-size: 0.78rem;
+          font-style: normal;
+          font-weight: 700;
+        }
+
         @keyframes spin {
           to { transform: rotate(360deg); }
         }
@@ -324,22 +465,84 @@ export function RequestsPage({ user }: { user: User }) {
 }
 
 function TicketDetailModal({ ticket, comment, canManage, onComment, onAddComment, onStatus, onClose }: { ticket: TicketDetail; comment: string; canManage: boolean; onComment: (value: string) => void; onAddComment: () => void; onStatus: (status: string) => void; onClose: () => void }) {
+  const currentTone = statusTone(ticket.status);
+
   return (
     <div className="modal-backdrop" role="presentation" onClick={onClose}>
       <section className="ticket-detail-modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
-        <header><div><span className="eyebrow">Ticket administrativo</span><h2>{ticket.subject}</h2></div><button className="icon-button" type="button" onClick={onClose} aria-label="Cerrar"><X size={18} /></button></header>
+        <header className="ticket-detail-header">
+          <div>
+            <span className="eyebrow">Ticket administrativo</span>
+            <h2>{ticket.subject}</h2>
+          </div>
+          <button className="icon-button" type="button" onClick={onClose} aria-label="Cerrar"><X size={18} /></button>
+        </header>
+
         <div className="ticket-detail-grid">
-          <span><strong>Estado</strong><StatusBadge value={ticket.status} /></span>
+          <span><strong>Estado actual</strong>
+            <span className="status-current-badge" style={{ background: currentTone.chip, color: currentTone.color }}>
+              {currentTone.label}
+            </span>
+          </span>
           <span><strong>Solicitante</strong>{ticket.requester}</span>
           <span><strong>Area</strong>{ticket.area}</span>
           <span><strong>Prioridad</strong><em className={`priority-badge ${ticket.priority}`} style={priorityStyle(ticket.priority ?? 'normal')}>{ticket.priority ?? 'normal'}</em></span>
           <span><strong>Fecha</strong>{ticket.createdAt}</span>
           {ticket.closedAt && <span><strong>Cierre</strong>{formatDateTime(ticket.closedAt)}</span>}
         </div>
-        <section><h3>Descripcion</h3><p>{ticket.description || 'Sin descripcion registrada.'}</p></section>
+
+        <section>
+          <h3>Descripcion</h3>
+          <p>{ticket.description || 'Sin descripcion registrada.'}</p>
+        </section>
+
         {canManage && <label>Cambiar estado<select value={ticket.status} onChange={(event) => onStatus(event.target.value)}>{ticketStates.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>}
-        <section className="ticket-comments"><h3>Comentarios</h3>{ticket.comments.map((item) => <article key={item.id}><strong>{item.author}</strong><span>{formatDateTime(item.createdAt)}</span><p>{item.body}</p></article>)}{!ticket.comments.length && <EmptyState title="Sin comentarios" description="Agrega un comentario para dejar trazabilidad." />}<textarea value={comment} onChange={(event) => onComment(event.target.value)} placeholder="Escribe un comentario del ticket" rows={3} /><button className="primary-button" type="button" onClick={onAddComment}><MessageSquare size={16} />Comentar</button></section>
-        <section className="ticket-history"><h3>Historial</h3>{ticket.statusLogs.map((item) => <span key={item.id}><CalendarClock size={15} /><strong>{statusLabel(item.fromStatus)} a {statusLabel(item.toStatus)}</strong>{formatDateTime(item.createdAt)} - {item.changedBy}</span>)}{!ticket.statusLogs.length && <span><CalendarClock size={15} /><strong>Solicitud creada</strong>{ticket.createdAt} - {ticket.requester}</span>}</section>
+
+        <section className="ticket-comments">
+          <h3>Comentarios</h3>
+          {ticket.comments.map((item) => {
+            const role = detectCommentRole(item.author);
+            return (
+              <article key={item.id} className="ticket-comment-card">
+                <div className="ticket-comment-avatar" style={commentRoleMap[role]}>{initials(item.author)}</div>
+                <div className="ticket-comment-body">
+                  <strong>{item.author}</strong>
+                  <span>{formatDateTime(item.createdAt)}</span>
+                  <p>{item.body}</p>
+                </div>
+              </article>
+            );
+          })}
+          {!ticket.comments.length && <EmptyState title="Sin comentarios" description="Agrega un comentario para dejar trazabilidad." />}
+          <textarea value={comment} onChange={(event) => onComment(event.target.value)} placeholder="Escribe un comentario del ticket" rows={3} />
+          <button className="primary-button" type="button" onClick={onAddComment}><MessageSquare size={16} />Comentar</button>
+        </section>
+
+        <section className="ticket-history">
+          <h3>Historial de estados</h3>
+          <div className="status-history-timeline">
+            {(ticket.statusLogs.length ? ticket.statusLogs : [{ id: 'created', fromStatus: ticket.status, toStatus: ticket.status, changedBy: ticket.requester, createdAt: ticket.createdAt }]).map((item, index, list) => {
+              const isLast = index === list.length - 1;
+              const fromTone = statusTone(item.fromStatus);
+              const toTone = statusTone(item.toStatus);
+              return (
+                <article key={item.id} className="status-history-item">
+                  <span className="status-history-dot" style={{ background: fromTone.dot, boxShadow: `0 0 0 4px ${fromTone.dot}22` }} />
+                  {!isLast && <span className="status-history-line" />}
+                  <div className="status-history-content">
+                    <strong>{statusLabel(item.fromStatus)} → {statusLabel(item.toStatus)}</strong>
+                    <p>{item.changedBy || ticket.requester}</p>
+                    <small>{formatDateTime(item.createdAt)}</small>
+                    <span className="status-history-pills">
+                      <em style={{ background: fromTone.chip, color: fromTone.color }}>{statusLabel(item.fromStatus)}</em>
+                      <em style={{ background: toTone.chip, color: toTone.color }}>{statusLabel(item.toStatus)}</em>
+                    </span>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </section>
       </section>
     </div>
   );
