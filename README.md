@@ -137,12 +137,28 @@ MySQL / MariaDB
 - Helmet para headers de seguridad HTTP
 - Auditoría de LOGIN_SUCCESS, LOGIN_FAILED y acciones críticas con IP, userAgent y filtros
 
+## Testing
+
+El proyecto incluye tests de integración con Vitest + Supertest.
+Para ejecutar los tests:
+
+```bash
+cd server && npm test
+```
+
+Cobertura actual:
+- Auth: login exitoso/fallido, rutas protegidas
+- Permisos: RBAC por rol (admin, estudiante)
+- Health check
+
 ## Roadmap
 
-- [ ] Tests de integración para flujos críticos (login, asistencia, calificaciones)
-- [ ] Separación de AdminPage.tsx en componentes por módulo
+- [x] Tests de integración para flujos críticos (login, asistencia, calificaciones)
+- [x] Separación de AdminPage.tsx en componentes por módulo
+- [x] Export de datos académicos en formato CSV
+- [x] FullCalendar para vista de horario semanal
+- [x] Design system con CSS variables
 - [ ] Refactor de styles.css por dominio (base, layout, forms, admin, gradebook)
-- [ ] Export de datos académicos en formato CSV
 - [ ] Firma digital de comunicados por apoderado
 - [ ] Integración con calendario externo
 
