@@ -62,7 +62,7 @@ export class AuthService {
     const foundUser = await repository.findUserByEmail(email);
     if (!foundUser) {
       await this.recordAudit(ctx, { action: 'LOGIN_FAILED', entity: 'User', entityId: 'unknown', description: 'Failed login for email', metadata: { email, reason: 'not_found' } });
-      throw new HttpError(401, 'Correo o contrasena incorrectos');
+      throw new HttpError(401, 'Credenciales inválidas');
     }
 
     if (!foundUser.isActive) {
@@ -72,9 +72,11 @@ export class AuthService {
 
     const passwordOk = await bcrypt.compare(password, foundUser.passwordHash);
     if (!passwordOk) {
-      console.warn(`Login fallido para ${email}`);
+      if (env.NODE_ENV === 'development') {
+        console.warn(`Login fallido para ${email}`);
+      }
       await this.recordAudit(ctx, { userId: foundUser.id, action: 'LOGIN_FAILED', entity: 'User', entityId: foundUser.id, description: 'Failed login for email', metadata: { email, reason: 'bad_password' } });
-      throw new HttpError(401, 'Correo o contrasena incorrectos');
+      throw new HttpError(401, 'Credenciales inválidas');
     }
 
     const publicUser = toPublicUser(foundUser);
@@ -88,7 +90,9 @@ export class AuthService {
     const expiresAt = new Date(Date.now() + env.REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000);
 
     await repository.createRefreshToken({ tokenHash: hashToken(refreshToken), userId: foundUser.id, expiresAt });
-    console.info(`Login exitoso para ${email}`);
+    if (env.NODE_ENV === 'development') {
+      console.info(`Login exitoso para ${email}`);
+    }
     await this.recordAudit(ctx, { userId: foundUser.id, action: 'LOGIN_SUCCESS', entity: 'User', entityId: foundUser.id, description: 'Successful login for email', metadata: { email } });
 
     return { user: publicUser, accessToken, refreshToken };
