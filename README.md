@@ -16,6 +16,10 @@ Plataforma de gestión académica institucional para colegios. Incluye gestión 
 |-------------|
 | ![PDF](docs/screenshots/pdf.png) |
 
+| Horario FullCalendar |
+|---------------------|
+| ![Horario](docs/screenshots/schedule.png) |
+
 ## Stack técnico
 
 | Capa | Tecnología |
